@@ -140,7 +140,7 @@ export default function OpportunitiesClient({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.proposalName || !form.clientId || !form.serviceTypeId) return
+    if (!form.proposalName || !form.clientName || !form.serviceTypeId) return
     setSaving(true)
     try {
       const url    = editing ? `/api/opportunities/${editing.id}` : '/api/opportunities'
