@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
 
+async function findOrCreateClient(fullName: string) {
+  const existing = await prisma.client.findFirst({
+    where: { fullName: { equals: fullName, mode: 'insensitive' } },
+  })
+  if (existing) return existing.id
+  const initial = fullName
+    .split(/\s+/)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
+    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
+  const taken = await prisma.client.findUnique({ where: { initial } })
+  const finalInitial = taken ? initial + '2' : initial
+  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
+  return created.id
+}
+
 export async function GET() {
   const data = await prisma.project.findMany({
     include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
@@ -11,12 +27,14 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const b = await req.json()
+  const b        = await req.json()
+  const clientId = await findOrCreateClient(b.clientName || b.proposalName)
+
   const data = await prisma.project.create({
     data: {
       opportunityId: b.opportunityId ? Number(b.opportunityId) : null,
-      proposalName:  b.proposalName,
-      clientId:      Number(b.clientId),
+      proposalName:  b.engagementName || b.proposalName,
+      clientId,
       projectOwner:  b.projectOwner  || null,
       micInitial:    b.micInitial    || null,
       tm1Initial:    b.tm1Initial    || null,
@@ -31,8 +49,8 @@ export async function POST(req: NextRequest) {
       spk:           b.spk           || null,
       pks:           b.pks           || null,
       confirmedFee:  b.confirmedFee  ? BigInt(b.confirmedFee)  : null,
-      alokasiHours:  b.alokasiHours  ? Number(b.alokasiHours)  : null,
-      currentHours:  b.currentHours  ? Number(b.currentHours)  : null,
+      alokasiHours:  null,
+      currentHours:  null,
     },
     include: { client: true, termins: true },
   })

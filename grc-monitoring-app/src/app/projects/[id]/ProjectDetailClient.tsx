@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trash2, Plus, Save } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Save, Download, UploadCloud, FileText } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, toInputDate, PROJ_STATUSES, PROJ_STATUS_COLORS, TERMIN_STATUSES, TERMIN_STATUS_COLORS } from '@/lib/utils'
 
@@ -44,6 +44,58 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
       <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
       {children}
+    </div>
+  )
+}
+
+// ─── FileUploadOrDownload ────────────────────────────────────────────────────
+
+function FileUploadOrDownload({ path, onUploaded }: { path: string; onUploaded: (p: string) => void }) {
+  const [uploading, setUploading] = useState(false)
+
+  const displayName = path ? path.split('/').pop()?.replace(/^\d+-/, '') ?? path : null
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.type !== 'application/pdf') { alert('Hanya file PDF yang diterima.'); return }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error(await res.text())
+      const { path: uploaded } = await res.json()
+      onUploaded(uploaded)
+    } catch (err: any) {
+      alert('Upload gagal: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {displayName ? (
+        <>
+          <a href={path} target="_blank" rel="noopener noreferrer" download
+            className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline truncate max-w-[160px]">
+            <FileText size={13} className="shrink-0" />
+            <span className="truncate">{displayName}</span>
+            <Download size={12} className="shrink-0" />
+          </a>
+          <label className="cursor-pointer text-xs text-gray-400 hover:text-gray-600 underline">
+            Ganti
+            <input type="file" accept="application/pdf" className="hidden" disabled={uploading} onChange={handleFile} />
+          </label>
+        </>
+      ) : (
+        <label className={`flex items-center gap-1.5 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <UploadCloud size={14} />
+          {uploading ? 'Uploading...' : 'Upload PDF'}
+          <input type="file" accept="application/pdf" className="hidden" disabled={uploading} onChange={handleFile} />
+        </label>
+      )}
     </div>
   )
 }
@@ -227,10 +279,16 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="SPK">
-              <input className={inputCls} value={form.spk} onChange={(e) => setField('spk', e.target.value)} />
+              <FileUploadOrDownload
+                path={form.spk}
+                onUploaded={(p) => setField('spk', p)}
+              />
             </Field>
             <Field label="PKS">
-              <input className={inputCls} value={form.pks} onChange={(e) => setField('pks', e.target.value)} />
+              <FileUploadOrDownload
+                path={form.pks}
+                onUploaded={(p) => setField('pks', p)}
+              />
             </Field>
           </div>
           <Field label="Confirmed Fee (IDR)">
