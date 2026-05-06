@@ -1,13 +1,14 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, TrendingUp, FolderKanban } from "lucide-react"
+import { LayoutDashboard, TrendingUp, FolderKanban, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard },
   { href: "/opportunities", label: "Opportunities", icon: TrendingUp },
-  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/projects",      label: "Projects",      icon: FolderKanban },
+  { href: "/team",          label: "Team",          icon: Users },
 ]
 
 export default function Sidebar() {

@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
+
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const id = Number(params.id)
+  const { fullName, initial, level } = await req.json()
+  if (!fullName || !initial || !level)
+    return NextResponse.json({ error: 'fullName, initial, level are required' }, { status: 400 })
+
+  const upper = initial.toUpperCase()
+  const conflict = await prisma.teamMember.findFirst({
+    where: { initial: upper, NOT: { id } },
+  })
+  if (conflict)
+    return NextResponse.json({ error: `Initial "${upper}" sudah dipakai` }, { status: 409 })
+
+  const data = await prisma.teamMember.update({
+    where: { id },
+    data: { fullName, initial: upper, level },
+  })
+  return NextResponse.json(data)
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+  const id = Number(params.id)
+  const member = await prisma.teamMember.findUnique({ where: { id } })
+  if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const ini = member.initial
+
+  // Build OR filter across all team fields
+  const assignedFilter = TM_FIELDS.map((f) => ({ [f]: ini }))
+
+  const [activeProject, activeOpp] = await Promise.all([
+    prisma.project.findFirst({
+      where: { status: { not: 'Finish' }, OR: assignedFilter },
+      select: { id: true },
+    }),
+    prisma.opportunity.findFirst({
+      where: {
+        status: { notIn: ['Win','Lose','Withdraw','Cancelled','Transferred to other CC3'] },
+        OR: assignedFilter,
+      },
+      select: { id: true },
+    }),
+  ])
+
+  if (activeProject)
+    return NextResponse.json({ error: `${ini} masih assigned ke project aktif. Unassign dulu sebelum hapus.` }, { status: 409 })
+  if (activeOpp)
+    return NextResponse.json({ error: `${ini} masih assigned ke opportunity aktif. Unassign dulu sebelum hapus.` }, { status: 409 })
+
+  await prisma.teamMember.delete({ where: { id } })
+  return new NextResponse(null, { status: 204 })
+}
