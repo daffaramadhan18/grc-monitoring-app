@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trash2, Plus, Save } from 'lucide-react'
+import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, toInputDate, PROJ_STATUSES, PROJ_STATUS_COLORS, TERMIN_STATUSES, TERMIN_STATUS_COLORS } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -233,8 +234,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
             </Field>
           </div>
           <Field label="Confirmed Fee (IDR)">
-            <input type="number" className={inputCls} value={form.confirmedFee}
-              onChange={(e) => setField('confirmedFee', e.target.value)} placeholder="0" />
+            <CurrencyInput value={form.confirmedFee} onChange={(v) => setField('confirmedFee', v)} />
           </Field>
         </Section>
 
@@ -326,8 +326,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
                     onChange={(e) => setTermin(i, 'percentage', e.target.value)} placeholder="0" />
                 </Field>
                 <Field label="Fee (IDR)">
-                  <input type="number" className={inputCls} value={t.fee}
-                    onChange={(e) => setTermin(i, 'fee', e.target.value)} placeholder="0" />
+                  <CurrencyInput value={t.fee} onChange={(v) => setTermin(i, 'fee', v)} />
                 </Field>
                 <Field label="Status">
                   <select className={selectCls} value={t.status}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X } from 'lucide-react'
+import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, formatDate, toInputDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 
 interface Client     { id: number; initial: string; fullName: string }
@@ -226,8 +227,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                   </select>
                 </Field>
                 <Field label="Confirmed Fee (IDR)">
-                  <input type="number" className={inputCls} value={form.confirmedFee}
-                    onChange={(e) => set('confirmedFee', e.target.value)} placeholder="0" />
+                  <CurrencyInput value={form.confirmedFee} onChange={(v) => set('confirmedFee', v)} />
                 </Field>
               </div>
 

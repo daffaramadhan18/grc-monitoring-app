@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X } from 'lucide-react'
+import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -371,12 +372,10 @@ export default function OpportunitiesClient({
               {/* 8-9-10. Revenue CF + Harga + %RR */}
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Revenue CF (IDR)">
-                  <input type="number" className={inputCls} value={form.revenueCf}
-                    onChange={(e) => set('revenueCf', e.target.value)} placeholder="0" />
+                  <CurrencyInput value={form.revenueCf} onChange={(v) => set('revenueCf', v)} />
                 </Field>
                 <Field label="Harga (IDR)">
-                  <input type="number" className={inputCls} value={form.harga}
-                    onChange={(e) => set('harga', e.target.value)} placeholder="0" />
+                  <CurrencyInput value={form.harga} onChange={(v) => set('harga', v)} />
                 </Field>
                 <Field label="%RR">
                   <input type="number" step="0.01" className={inputCls} value={form.rrPercentage}
