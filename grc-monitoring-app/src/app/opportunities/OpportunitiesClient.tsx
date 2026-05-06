@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
+import QuarterlySection from './QuarterlySection'
 import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -192,6 +193,8 @@ export default function OpportunitiesClient({
           <Plus size={16} /> Add Opportunity
         </button>
       </div>
+
+      <QuarterlySection opps={opps} />
 
       {/* Summary pills */}
       <div className="flex flex-wrap gap-2">
