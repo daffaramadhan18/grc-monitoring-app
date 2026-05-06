@@ -1,82 +1,69 @@
-import { supabase } from "@/lib/supabase"
+import { prisma } from "@/lib/prisma"
 import { formatRupiah } from "@/lib/utils"
-import type { DashboardStats, TeamWorkload } from "@/types"
-import {
-  TrendingUp, FolderKanban, DollarSign, Award,
-} from "lucide-react"
+import { TrendingUp, FolderKanban, DollarSign, Award } from "lucide-react"
 import WinRateChart from "./WinRateChart"
 import WorkloadTable from "./WorkloadTable"
 
-async function getStats(): Promise<DashboardStats> {
-  const [{ data: opps }, { data: projects }, { data: termins }] = await Promise.all([
-    supabase.from("opportunities").select("status, value_idr"),
-    supabase.from("projects").select("status"),
-    supabase.from("termins").select("fee_idr, is_paid"),
+async function getStats() {
+  const [opps, projects, termins] = await Promise.all([
+    prisma.opportunity.findMany({ select: { status: true, harga: true } }),
+    prisma.project.findMany({ select: { status: true } }),
+    prisma.termin.findMany({ select: { fee: true, status: true } }),
   ])
 
-  const total = opps?.length ?? 0
-  const wins = opps?.filter((o) => o.status === "Win").length ?? 0
-  const loses = opps?.filter((o) => o.status === "Lose").length ?? 0
-  const inProgress = opps?.filter((o) => o.status === "In Progress").length ?? 0
+  const wins = opps.filter((o) => o.status === "Win").length
+  const loses = opps.filter((o) => o.status === "Lose").length
   const decided = wins + loses
-  const winRate = decided > 0 ? Math.round((wins / decided) * 100) : 0
-  const pipelineValue = opps
-    ?.filter((o) => !["Lose", "Cancelled", "Withdraw"].includes(o.status))
-    .reduce((s, o) => s + (o.value_idr ?? 0), 0) ?? 0
-  const activeProjects = projects?.filter((p) => p.status === "Active").length ?? 0
-  const totalRevenue = termins?.filter((t) => t.is_paid).reduce((s, t) => s + (t.fee_idr ?? 0), 0) ?? 0
-  const pendingRevenue = termins?.filter((t) => !t.is_paid).reduce((s, t) => s + (t.fee_idr ?? 0), 0) ?? 0
 
   return {
-    total_opportunities: total,
+    total_opportunities: opps.length,
     win_count: wins,
     lose_count: loses,
-    in_progress_count: inProgress,
-    win_rate: winRate,
-    pipeline_value_idr: pipelineValue,
-    active_projects: activeProjects,
-    total_revenue_idr: totalRevenue,
-    pending_revenue_idr: pendingRevenue,
+    in_progress_count: opps.filter((o) => o.status === "In Progress").length,
+    win_rate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
+    pipeline_value: opps
+      .filter((o) => !["Lose", "Cancelled", "Withdraw"].includes(o.status))
+      .reduce((s, o) => s + Number(o.harga ?? 0), 0),
+    active_projects: projects.filter((p) => p.status !== "Finish").length,
+    total_revenue: termins
+      .filter((t) => t.status === "Paid")
+      .reduce((s, t) => s + Number(t.fee ?? 0), 0),
+    pending_revenue: termins
+      .filter((t) => t.status !== "Paid")
+      .reduce((s, t) => s + Number(t.fee ?? 0), 0),
   }
 }
 
-async function getWorkload(): Promise<TeamWorkload[]> {
-  const { data } = await supabase
-    .from("project_team_members")
-    .select(`
-      team_member_id,
-      hours_allocated,
-      hours_current,
-      project:projects(status),
-      member:team_members(name)
-    `)
+async function getWorkload() {
+  const members = await prisma.teamMember.findMany()
+  const projects = await prisma.project.findMany({
+    where: { status: { not: "Finish" } },
+    select: {
+      micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+      tm4Initial: true, tm5Initial: true, tm6Initial: true,
+      alokasiHours: true, currentHours: true,
+    },
+  })
 
-  if (!data) return []
-
-  const map = new Map<string, TeamWorkload>()
-  for (const row of data) {
-    const id = row.team_member_id
-    const isActive = (row.project as any)?.status === "Active"
-    if (!map.has(id)) {
-      map.set(id, {
-        team_member_id: id,
-        name: (row.member as any)?.name ?? "Unknown",
-        active_projects: 0,
-        hours_allocated: 0,
-        hours_current: 0,
-      })
+  return members.map((m) => {
+    const myProjects = projects.filter((p) =>
+      [p.micInitial, p.tm1Initial, p.tm2Initial, p.tm3Initial,
+       p.tm4Initial, p.tm5Initial, p.tm6Initial].includes(m.initial)
+    )
+    return {
+      initial: m.initial,
+      fullName: m.fullName,
+      active_projects: myProjects.length,
+      alokasi_hours: myProjects.reduce((s, p) => s + (p.alokasiHours ?? 0), 0),
+      current_hours: myProjects.reduce((s, p) => s + (p.currentHours ?? 0), 0),
     }
-    const entry = map.get(id)!
-    if (isActive) entry.active_projects++
-    entry.hours_allocated += row.hours_allocated ?? 0
-    entry.hours_current += row.hours_current ?? 0
-  }
-  return [...map.values()].sort((a, b) => b.active_projects - a.active_projects)
+  }).filter((m) => m.active_projects > 0)
+    .sort((a, b) => b.active_projects - a.active_projects)
 }
 
-const StatCard = ({
-  label, value, icon: Icon, sub,
-}: { label: string; value: string; icon: any; sub?: string }) => (
+const StatCard = ({ label, value, icon: Icon, sub }: {
+  label: string; value: string; icon: any; sub?: string
+}) => (
   <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
     <div className="flex items-start justify-between">
       <div>
@@ -98,34 +85,16 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
 
-      {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Win Rate"
-          value={`${stats.win_rate}%`}
-          icon={Award}
-          sub={`${stats.win_count}W / ${stats.lose_count}L`}
-        />
-        <StatCard
-          label="Pipeline Value"
-          value={formatRupiah(stats.pipeline_value_idr)}
-          icon={TrendingUp}
-          sub={`${stats.total_opportunities} opportunities`}
-        />
-        <StatCard
-          label="Active Projects"
-          value={String(stats.active_projects)}
-          icon={FolderKanban}
-        />
-        <StatCard
-          label="Revenue Collected"
-          value={formatRupiah(stats.total_revenue_idr)}
-          icon={DollarSign}
-          sub={`${formatRupiah(stats.pending_revenue_idr)} pending`}
-        />
+        <StatCard label="Win Rate" value={`${stats.win_rate}%`} icon={Award}
+          sub={`${stats.win_count}W / ${stats.lose_count}L`} />
+        <StatCard label="Pipeline Value" value={formatRupiah(stats.pipeline_value)} icon={TrendingUp}
+          sub={`${stats.total_opportunities} opportunities`} />
+        <StatCard label="Active Projects" value={String(stats.active_projects)} icon={FolderKanban} />
+        <StatCard label="Revenue Collected" value={formatRupiah(stats.total_revenue)} icon={DollarSign}
+          sub={`${formatRupiah(stats.pending_revenue)} pending`} />
       </div>
 
-      {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-medium text-gray-600 mb-4">Opportunity Pipeline</h2>

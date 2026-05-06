@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ServiceType {
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  subServices   SubService[]
+  opportunities Opportunity[]
+}
+
+model SubService {
+  id            Int           @id @default(autoincrement())
+  name          String
+  serviceTypeId Int
+  serviceType   ServiceType   @relation(fields: [serviceTypeId], references: [id])
+  opportunities Opportunity[]
+}
+
+model Client {
+  id            Int           @id @default(autoincrement())
+  initial       String        @unique
+  fullName      String
+  opportunities Opportunity[]
+  projects      Project[]
+}
+
+model TeamMember {
+  id       Int    @id @default(autoincrement())
+  initial  String @unique
+  fullName String
+  level    String
+}
+
+model Opportunity {
+  id            Int         @id @default(autoincrement())
+  proposalName  String
+  clientId      Int
+  client        Client      @relation(fields: [clientId], references: [id])
+  serviceTypeId Int
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
+  subServiceId  Int
+  subService    SubService  @relation(fields: [subServiceId], references: [id])
+  fase          String?
+  status        String
+  probability   String?
+  harga         BigInt?
+  revenueCf     BigInt?
+  rrPercentage  Float?
+  expectedDate  DateTime?
+  submittedDate DateTime?
+  notes         String?
+  micInitial    String?
+  tm1Initial    String?
+  tm2Initial    String?
+  tm3Initial    String?
+  tm4Initial    String?
+  tm5Initial    String?
+  tm6Initial    String?
+  project       Project?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Project {
+  id            Int          @id @default(autoincrement())
+  opportunityId Int?         @unique
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  proposalName  String
+  clientId      Int
+  client        Client       @relation(fields: [clientId], references: [id])
+  projectOwner  String?
+  micInitial    String?
+  tm1Initial    String?
+  tm2Initial    String?
+  tm3Initial    String?
+  tm4Initial    String?
+  tm5Initial    String?
+  tm6Initial    String?
+  startedDate   DateTime?
+  endDate       DateTime?
+  status        String
+  spk           String?
+  pks           String?
+  confirmedFee  BigInt?
+  alokasiHours  Float?
+  currentHours  Float?
+  termins       Termin[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Termin {
+  id           Int      @id @default(autoincrement())
+  projectId    Int
+  project      Project  @relation(fields: [projectId], references: [id])
+  terminNumber Int
+  percentage   Float?
+  fee          BigInt?
+  status       String?
+  createdAt    DateTime @default(now())
+}
