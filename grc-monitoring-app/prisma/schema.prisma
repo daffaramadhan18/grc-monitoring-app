@@ -38,14 +38,14 @@ model TeamMember {
 }
 
 model Opportunity {
-  id            Int         @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   proposalName  String
   clientId      Int
-  client        Client      @relation(fields: [clientId], references: [id])
+  client        Client       @relation(fields: [clientId], references: [id])
   serviceTypeId Int
-  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
-  subServiceId  Int
-  subService    SubService  @relation(fields: [subServiceId], references: [id])
+  serviceType   ServiceType  @relation(fields: [serviceTypeId], references: [id])
+  subServiceId  Int?
+  subService    SubService?  @relation(fields: [subServiceId], references: [id])
   fase          String?
   status        String
   probability   String?
@@ -63,8 +63,8 @@ model Opportunity {
   tm5Initial    String?
   tm6Initial    String?
   project       Project?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Project {
@@ -98,7 +98,7 @@ model Project {
 model Termin {
   id           Int      @id @default(autoincrement())
   projectId    Int
-  project      Project  @relation(fields: [projectId], references: [id])
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   terminNumber Int
   percentage   Float?
   fee          BigInt?

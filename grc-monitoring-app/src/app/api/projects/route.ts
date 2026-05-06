@@ -1,24 +1,40 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { serialize } from '@/lib/serialize'
 
 export async function GET() {
   const data = await prisma.project.findMany({
-    include: { client: true, termins: true },
-    orderBy: { createdAt: "desc" },
+    include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
+    orderBy: { createdAt: 'desc' },
   })
-  return NextResponse.json(data)
+  return NextResponse.json(serialize(data))
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const { termins, ...projectData } = body
-  const project = await prisma.project.create({
+  const b = await req.json()
+  const data = await prisma.project.create({
     data: {
-      ...projectData,
-      termins: termins?.length
-        ? { create: termins }
-        : undefined,
+      opportunityId: b.opportunityId ? Number(b.opportunityId) : null,
+      proposalName:  b.proposalName,
+      clientId:      Number(b.clientId),
+      projectOwner:  b.projectOwner  || null,
+      micInitial:    b.micInitial    || null,
+      tm1Initial:    b.tm1Initial    || null,
+      tm2Initial:    b.tm2Initial    || null,
+      tm3Initial:    b.tm3Initial    || null,
+      tm4Initial:    b.tm4Initial    || null,
+      tm5Initial:    b.tm5Initial    || null,
+      tm6Initial:    b.tm6Initial    || null,
+      startedDate:   b.startedDate   ? new Date(b.startedDate) : null,
+      endDate:       b.endDate       ? new Date(b.endDate)     : null,
+      status:        b.status        || 'Planning',
+      spk:           b.spk           || null,
+      pks:           b.pks           || null,
+      confirmedFee:  b.confirmedFee  ? BigInt(b.confirmedFee)  : null,
+      alokasiHours:  b.alokasiHours  ? Number(b.alokasiHours)  : null,
+      currentHours:  b.currentHours  ? Number(b.currentHours)  : null,
     },
+    include: { client: true, termins: true },
   })
-  return NextResponse.json(project, { status: 201 })
+  return NextResponse.json(serialize(data), { status: 201 })
 }
