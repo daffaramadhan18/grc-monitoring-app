@@ -1,135 +1,134 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
+export type OpportunityFase = 'RFI' | 'RFP' | 'Diskusi Awal'
+
 export type OpportunityStatus =
-  | "Submitted"
-  | "Win"
-  | "Lose"
-  | "Waiting for Result"
-  | "Waiting for RFP"
-  | "Backlog"
-  | "Withdraw"
-  | "Cancelled"
-  | "Transferred"
-  | "In Progress"
+  | 'Submitted'
+  | 'Win'
+  | 'Lose'
+  | 'Waiting for Result'
+  | 'Waiting for RFP'
+  | 'Backlog'
+  | 'Withdraw'
+  | 'Cancelled'
+  | 'Transferred'
+  | 'In Progress'
 
-export type ProjectStatus = "Active" | "Completed" | "On Hold" | "Cancelled"
+export type OpportunityProbability = 'High' | 'Medium' | 'Low'
 
-export type TeamRole = "Manager" | "Senior" | "Staff" | "Admin"
+export type ProjectStatus = 'Planning' | 'Fieldwork' | 'Reporting' | 'Finish'
 
-// ─── Core entities (mirrors Supabase tables) ──────────────────────────────────
+export type ProjectOwner = 'ITGRC-S' | 'Non ITGRC-S'
 
-export interface Client {
-  id: string
-  name: string
-  industry: string | null
-  contact_person: string | null
-  contact_email: string | null
-  contact_phone: string | null
-  created_at: string
-}
+export type TerminStatus = 'Unpaid' | 'Invoice Requested' | 'Invoice Sent' | 'Paid'
+
+// ─── Core entities ────────────────────────────────────────────────────────────
 
 export interface ServiceType {
-  id: string
+  id: number
   name: string
-  description: string | null
 }
 
 export interface SubService {
-  id: string
-  service_type_id: string
+  id: number
   name: string
-  description: string | null
+  service_type_id: number
+}
+
+export interface Client {
+  id: number
+  initial: string
+  full_name: string
 }
 
 export interface TeamMember {
-  id: string
-  name: string
-  email: string
-  role: TeamRole
-  is_active: boolean
-  created_at: string
+  id: number
+  initial: string
+  full_name: string
+  level: string
 }
 
 export interface Opportunity {
-  id: string
-  title: string
-  client_id: string
-  service_type_id: string | null
-  sub_service_id: string | null
+  id: number
+  service_type_id: number | null
+  sub_service_id: number | null
+  client_id: number
+  proposal_name: string
+  fase: OpportunityFase | null
   status: OpportunityStatus
+  probability: OpportunityProbability | null
+  revenue_cf: number | null
+  harga: number | null
+  rr_percentage: number | null
+  expected_date: string | null
   submitted_date: string | null
-  value_idr: number | null
-  pic_id: string | null          // person-in-charge (TeamMember)
   notes: string | null
+  mic_id: number | null
+  tm1_id: number | null
+  tm2_id: number | null
+  tm3_id: number | null
+  tm4_id: number | null
+  tm5_id: number | null
+  tm6_id: number | null
   created_at: string
   updated_at: string
-  // joined relations
+  // joined
   client?: Client
   service_type?: ServiceType
   sub_service?: SubService
-  pic?: TeamMember
+  mic?: TeamMember
 }
 
 export interface Project {
-  id: string
-  opportunity_id: string | null
-  client_id: string
-  name: string
-  spk_number: string | null
-  pks_number: string | null
-  start_date: string | null
+  id: number
+  opportunity_id: number | null
+  proposal_name: string
+  client_id: number
+  project_owner: ProjectOwner | null
+  mic_id: number | null
+  tm1_id: number | null
+  tm2_id: number | null
+  tm3_id: number | null
+  tm4_id: number | null
+  tm5_id: number | null
+  tm6_id: number | null
+  started_date: string | null
   end_date: string | null
-  total_value_idr: number | null
   status: ProjectStatus
-  notes: string | null
+  spk: string | null
+  pks: string | null
+  confirmed_fee: number | null
+  alokasi_hours: number | null
+  current_hours: number | null
   created_at: string
   updated_at: string
-  // joined relations
+  // joined
   client?: Client
-  opportunity?: Opportunity
-  team_members?: ProjectTeamMember[]
+  mic?: TeamMember
   termins?: Termin[]
 }
 
-export interface ProjectTeamMember {
-  id: string
-  project_id: string
-  team_member_id: string
-  role_in_project: string | null
-  hours_allocated: number | null
-  hours_current: number | null
-  team_member?: TeamMember
-}
-
 export interface Termin {
-  id: string
-  project_id: string
-  termin_number: number          // 1-4
-  description: string | null
-  fee_idr: number | null
-  is_paid: boolean
-  due_date: string | null
-  paid_date: string | null
+  id: number
+  project_id: number
+  termin_number: number
+  percentage: number | null
+  fee: number | null
+  status: TerminStatus
+  created_at: string
+  updated_at: string
 }
 
-// ─── Dashboard aggregates ─────────────────────────────────────────────────────
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export interface DashboardStats {
   total_opportunities: number
   win_count: number
   lose_count: number
   in_progress_count: number
-  win_rate: number               // percentage 0-100
-  pipeline_value_idr: number     // sum of non-lost opportunities
+  win_rate: number
+  pipeline_value: number
   active_projects: number
-  total_revenue_idr: number      // sum of paid termins
-  pending_revenue_idr: number    // sum of unpaid termins on active projects
-}
-
-export interface TeamWorkload {
-  team_member_id: string
-  name: string
-  active_projects: number
-  hours_allocated: number
-  hours_current: number
+  total_revenue: number
+  pending_revenue: number
 }
