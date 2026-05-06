@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
 
+async function resolveSubService(name: string | undefined | null, serviceTypeId: number) {
+  if (!name) return null
+  const ss = await prisma.subService.findFirst({ where: { name, serviceTypeId } })
+  return ss?.id ?? null
+}
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const data = await prisma.opportunity.findUnique({
     where: { id: Number(params.id) },
@@ -14,14 +20,16 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const id = Number(params.id)
   const b  = await req.json()
+  const serviceTypeId = Number(b.serviceTypeId)
+  const subServiceId  = await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
 
   const updated = await prisma.opportunity.update({
     where: { id },
     data: {
       proposalName:  b.proposalName,
       clientId:      Number(b.clientId),
-      serviceTypeId: Number(b.serviceTypeId),
-      subServiceId:  b.subServiceId ? Number(b.subServiceId) : null,
+      serviceTypeId,
+      subServiceId,
       fase:          b.fase          || null,
       status:        b.status,
       probability:   b.probability   || null,

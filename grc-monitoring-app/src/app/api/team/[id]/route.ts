@@ -40,7 +40,7 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
     }),
     prisma.opportunity.findFirst({
       where: {
-        status: { notIn: ['Win','Lose','Withdraw','Cancelled','Transferred to other CC3'] },
+        status: { notIn: ['Win','Lose','Withdrawal','Transfer to others'] },
         OR: assignedFilter,
       },
       select: { id: true },

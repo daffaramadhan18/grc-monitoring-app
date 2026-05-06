@@ -33,28 +33,24 @@ export function toInputDate(dateStr: string | null | undefined): string {
 
 export const OPP_STATUSES = [
   'Submitted',
+  'Withdrawal',
   'Win',
   'Lose',
   'Waiting for Result',
-  'Waiting for RFP',
+  'Transfer to others',
   'Backlog',
-  'Withdraw',
-  'Cancelled',
-  'In Progress',
-  'Transferred to other CC3',
+  'In progress',
 ] as const
 
 export const OPP_STATUS_COLORS: Record<string, string> = {
-  Win:                       'bg-green-100 text-green-800',
-  Lose:                      'bg-red-100 text-red-800',
-  Cancelled:                 'bg-red-100 text-red-800',
-  'Waiting for Result':      'bg-yellow-100 text-yellow-800',
-  'Waiting for RFP':         'bg-yellow-100 text-yellow-800',
-  Submitted:                 'bg-blue-100 text-blue-800',
-  'In Progress':             'bg-blue-100 text-blue-800',
-  Backlog:                   'bg-gray-100 text-gray-600',
-  Withdraw:                  'bg-gray-100 text-gray-600',
-  'Transferred to other CC3':'bg-gray-100 text-gray-600',
+  Win:                  'bg-green-100 text-green-800',
+  Lose:                 'bg-red-100 text-red-800',
+  'Waiting for Result': 'bg-yellow-100 text-yellow-800',
+  Submitted:            'bg-blue-100 text-blue-800',
+  'In progress':        'bg-blue-100 text-blue-800',
+  Backlog:              'bg-gray-100 text-gray-600',
+  Withdrawal:           'bg-gray-100 text-gray-600',
+  'Transfer to others': 'bg-gray-100 text-gray-600',
 }
 
 // ─── Project status ───────────────────────────────────────────────────────────

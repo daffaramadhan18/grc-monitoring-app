@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
 
+async function resolveSubService(name: string | undefined | null, serviceTypeId: number) {
+  if (!name) return null
+  const ss = await prisma.subService.findFirst({
+    where: { name, serviceTypeId },
+  })
+  return ss?.id ?? null
+}
+
 export async function GET() {
   const data = await prisma.opportunity.findMany({
     include: { client: true, serviceType: true, subService: true },
@@ -12,17 +20,20 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const b = await req.json()
+  const serviceTypeId = Number(b.serviceTypeId)
+  const subServiceId  = await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
+
   const data = await prisma.opportunity.create({
     data: {
       proposalName:  b.proposalName,
       clientId:      Number(b.clientId),
-      serviceTypeId: Number(b.serviceTypeId),
-      subServiceId:  b.subServiceId ? Number(b.subServiceId) : null,
+      serviceTypeId,
+      subServiceId,
       fase:          b.fase          || null,
       status:        b.status        || 'Submitted',
       probability:   b.probability   || null,
-      harga:         b.harga         ? BigInt(b.harga)    : null,
-      revenueCf:     b.revenueCf     ? BigInt(b.revenueCf): null,
+      harga:         b.harga         ? BigInt(b.harga)     : null,
+      revenueCf:     b.revenueCf     ? BigInt(b.revenueCf) : null,
       rrPercentage:  b.rrPercentage  ? Number(b.rrPercentage) : null,
       expectedDate:  b.expectedDate  ? new Date(b.expectedDate) : null,
       submittedDate: b.submittedDate ? new Date(b.submittedDate): null,
