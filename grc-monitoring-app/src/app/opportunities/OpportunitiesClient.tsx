@@ -25,9 +25,7 @@ interface Opp {
 
 interface Props {
   opportunities: Opp[]
-  clients: Client[]
   serviceTypes: ServiceType[]
-  subServices: SubService[]
   teamMembers: TeamMember[]
 }
 
@@ -47,7 +45,7 @@ const SUB_SERVICES: Record<string, string[]> = {
 // ─── Empty form ───────────────────────────────────────────────────────────────
 
 const emptyForm = () => ({
-  proposalName: '', clientId: '', serviceTypeId: '', subServiceId: '',
+  proposalName: '', clientName: '', serviceTypeId: '', subServiceId: '',
   fase: '', status: 'Submitted', probability: '',
   revenueCf: '', harga: '', rrPercentage: '',
   expectedDate: '', submittedDate: '', notes: '',
@@ -83,7 +81,7 @@ const selectCls = inputCls
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function OpportunitiesClient({
-  opportunities: initial, clients, serviceTypes, subServices, teamMembers,
+  opportunities: initial, serviceTypes, teamMembers,
 }: Props) {
   const router = useRouter()
   const [opps, setOpps]       = useState<Opp[]>(initial)
@@ -115,7 +113,7 @@ export default function OpportunitiesClient({
     setEditing(opp)
     setForm({
       proposalName:  opp.proposalName,
-      clientId:      String(opp.clientId),
+      clientName:    opp.client.fullName,
       serviceTypeId: String(opp.serviceTypeId),
       subServiceId:  opp.subService?.name ?? '',
       fase:          opp.fase          ?? '',
@@ -314,13 +312,9 @@ export default function OpportunitiesClient({
 
               {/* 2. Client Name */}
               <Field label="Client Name" required>
-                <select className={selectCls} value={form.clientId}
-                  onChange={(e) => set('clientId', e.target.value)} required>
-                  <option value="">Pilih client...</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>{c.initial} — {c.fullName}</option>
-                  ))}
-                </select>
+                <input className={inputCls} value={form.clientName}
+                  onChange={(e) => set('clientName', e.target.value)}
+                  required placeholder="Nama lengkap client" />
               </Field>
 
               {/* 3-4. Service Type + Sub-service */}

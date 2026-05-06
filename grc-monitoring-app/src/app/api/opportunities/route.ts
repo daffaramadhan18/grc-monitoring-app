@@ -4,10 +4,26 @@ import { serialize } from '@/lib/serialize'
 
 async function resolveSubService(name: string | undefined | null, serviceTypeId: number) {
   if (!name) return null
-  const ss = await prisma.subService.findFirst({
-    where: { name, serviceTypeId },
-  })
+  const ss = await prisma.subService.findFirst({ where: { name, serviceTypeId } })
   return ss?.id ?? null
+}
+
+async function findOrCreateClient(fullName: string) {
+  const existing = await prisma.client.findFirst({
+    where: { fullName: { equals: fullName, mode: 'insensitive' } },
+  })
+  if (existing) return existing.id
+  // Auto-generate initial from words (e.g. "Bank BRI" → "BBRI", capped at 4)
+  const initial = fullName
+    .split(/\s+/)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
+    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
+  // Ensure initial is unique
+  const taken = await prisma.client.findUnique({ where: { initial } })
+  const finalInitial = taken ? initial + '2' : initial
+  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
+  return created.id
 }
 
 export async function GET() {
@@ -22,11 +38,12 @@ export async function POST(req: NextRequest) {
   const b = await req.json()
   const serviceTypeId = Number(b.serviceTypeId)
   const subServiceId  = await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
+  const clientId      = await findOrCreateClient(b.clientName)
 
   const data = await prisma.opportunity.create({
     data: {
       proposalName:  b.proposalName,
-      clientId:      Number(b.clientId),
+      clientId,
       serviceTypeId,
       subServiceId,
       fase:          b.fase          || null,

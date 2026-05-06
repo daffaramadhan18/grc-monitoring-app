@@ -8,6 +8,22 @@ async function resolveSubService(name: string | undefined | null, serviceTypeId:
   return ss?.id ?? null
 }
 
+async function findOrCreateClient(fullName: string) {
+  const existing = await prisma.client.findFirst({
+    where: { fullName: { equals: fullName, mode: 'insensitive' } },
+  })
+  if (existing) return existing.id
+  const initial = fullName
+    .split(/\s+/)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
+    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
+  const taken = await prisma.client.findUnique({ where: { initial } })
+  const finalInitial = taken ? initial + '2' : initial
+  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
+  return created.id
+}
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const data = await prisma.opportunity.findUnique({
     where: { id: Number(params.id) },
@@ -22,12 +38,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const b  = await req.json()
   const serviceTypeId = Number(b.serviceTypeId)
   const subServiceId  = await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
+  const clientId      = await findOrCreateClient(b.clientName)
 
   const updated = await prisma.opportunity.update({
     where: { id },
     data: {
       proposalName:  b.proposalName,
-      clientId:      Number(b.clientId),
+      clientId,
       serviceTypeId,
       subServiceId,
       fase:          b.fase          || null,
