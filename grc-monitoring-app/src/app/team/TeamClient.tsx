@@ -25,12 +25,9 @@ const LEVELS = [
   'Intern',
 ] as const
 
-// Deterministic color from initial string
+// Deterministic color from initial string — RSM brand palette
 const AVATAR_COLORS = [
-  'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
-  'bg-lime-500', 'bg-green-500', 'bg-teal-500', 'bg-cyan-500',
-  'bg-blue-500', 'bg-indigo-500', 'bg-violet-500', 'bg-purple-500',
-  'bg-pink-500', 'bg-rose-500',
+  'bg-[#009CDE]', 'bg-[#43B02A]', 'bg-[#58595B]', 'bg-[#F59E0B]', 'bg-[#8B5CF6]', 'bg-[#EC4899]',
 ]
 
 function avatarColor(initial: string) {
@@ -52,14 +49,14 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
 // ─── Capacity badge ───────────────────────────────────────────────────────────
 
 function capacityBadge(total: number) {
-  if (total >= 8) return { label: 'Overloaded',   cls: 'bg-red-100 text-red-700',    order: 0 }
-  if (total >= 5) return { label: 'At Capacity',  cls: 'bg-yellow-100 text-yellow-700', order: 1 }
-  return              { label: 'Available',      cls: 'bg-green-100 text-green-700', order: 2 }
+  if (total >= 8) return { label: 'Overloaded',   cls: 'bg-red-100 text-red-700',         order: 0 }
+  if (total >= 5) return { label: 'At Capacity',  cls: 'bg-amber-100 text-amber-700',     order: 1 }
+  return              { label: 'Available',      cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
@@ -166,7 +163,7 @@ export default function TeamClient({ members: initial, allocation }: Props) {
           <h1 className="text-xl font-semibold text-gray-800">Team Members</h1>
           <button
             onClick={openNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#CC0000] text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
           >
             <Plus size={16} /> Add Member
           </button>
@@ -208,7 +205,7 @@ export default function TeamClient({ members: initial, allocation }: Props) {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openEdit(m)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-[#009CDE] hover:bg-[#009CDE]/10 rounded transition-colors"
                         title="Edit"
                       >
                         <Pencil size={14} />
@@ -241,8 +238,8 @@ export default function TeamClient({ members: initial, allocation }: Props) {
 
         {/* Legend */}
         <div className="flex items-center gap-5 text-xs text-gray-500">
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" />Active Projects</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-purple-400 inline-block" />Active Proposals</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#009CDE] inline-block" />Active Projects</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#43B02A] inline-block" />Active Proposals</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
@@ -268,12 +265,12 @@ export default function TeamClient({ members: initial, allocation }: Props) {
                 {/* Counts */}
                 <div className="flex items-center gap-3 shrink-0 text-xs text-gray-600">
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                    <span className="w-2 h-2 rounded-full bg-[#009CDE] inline-block" />
                     {projects} project{projects !== 1 ? 's' : ''}
                   </span>
                   <span className="text-gray-300">|</span>
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                    <span className="w-2 h-2 rounded-full bg-[#43B02A] inline-block" />
                     {proposals} proposal{proposals !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -284,14 +281,14 @@ export default function TeamClient({ members: initial, allocation }: Props) {
                     <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100">
                       {projects > 0 && (
                         <div
-                          className="bg-blue-500 transition-all"
+                          className="bg-[#009CDE] transition-all"
                           style={{ width: `${projPct}%` }}
                           title={`${projects} projects`}
                         />
                       )}
                       {proposals > 0 && (
                         <div
-                          className="bg-purple-400 transition-all"
+                          className="bg-[#43B02A] transition-all"
                           style={{ width: `${propPct}%` }}
                           title={`${proposals} proposals`}
                         />
@@ -388,7 +385,7 @@ export default function TeamClient({ members: initial, allocation }: Props) {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#CC0000] text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
                 >
                   {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
                 </button>

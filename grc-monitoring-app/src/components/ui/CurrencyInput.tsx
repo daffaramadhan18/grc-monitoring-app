@@ -15,7 +15,7 @@ function format(raw: string): string {
 }
 
 export default function CurrencyInput({ value, onChange, placeholder = '0', className, disabled }: Props) {
-  const base = 'w-full border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10 pr-3 py-2'
+  const base = 'w-full border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE] pl-10 pr-3 py-2'
 
   return (
     <div className="relative">

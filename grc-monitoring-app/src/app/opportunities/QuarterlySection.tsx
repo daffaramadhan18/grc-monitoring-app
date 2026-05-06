@@ -90,7 +90,7 @@ export default function QuarterlySection({ opps }: Props) {
               {/* Progress bar */}
               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#CC0000] rounded-full transition-all duration-500"
+                  className="h-full bg-[#009CDE] rounded-full transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>

@@ -27,7 +27,7 @@ interface Props { project: Project; clients: Client[]; teamMembers: TeamMember[]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -79,7 +79,7 @@ function FileUploadOrDownload({ path, onUploaded }: { path: string; onUploaded: 
       {displayName ? (
         <>
           <a href={path} target="_blank" rel="noopener noreferrer" download
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline truncate max-w-[160px]">
+            className="flex items-center gap-1.5 text-sm text-[#009CDE] hover:underline truncate max-w-[160px]">
             <FileText size={13} className="shrink-0" />
             <span className="truncate">{displayName}</span>
             <Download size={12} className="shrink-0" />
@@ -90,7 +90,7 @@ function FileUploadOrDownload({ path, onUploaded }: { path: string; onUploaded: 
           </label>
         </>
       ) : (
-        <label className={`flex items-center gap-1.5 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+        <label className={`flex items-center gap-1.5 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#009CDE] hover:text-[#009CDE] transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
           <UploadCloud size={14} />
           {uploading ? 'Uploading...' : 'Upload PDF'}
           <input type="file" accept="application/pdf" className="hidden" disabled={uploading} onChange={handleFile} />
@@ -344,7 +344,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
               </div>
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${hoursPct > 90 ? 'bg-red-400' : 'bg-blue-400'}`}
+                  className={`h-full rounded-full transition-all ${hoursPct > 90 ? 'bg-red-400' : 'bg-[#009CDE]'}`}
                   style={{ width: `${hoursPct}%` }}
                 />
               </div>
@@ -354,7 +354,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
 
         <div className="flex justify-end">
           <button type="submit" disabled={savingProject}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium bg-[#CC0000] text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors">
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
             <Save size={14} /> {savingProject ? 'Menyimpan...' : 'Simpan Project'}
           </button>
         </div>
@@ -430,7 +430,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
             type="button"
             onClick={saveTermins}
             disabled={savingTermins}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium bg-[#CC0000] text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
           >
             <Save size={14} /> {savingTermins ? 'Menyimpan...' : 'Simpan Termins'}
           </button>

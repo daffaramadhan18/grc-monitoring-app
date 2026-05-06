@@ -39,7 +39,7 @@ const emptyForm = () => ({
   tm4Initial: '', tm5Initial: '', tm6Initial: '',
 })
 
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
@@ -166,7 +166,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
         <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
         <button
           onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#CC0000] text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
         >
           <Plus size={16} /> Add Project
         </button>
@@ -242,7 +242,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-xs text-gray-600">{proj.currentHours ?? 0}/{proj.alokasiHours}h</span>
                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${hoursUsed > 90 ? 'bg-red-400' : 'bg-blue-400'}`}
+                            <div className={`h-full rounded-full ${hoursUsed > 90 ? 'bg-red-400' : 'bg-[#009CDE]'}`}
                               style={{ width: `${Math.min(hoursUsed, 100)}%` }} />
                           </div>
                         </div>
@@ -377,7 +377,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                   Batal
                 </button>
                 <button type="submit" disabled={saving || !!dateError}
-                  className="px-5 py-2 text-sm font-medium bg-[#CC0000] text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {saving ? 'Menyimpan...' : 'Simpan & Buka Detail'}
                 </button>
               </div>

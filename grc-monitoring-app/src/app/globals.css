@@ -3,9 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --brand-red: #CC0000;
+  --brand-blue:  #009CDE;
+  --brand-green: #43B02A;
+  --brand-gray:  #58595B;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  background-color: #F5F5F5;
+  color: #2D2D2D;
 }

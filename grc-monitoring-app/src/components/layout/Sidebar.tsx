@@ -15,10 +15,10 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-60 bg-[#1A1A2E] text-white flex flex-col shrink-0">
+    <aside className="w-60 bg-[#2D2D2D] text-white flex flex-col shrink-0">
       {/* Logo */}
       <div className="px-6 py-5 border-b border-white/10">
-        <div className="text-[#CC0000] font-bold text-xl leading-none">RSM</div>
+        <div className="text-[#58595B] font-bold text-xl leading-none" style={{ color: '#FFFFFF' }}>RSM</div>
         <div className="text-xs text-white/50 mt-1">CC3 · GRC Monitoring</div>
       </div>
 
@@ -31,7 +31,7 @@ export default function Sidebar() {
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
               pathname.startsWith(href)
-                ? "bg-[#CC0000] text-white"
+                ? "bg-[#009CDE] text-white"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
           >

@@ -71,8 +71,8 @@ const StatCard = ({ label, value, icon: Icon, sub }: {
         <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
         {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
       </div>
-      <div className="p-2.5 bg-red-50 rounded-lg">
-        <Icon size={20} className="text-[#CC0000]" />
+      <div className="p-2.5 bg-[#009CDE]/10 rounded-lg">
+        <Icon size={20} className="text-[#009CDE]" />
       </div>
     </div>
   </div>

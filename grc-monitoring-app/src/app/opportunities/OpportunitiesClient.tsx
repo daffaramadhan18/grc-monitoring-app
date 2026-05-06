@@ -77,7 +77,7 @@ function Field({ label, children, required }: { label: string; children: React.R
   )
 }
 
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ export default function OpportunitiesClient({
         <h1 className="text-xl font-semibold text-gray-800">Opportunities</h1>
         <button
           onClick={openNew}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#CC0000] text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
         >
           <Plus size={16} /> Add Opportunity
         </button>
@@ -448,7 +448,7 @@ export default function OpportunitiesClient({
                   Batal
                 </button>
                 <button type="submit" disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#CC0000] text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
                 </button>
               </div>

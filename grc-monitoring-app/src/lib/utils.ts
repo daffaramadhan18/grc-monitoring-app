@@ -43,11 +43,11 @@ export const OPP_STATUSES = [
 ] as const
 
 export const OPP_STATUS_COLORS: Record<string, string> = {
-  Win:                  'bg-green-100 text-green-800',
-  Lose:                 'bg-red-100 text-red-800',
-  'Waiting for Result': 'bg-yellow-100 text-yellow-800',
-  Submitted:            'bg-blue-100 text-blue-800',
-  'In progress':        'bg-blue-100 text-blue-800',
+  Win:                  'bg-[#43B02A]/15 text-[#2d7a1a]',
+  Lose:                 'bg-red-100 text-red-700',
+  'Waiting for Result': 'bg-amber-100 text-amber-700',
+  Submitted:            'bg-[#009CDE]/15 text-[#006fa0]',
+  'In progress':        'bg-[#009CDE]/15 text-[#006fa0]',
   Backlog:              'bg-gray-100 text-gray-600',
   Withdrawal:           'bg-gray-100 text-gray-600',
   'Transfer to others': 'bg-gray-100 text-gray-600',
@@ -58,10 +58,10 @@ export const OPP_STATUS_COLORS: Record<string, string> = {
 export const PROJ_STATUSES = ['Planning', 'Fieldwork', 'Reporting', 'Finish'] as const
 
 export const PROJ_STATUS_COLORS: Record<string, string> = {
-  Planning:  'bg-blue-100 text-blue-800',
-  Fieldwork: 'bg-yellow-100 text-yellow-800',
-  Reporting: 'bg-orange-100 text-orange-800',
-  Finish:    'bg-green-100 text-green-800',
+  Planning:  'bg-[#009CDE]/15 text-[#006fa0]',
+  Fieldwork: 'bg-amber-100 text-amber-700',
+  Reporting: 'bg-orange-100 text-orange-700',
+  Finish:    'bg-[#43B02A]/15 text-[#2d7a1a]',
 }
 
 // ─── Termin status ────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ export const TERMIN_STATUSES = [
 
 export const TERMIN_STATUS_COLORS: Record<string, string> = {
   'Deliverables in Progress': 'bg-gray-100 text-gray-600',
-  'Invoice Requested':        'bg-yellow-100 text-yellow-800',
-  'Invoice Sent':             'bg-blue-100 text-blue-800',
-  Paid:                       'bg-green-100 text-green-800',
+  'Invoice Requested':        'bg-amber-100 text-amber-700',
+  'Invoice Sent':             'bg-[#009CDE]/15 text-[#006fa0]',
+  Paid:                       'bg-[#43B02A]/15 text-[#2d7a1a]',
 }
