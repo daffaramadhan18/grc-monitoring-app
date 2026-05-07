@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, UploadCloud, FileText } from 'lucide-react'
+import { Plus, X, UploadCloud, FileText, Download, Upload } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 
@@ -107,11 +107,16 @@ function FileUploadField({
 
 export default function ProjectsClient({ projects: initial, clients, teamMembers }: Props) {
   const router = useRouter()
-  const [projects, setProjects] = useState<Project[]>(initial)
+  const [projects, setProjects]   = useState<Project[]>(initial)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm]           = useState(emptyForm())
   const [saving, setSaving]       = useState(false)
   const [dateError, setDateError] = useState('')
+  const [importOpen, setImport]   = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: { row: number; reason: string }[] } | null>(null)
+  const importFileRef = useRef<HTMLInputElement>(null)
 
   function set(field: string, value: string) {
     setForm((f) => {
@@ -160,16 +165,73 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
+  function triggerDownload(blob: Blob, filename: string) {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  async function handleExport() {
+    const res = await fetch('/api/projects/export')
+    if (!res.ok) { alert('Export failed'); return }
+    const blob = await res.blob()
+    const cd = res.headers.get('Content-Disposition') ?? ''
+    const match = cd.match(/filename="(.+)"/)
+    triggerDownload(blob, match?.[1] ?? 'Projects_Export.xlsx')
+  }
+
+  async function handleTemplateDownload() {
+    const res = await fetch('/api/projects/template')
+    if (!res.ok) { alert('Download failed'); return }
+    const blob = await res.blob()
+    triggerDownload(blob, 'Projects_Template.xlsx')
+  }
+
+  async function handleImport() {
+    if (!importFile) { alert('Please select a file'); return }
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', importFile)
+      const res = await fetch('/api/projects/import', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Import failed')
+      setImportResult(data)
+      router.refresh()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
-        <button
-          onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
-        >
-          <Plus size={16} /> Add Project
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Download size={16} /> Export
+          </button>
+          <button
+            onClick={() => { setImport(true); setImportFile(null); setImportResult(null) }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Upload size={16} /> Import
+          </button>
+          <button
+            onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
+          >
+            <Plus size={16} /> Add Project
+          </button>
+        </div>
       </div>
 
       {/* Summary pills */}
@@ -255,6 +317,70 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
           </table>
         </div>
       </div>
+
+      {/* ── Import Modal ─────────────────────────────────────────────────── */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setImport(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-800">Import Projects</h2>
+              <button onClick={() => setImport(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <button
+                onClick={handleTemplateDownload}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                <Download size={14} /> Download Template
+              </button>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Select .xlsx file</label>
+                <input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".xlsx"
+                  className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#009CDE]/10 file:text-[#009CDE] hover:file:bg-[#009CDE]/20"
+                  onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null) }}
+                />
+              </div>
+
+              {importResult && (
+                <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
+                  <p className="font-medium text-green-700">{importResult.imported} row(s) imported successfully.</p>
+                  {importResult.skipped.length > 0 && (
+                    <div>
+                      <p className="font-medium text-amber-700 mt-2">{importResult.skipped.length} row(s) skipped:</p>
+                      <ul className="list-disc list-inside text-gray-600 text-xs mt-1 space-y-0.5">
+                        {importResult.skipped.map((s) => (
+                          <li key={s.row}>Row {s.row}: {s.reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                <button type="button" onClick={() => setImport(false)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  Tutup
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importFile || importing}
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
+                >
+                  {importing ? 'Importing...' : 'Import'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Add Project Modal ─────────────────────────────────────────────── */}
       {modalOpen && (
