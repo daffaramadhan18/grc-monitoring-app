@@ -343,34 +343,34 @@ export default function OpportunitiesClient({
         </span>
       </div>
 
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#009CDE]/10 border border-[#009CDE]/30 rounded-lg text-sm">
-          <span className="font-medium text-[#006fa0]">{selected.size} dipilih</span>
-          <button
-            onClick={handleBulkDelete}
-            disabled={bulkDeleting}
-            className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
-          >
-            <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus yang dipilih'}
-          </button>
-          <button onClick={() => setSelected(new Set())} className="text-gray-400 hover:text-gray-600 ml-auto">
-            <X size={15} />
-          </button>
-        </div>
-      )}
-
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
+        {/* Floating bulk action bar */}
+        {selected.size > 0 && (
+          <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
+            <span className="font-medium">{selected.size} item dipilih</span>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 transition-colors"
+            >
+              <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus'}
+            </button>
+            <button onClick={() => setSelected(new Set())}
+              className="ml-auto text-white/50 hover:text-white transition-colors">
+              <X size={15} />
+            </button>
+          </div>
+        )}
+        <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-4 py-3 w-8">
+                <th className="px-4 py-3 w-10">
                   <input type="checkbox"
                     checked={sortedOpps.length > 0 && selected.size === sortedOpps.length}
                     onChange={toggleSelectAll}
-                    className="rounded border-gray-300 text-[#009CDE] focus:ring-[#009CDE]"
+                    className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
                 <th className={`text-left ${thSortCls} min-w-[180px]`} onClick={() => handleSort('proposalName')}>
@@ -413,13 +413,13 @@ export default function OpportunitiesClient({
                 return (
                   <tr
                     key={opp.id}
-                    className={`cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/5' : 'hover:bg-blue-50/30'}`}
+                    className={`group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
                     onClick={() => openEdit(opp)}
                   >
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected}
                         onChange={() => toggleSelect(opp.id)}
-                        className="rounded border-gray-300 text-[#009CDE] focus:ring-[#009CDE]"
+                        className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                       />
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">
