@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trash2, Plus, Save, Download, UploadCloud, FileText } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Save, Download, UploadCloud, FileText, X } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, toInputDate, PROJ_STATUSES, PROJ_STATUS_COLORS, TERMIN_STATUSES, TERMIN_STATUS_COLORS } from '@/lib/utils'
 
