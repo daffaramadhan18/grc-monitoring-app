@@ -17,3 +17,4 @@ npm-debug.log*
 # excel import data
 /scripts/data/*.xlsx
 /scripts/data/*.xls
+*.tsbuildinfo
