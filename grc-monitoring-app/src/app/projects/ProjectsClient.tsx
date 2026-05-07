@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, UploadCloud, FileText, Download, Upload } from 'lucide-react'
+import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 
@@ -30,9 +30,9 @@ const emptyForm = () => ({
   confirmedFee:   '',
   startedDate:    '',
   endDate:        '',
-  spk:            '',   // stored file path
+  spk:            '',
   pks:            '',
-  spkFilename:    '',   // display only
+  spkFilename:    '',
   pksFilename:    '',
   micInitial:     '',
   tm1Initial: '', tm2Initial: '', tm3Initial: '',
@@ -53,15 +53,11 @@ function Field({ label, children, required }: { label: string; children: React.R
   )
 }
 
-// ─── File upload button ───────────────────────────────────────────────────────
-
 function FileUploadField({
   label, filename, onUpload, uploading,
 }: {
-  label: string
-  filename: string
-  onUpload: (path: string, name: string) => void
-  uploading: boolean
+  label: string; filename: string
+  onUpload: (path: string, name: string) => void; uploading: boolean
 }) {
   const ref = useRef<HTMLInputElement>(null)
 
@@ -88,7 +84,7 @@ function FileUploadField({
           <>
             <FileText size={14} className="text-gray-400 shrink-0" />
             <span className="text-sm text-gray-700 truncate flex-1">{filename}</span>
-            <span className="text-xs text-green-600 font-medium shrink-0">Uploaded</span>
+            <span className="text-xs text-[#2d7a1a] font-medium shrink-0">Uploaded</span>
           </>
         ) : (
           <>
@@ -101,6 +97,16 @@ function FileUploadField({
       <p className="text-xs text-gray-400 mt-1">PDF only</p>
     </div>
   )
+}
+
+type SortField = 'proposalName' | 'client' | 'status' | 'confirmedFee' | 'startedDate'
+type SortDir   = 'asc' | 'desc'
+
+function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: SortDir }) {
+  if (field !== current) return <ChevronsUpDown size={12} className="inline ml-1 text-gray-300" />
+  return dir === 'asc'
+    ? <ChevronUp size={12} className="inline ml-1 text-[#009CDE]" />
+    : <ChevronDown size={12} className="inline ml-1 text-[#009CDE]" />
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -118,27 +124,26 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
   const [importResult, setImportResult] = useState<{ imported: number; skipped: { row: number; reason: string }[] } | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
 
+  // Sort state
+  const [sortField, setSortField] = useState<SortField>('proposalName')
+  const [sortDir, setSortDir]     = useState<SortDir>('asc')
+
+  // Multi-select state
+  const [selected, setSelected]     = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
   function set(field: string, value: string) {
     setForm((f) => {
       const next = { ...f, [field]: value }
-      // Validate dates on change
       const start = field === 'startedDate' ? value : next.startedDate
       const end   = field === 'endDate'     ? value : next.endDate
-      if (start && end && end < start) {
-        setDateError('End date tidak boleh sebelum start date')
-      } else {
-        setDateError('')
-      }
+      setDateError(start && end && end < start ? 'End date tidak boleh sebelum start date' : '')
       return next
     })
   }
 
   function setFile(field: 'spk' | 'pks', path: string, name: string) {
-    setForm((f) => ({
-      ...f,
-      [field]:               path,
-      [`${field}Filename`]:  name,
-    }))
+    setForm((f) => ({ ...f, [field]: path, [`${field}Filename`]: name }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -148,9 +153,8 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
     setSaving(true)
     try {
       const res = await fetch('/api/projects', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(form),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
       })
       if (!res.ok) throw new Error(await res.text())
       const saved = await res.json()
@@ -162,6 +166,63 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       setSaving(false)
     }
   }
+
+  async function handleBulkDelete() {
+    if (!window.confirm(`Hapus ${selected.size} project yang dipilih?`)) return
+    setBulkDeleting(true)
+    try {
+      await Promise.all([...selected].map((id) =>
+        fetch(`/api/projects/${id}`, { method: 'DELETE' })
+      ))
+      setProjects((prev) => prev.filter((p) => !selected.has(p.id)))
+      setSelected(new Set())
+      router.refresh()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelected((prev) => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === sortedProjects.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(sortedProjects.map((p) => p.id)))
+    }
+  }
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedProjects = useMemo(() => {
+    return [...projects].sort((a, b) => {
+      let av: string | number = ''
+      let bv: string | number = ''
+      if (sortField === 'proposalName')  { av = a.proposalName; bv = b.proposalName }
+      else if (sortField === 'client')   { av = a.client.initial; bv = b.client.initial }
+      else if (sortField === 'status')   { av = a.status; bv = b.status }
+      else if (sortField === 'confirmedFee') { av = a.confirmedFee ?? 0; bv = b.confirmedFee ?? 0 }
+      else if (sortField === 'startedDate')  { av = a.startedDate ?? ''; bv = b.startedDate ?? '' }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [projects, sortField, sortDir])
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
@@ -208,27 +269,24 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
     }
   }
 
+  const thCls     = 'px-4 py-3 text-gray-500 font-medium select-none'
+  const thSortCls = `${thCls} cursor-pointer hover:text-gray-700`
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={handleExport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Download size={16} /> Export
           </button>
-          <button
-            onClick={() => { setImport(true); setImportFile(null); setImportResult(null) }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={() => { setImport(true); setImportFile(null); setImportResult(null) }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
-          <button
-            onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
-          >
+          <button onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Project
           </button>
         </div>
@@ -243,38 +301,77 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
         ))}
       </div>
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#009CDE]/10 border border-[#009CDE]/30 rounded-lg text-sm">
+          <span className="font-medium text-[#006fa0]">{selected.size} dipilih</span>
+          <button onClick={handleBulkDelete} disabled={bulkDeleting}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors">
+            <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus yang dipilih'}
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-gray-400 hover:text-gray-600 ml-auto">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium min-w-[180px]">Engagement Name</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Client</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Owner</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">MIC</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Team</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Period</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Confirmed Fee</th>
-                <th className="text-center px-4 py-3 text-gray-500 font-medium">Termins</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Hours</th>
+                <th className="px-4 py-3 w-8">
+                  <input type="checkbox"
+                    checked={sortedProjects.length > 0 && selected.size === sortedProjects.length}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-[#009CDE] focus:ring-[#009CDE]"
+                  />
+                </th>
+                <th className={`text-left ${thSortCls} min-w-[180px]`} onClick={() => handleSort('proposalName')}>
+                  Engagement Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('client')}>
+                  Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thCls}`}>Owner</th>
+                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('status')}>
+                  Status <SortIcon field="status" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thCls}`}>MIC</th>
+                <th className={`text-left ${thCls}`}>Team</th>
+                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('startedDate')}>
+                  Period <SortIcon field="startedDate" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-right ${thSortCls}`} onClick={() => handleSort('confirmedFee')}>
+                  Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-center ${thCls}`}>Termins</th>
+                <th className={`text-right ${thCls}`}>Hours</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {projects.length === 0 && (
+              {sortedProjects.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
                 </tr>
               )}
-              {projects.map((proj) => {
+              {sortedProjects.map((proj) => {
                 const team = [proj.tm1Initial, proj.tm2Initial, proj.tm3Initial,
                               proj.tm4Initial, proj.tm5Initial, proj.tm6Initial].filter(Boolean) as string[]
                 const paidCount = proj.termins.filter((t) => t.status === 'Paid').length
                 const hoursUsed = Math.round(((proj.currentHours ?? 0) / Math.max(proj.alokasiHours ?? 1, 1)) * 100)
+                const isSelected = selected.has(proj.id)
                 return (
-                  <tr key={proj.id} className="hover:bg-blue-50/30 cursor-pointer transition-colors"
+                  <tr key={proj.id}
+                    className={`cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/5' : 'hover:bg-blue-50/30'}`}
                     onClick={() => router.push(`/projects/${proj.id}`)}>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={isSelected}
+                        onChange={() => toggleSelect(proj.id)}
+                        className="rounded border-gray-300 text-[#009CDE] focus:ring-[#009CDE]"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{proj.proposalName}</td>
                     <td className="px-4 py-3 text-gray-600" title={proj.client.fullName}>{proj.client.initial}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{proj.projectOwner ?? '—'}</td>
@@ -330,27 +427,20 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <button
-                onClick={handleTemplateDownload}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
-              >
+              <button onClick={handleTemplateDownload}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50">
                 <Download size={14} /> Download Template
               </button>
-
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Select .xlsx file</label>
-                <input
-                  ref={importFileRef}
-                  type="file"
-                  accept=".xlsx"
+                <input ref={importFileRef} type="file" accept=".xlsx"
                   className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#009CDE]/10 file:text-[#009CDE] hover:file:bg-[#009CDE]/20"
                   onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null) }}
                 />
               </div>
-
               {importResult && (
                 <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
-                  <p className="font-medium text-green-700">{importResult.imported} row(s) imported successfully.</p>
+                  <p className="font-medium text-[#2d7a1a]">{importResult.imported} row(s) imported successfully.</p>
                   {importResult.skipped.length > 0 && (
                     <div>
                       <p className="font-medium text-amber-700 mt-2">{importResult.skipped.length} row(s) skipped:</p>
@@ -363,17 +453,13 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                   )}
                 </div>
               )}
-
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button type="button" onClick={() => setImport(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   Tutup
                 </button>
-                <button
-                  onClick={handleImport}
-                  disabled={!importFile || importing}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
-                >
+                <button onClick={handleImport} disabled={!importFile || importing}
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>
@@ -395,21 +481,17 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
             </div>
 
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-
-              {/* Engagement Name */}
               <Field label="Engagement Name" required>
                 <input className={inputCls} value={form.engagementName}
                   onChange={(e) => set('engagementName', e.target.value)} required autoFocus />
               </Field>
 
-              {/* Client Name (free text) */}
               <Field label="Client Name" required>
                 <input className={inputCls} value={form.clientName}
                   onChange={(e) => set('clientName', e.target.value)}
                   required placeholder="Nama client" />
               </Field>
 
-              {/* Project Owner dropdown + Status */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Project Owner">
                   <select className={selectCls} value={form.projectOwner}
@@ -427,13 +509,10 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                 </Field>
               </div>
 
-              {/* Confirmed Fee */}
               <Field label="Confirmed Fee (IDR)">
-                <CurrencyInput value={form.confirmedFee}
-                  onChange={(v) => set('confirmedFee', v)} />
+                <CurrencyInput value={form.confirmedFee} onChange={(v) => set('confirmedFee', v)} />
               </Field>
 
-              {/* Start + End Date */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Start Date">
                   <input type="date" className={inputCls} value={form.startedDate}
@@ -445,27 +524,15 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                     onChange={(e) => set('endDate', e.target.value)} />
                 </Field>
               </div>
-              {dateError && (
-                <p className="text-xs text-red-500 -mt-2">{dateError}</p>
-              )}
+              {dateError && <p className="text-xs text-red-500 -mt-2">{dateError}</p>}
 
-              {/* SPK + PKS file upload */}
               <div className="grid grid-cols-2 gap-4">
-                <FileUploadField
-                  label="SPK (PDF)"
-                  filename={form.spkFilename}
-                  uploading={false}
-                  onUpload={(path, name) => setFile('spk', path, name)}
-                />
-                <FileUploadField
-                  label="PKS (PDF)"
-                  filename={form.pksFilename}
-                  uploading={false}
-                  onUpload={(path, name) => setFile('pks', path, name)}
-                />
+                <FileUploadField label="SPK (PDF)" filename={form.spkFilename}
+                  uploading={false} onUpload={(path, name) => setFile('spk', path, name)} />
+                <FileUploadField label="PKS (PDF)" filename={form.pksFilename}
+                  uploading={false} onUpload={(path, name) => setFile('pks', path, name)} />
               </div>
 
-              {/* MIC + TM1–TM3 */}
               <div className="grid grid-cols-4 gap-4">
                 <Field label="MIC">
                   <select className={selectCls} value={form.micInitial}

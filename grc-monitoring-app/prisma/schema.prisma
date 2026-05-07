@@ -42,8 +42,8 @@ model Opportunity {
   proposalName  String
   clientId      Int
   client        Client       @relation(fields: [clientId], references: [id])
-  serviceTypeId Int
-  serviceType   ServiceType  @relation(fields: [serviceTypeId], references: [id])
+  serviceTypeId Int?
+  serviceType   ServiceType?  @relation(fields: [serviceTypeId], references: [id])
   subServiceId  Int?
   subService    SubService?  @relation(fields: [subServiceId], references: [id])
   fase          String?

@@ -36,8 +36,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const b = await req.json()
-  const serviceTypeId = Number(b.serviceTypeId)
-  const subServiceId  = await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
+  const serviceTypeId = b.serviceTypeId ? Number(b.serviceTypeId) : null
+  const subServiceId  = serviceTypeId ? await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId) : null
   const clientId      = await findOrCreateClient(b.clientName)
 
   const data = await prisma.opportunity.create({

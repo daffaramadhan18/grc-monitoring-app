@@ -36,8 +36,8 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const id = Number(params.id)
   const b  = await req.json()
-  const serviceTypeId = Number(b.serviceTypeId)
-  const subServiceId  = await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
+  const serviceTypeId = b.serviceTypeId ? Number(b.serviceTypeId) : null
+  const subServiceId  = serviceTypeId ? await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId) : null
   const clientId      = await findOrCreateClient(b.clientName)
 
   const updated = await prisma.opportunity.update({

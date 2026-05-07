@@ -18,10 +18,11 @@ interface Props {
 
 const LEVELS = [
   'Partner',
+  'Senior Manager 3', 'Senior Manager 2', 'Senior Manager 1',
   'Manager 3', 'Manager 2', 'Manager 1',
   'Assistant Manager 3', 'Assistant Manager 2', 'Assistant Manager 1',
   'Senior Associate 3', 'Senior Associate 2', 'Senior Associate 1',
-  'Associate 3', 'Associate 2', 'Associate 1',
+  'Associate',
   'Intern',
 ] as const
 

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, X, Download, Upload } from 'lucide-react'
+import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import QuarterlySection from './QuarterlySection'
 import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
@@ -15,7 +15,7 @@ interface SubService  { id: number; name: string; serviceTypeId: number }
 interface TeamMember  { id: number; initial: string; fullName: string; level: string }
 interface Opp {
   id: number; proposalName: string; clientId: number; client: Client
-  serviceTypeId: number; serviceType: ServiceType
+  serviceTypeId: number | null; serviceType: ServiceType | null
   subServiceId: number | null; subService: SubService | null
   fase: string | null; status: string; probability: string | null
   harga: number | null; revenueCf: number | null; rrPercentage: number | null
@@ -80,6 +80,16 @@ function Field({ label, children, required }: { label: string; children: React.R
 const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
 
+type SortField = 'proposalName' | 'client' | 'status' | 'harga' | 'expectedDate'
+type SortDir   = 'asc' | 'desc'
+
+function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: SortDir }) {
+  if (field !== current) return <ChevronsUpDown size={12} className="inline ml-1 text-gray-300" />
+  return dir === 'asc'
+    ? <ChevronUp size={12} className="inline ml-1 text-[#009CDE]" />
+    : <ChevronDown size={12} className="inline ml-1 text-[#009CDE]" />
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function OpportunitiesClient({
@@ -97,6 +107,14 @@ export default function OpportunitiesClient({
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ imported: number; skipped: { row: number; reason: string }[] } | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
+
+  // Sort state
+  const [sortField, setSortField] = useState<SortField>('proposalName')
+  const [sortDir, setSortDir]     = useState<SortDir>('asc')
+
+  // Multi-select state
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   // Sub-services for currently selected service type name
   const selectedTypeName = serviceTypes.find((s) => String(s.id) === form.serviceTypeId)?.name ?? ''
@@ -121,7 +139,7 @@ export default function OpportunitiesClient({
     setForm({
       proposalName:  opp.proposalName,
       clientName:    opp.client.fullName,
-      serviceTypeId: String(opp.serviceTypeId),
+      serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
       subServiceId:  opp.subService?.name ?? '',
       fase:          opp.fase          ?? '',
       status:        opp.status,
@@ -145,7 +163,7 @@ export default function OpportunitiesClient({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.proposalName || !form.clientName || !form.serviceTypeId) return
+    if (!form.proposalName || !form.clientName) return
     setSaving(true)
     try {
       const url    = editing ? `/api/opportunities/${editing.id}` : '/api/opportunities'
@@ -176,6 +194,7 @@ export default function OpportunitiesClient({
       const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
       setOpps((prev) => prev.filter((o) => o.id !== id))
+      setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
       router.refresh()
     } catch (err: any) {
       alert('Error: ' + err.message)
@@ -183,6 +202,63 @@ export default function OpportunitiesClient({
       setDel(null)
     }
   }
+
+  async function handleBulkDelete() {
+    if (!window.confirm(`Hapus ${selected.size} opportunity yang dipilih?`)) return
+    setBulkDeleting(true)
+    try {
+      await Promise.all([...selected].map((id) =>
+        fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
+      ))
+      setOpps((prev) => prev.filter((o) => !selected.has(o.id)))
+      setSelected(new Set())
+      router.refresh()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelected((prev) => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === sortedOpps.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(sortedOpps.map((o) => o.id)))
+    }
+  }
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedOpps = useMemo(() => {
+    return [...opps].sort((a, b) => {
+      let av: string | number = ''
+      let bv: string | number = ''
+      if (sortField === 'proposalName') { av = a.proposalName; bv = b.proposalName }
+      else if (sortField === 'client')  { av = a.client.initial; bv = b.client.initial }
+      else if (sortField === 'status')  { av = a.status; bv = b.status }
+      else if (sortField === 'harga')   { av = a.harga ?? 0; bv = b.harga ?? 0 }
+      else if (sortField === 'expectedDate') { av = a.expectedDate ?? ''; bv = b.expectedDate ?? '' }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [opps, sortField, sortDir])
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
@@ -229,28 +305,25 @@ export default function OpportunitiesClient({
     }
   }
 
+  const thCls = 'px-4 py-3 text-gray-500 font-medium select-none'
+  const thSortCls = `${thCls} cursor-pointer hover:text-gray-700`
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Opportunities</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={handleExport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Download size={16} /> Export
           </button>
-          <button
-            onClick={() => { setImport(true); setImportFile(null); setImportResult(null) }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={() => { setImport(true); setImportFile(null); setImportResult(null) }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
-          <button
-            onClick={openNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
-          >
+          <button onClick={openNew}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Opportunity
           </button>
         </div>
@@ -270,51 +343,92 @@ export default function OpportunitiesClient({
         </span>
       </div>
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#009CDE]/10 border border-[#009CDE]/30 rounded-lg text-sm">
+          <span className="font-medium text-[#006fa0]">{selected.size} dipilih</span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+          >
+            <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus yang dipilih'}
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-gray-400 hover:text-gray-600 ml-auto">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium min-w-[180px]">Proposal Name</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Client</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Service</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Sub-service</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Fase</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Harga</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Prob.</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Expected</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">MIC</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Team</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Notes</th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3 w-8">
+                  <input type="checkbox"
+                    checked={sortedOpps.length > 0 && selected.size === sortedOpps.length}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-[#009CDE] focus:ring-[#009CDE]"
+                  />
+                </th>
+                <th className={`text-left ${thSortCls} min-w-[180px]`} onClick={() => handleSort('proposalName')}>
+                  Proposal Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('client')}>
+                  Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thCls}`}>Service</th>
+                <th className={`text-left ${thCls}`}>Sub-service</th>
+                <th className={`text-left ${thCls}`}>Fase</th>
+                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('status')}>
+                  Status <SortIcon field="status" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-right ${thSortCls}`} onClick={() => handleSort('harga')}>
+                  Harga <SortIcon field="harga" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thCls}`}>Prob.</th>
+                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('expectedDate')}>
+                  Expected <SortIcon field="expectedDate" current={sortField} dir={sortDir} />
+                </th>
+                <th className={`text-left ${thCls}`}>MIC</th>
+                <th className={`text-left ${thCls}`}>Team</th>
+                <th className={`text-left ${thCls}`}>Notes</th>
+                <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {opps.length === 0 && (
+              {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={14} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
               )}
-              {opps.map((opp) => {
+              {sortedOpps.map((opp) => {
                 const team = [opp.tm1Initial, opp.tm2Initial, opp.tm3Initial,
                               opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].filter(Boolean) as string[]
+                const isSelected = selected.has(opp.id)
                 return (
                   <tr
                     key={opp.id}
-                    className="hover:bg-blue-50/30 cursor-pointer transition-colors"
+                    className={`cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/5' : 'hover:bg-blue-50/30'}`}
                     onClick={() => openEdit(opp)}
                   >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={isSelected}
+                        onChange={() => toggleSelect(opp.id)}
+                        className="rounded border-gray-300 text-[#009CDE] focus:ring-[#009CDE]"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">
                       {opp.proposalName}
                     </td>
                     <td className="px-4 py-3 text-gray-600" title={opp.client.fullName}>
                       {opp.client.initial}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{opp.serviceType.name}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{opp.serviceType?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{opp.subService?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{opp.fase ?? '—'}</td>
                     <td className="px-4 py-3">
@@ -366,27 +480,20 @@ export default function OpportunitiesClient({
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <button
-                onClick={handleTemplateDownload}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
-              >
+              <button onClick={handleTemplateDownload}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50">
                 <Download size={14} /> Download Template
               </button>
-
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Select .xlsx file</label>
-                <input
-                  ref={importFileRef}
-                  type="file"
-                  accept=".xlsx"
+                <input ref={importFileRef} type="file" accept=".xlsx"
                   className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#009CDE]/10 file:text-[#009CDE] hover:file:bg-[#009CDE]/20"
                   onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null) }}
                 />
               </div>
-
               {importResult && (
                 <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
-                  <p className="font-medium text-green-700">{importResult.imported} row(s) imported successfully.</p>
+                  <p className="font-medium text-[#2d7a1a]">{importResult.imported} row(s) imported successfully.</p>
                   {importResult.skipped.length > 0 && (
                     <div>
                       <p className="font-medium text-amber-700 mt-2">{importResult.skipped.length} row(s) skipped:</p>
@@ -399,17 +506,13 @@ export default function OpportunitiesClient({
                   )}
                 </div>
               )}
-
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button type="button" onClick={() => setImport(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   Tutup
                 </button>
-                <button
-                  onClick={handleImport}
-                  disabled={!importFile || importing}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
-                >
+                <button onClick={handleImport} disabled={!importFile || importing}
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>
@@ -449,10 +552,10 @@ export default function OpportunitiesClient({
 
               {/* 3-4. Service Type + Sub-service */}
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Service Type" required>
+                <Field label="Service Type">
                   <select className={selectCls} value={form.serviceTypeId}
-                    onChange={(e) => set('serviceTypeId', e.target.value)} required>
-                    <option value="">Pilih service type...</option>
+                    onChange={(e) => set('serviceTypeId', e.target.value)}>
+                    <option value="">— (opsional)</option>
                     {serviceTypes.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
@@ -464,7 +567,7 @@ export default function OpportunitiesClient({
                     disabled={!form.serviceTypeId || availableSubs.length === 0}>
                     <option value="">
                       {!form.serviceTypeId
-                        ? 'Pilih service type dulu'
+                        ? '— (pilih service type dulu)'
                         : availableSubs.length === 0
                           ? 'Tidak ada sub-service'
                           : '— (opsional)'}
@@ -560,7 +663,7 @@ export default function OpportunitiesClient({
                 ))}
               </div>
 
-              {/* 16. Notes */}
+              {/* Notes */}
               <Field label="Notes">
                 <textarea className={inputCls} rows={3} value={form.notes}
                   onChange={(e) => set('notes', e.target.value)}

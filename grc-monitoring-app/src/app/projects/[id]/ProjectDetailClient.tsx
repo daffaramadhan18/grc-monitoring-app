@@ -50,7 +50,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ─── FileUploadOrDownload ────────────────────────────────────────────────────
 
-function FileUploadOrDownload({ path, onUploaded }: { path: string; onUploaded: (p: string) => void }) {
+function FileUploadOrDownload({ path, onUploaded, onClear }: { path: string; onUploaded: (p: string) => void; onClear: () => void }) {
   const [uploading, setUploading] = useState(false)
 
   const displayName = path ? path.split('/').pop()?.replace(/^\d+-/, '') ?? path : null
@@ -79,7 +79,7 @@ function FileUploadOrDownload({ path, onUploaded }: { path: string; onUploaded: 
       {displayName ? (
         <>
           <a href={path} target="_blank" rel="noopener noreferrer" download
-            className="flex items-center gap-1.5 text-sm text-[#009CDE] hover:underline truncate max-w-[160px]">
+            className="flex items-center gap-1.5 text-sm text-[#009CDE] hover:underline truncate max-w-[140px]">
             <FileText size={13} className="shrink-0" />
             <span className="truncate">{displayName}</span>
             <Download size={12} className="shrink-0" />
@@ -88,6 +88,10 @@ function FileUploadOrDownload({ path, onUploaded }: { path: string; onUploaded: 
             Ganti
             <input type="file" accept="application/pdf" className="hidden" disabled={uploading} onChange={handleFile} />
           </label>
+          <button type="button" onClick={onClear}
+            className="p-0.5 text-gray-300 hover:text-red-500 transition-colors" title="Hapus file">
+            <X size={13} />
+          </button>
         </>
       ) : (
         <label className={`flex items-center gap-1.5 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#009CDE] hover:text-[#009CDE] transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -282,12 +286,14 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
               <FileUploadOrDownload
                 path={form.spk}
                 onUploaded={(p) => setField('spk', p)}
+                onClear={() => setField('spk', '')}
               />
             </Field>
             <Field label="PKS">
               <FileUploadOrDownload
                 path={form.pks}
                 onUploaded={(p) => setField('pks', p)}
+                onClear={() => setField('pks', '')}
               />
             </Field>
           </div>
