@@ -141,9 +141,9 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
     }))
   )
 
-  const [savingProject, setSavingProject] = useState(false)
-  const [savingTermins, setSavingTermins] = useState(false)
-  const [deleting, setDeleting]           = useState(false)
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   function setField(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -163,43 +163,36 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
     setTermins((prev) => prev.filter((_, i) => i !== index).map((t, i) => ({ ...t, terminNumber: i + 1 })))
   }
 
-  async function saveProject(e: React.FormEvent) {
+  async function handleSaveAll(e: React.FormEvent) {
     e.preventDefault()
-    setSavingProject(true)
+    setSaving(true)
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      if (!res.ok) throw new Error(await res.text())
+      const [r1, r2] = await Promise.all([
+        fetch(`/api/projects/${project.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        }),
+        fetch(`/api/projects/${project.id}/termins`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(termins.map((t) => ({
+            terminNumber: t.terminNumber,
+            percentage:   t.percentage ? Number(t.percentage) : null,
+            fee:          t.fee        ? Number(t.fee)        : null,
+            status:       t.status,
+          }))),
+        }),
+      ])
+      if (!r1.ok) throw new Error(await r1.text())
+      if (!r2.ok) throw new Error(await r2.text())
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
       router.refresh()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
-      setSavingProject(false)
-    }
-  }
-
-  async function saveTermins() {
-    setSavingTermins(true)
-    try {
-      const res = await fetch(`/api/projects/${project.id}/termins`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(termins.map((t) => ({
-          terminNumber: t.terminNumber,
-          percentage:   t.percentage ? Number(t.percentage) : null,
-          fee:          t.fee        ? Number(t.fee)        : null,
-          status:       t.status,
-        }))),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      router.refresh()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
-    } finally {
-      setSavingTermins(false)
+      setSaving(false)
     }
   }
 
@@ -225,6 +218,15 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
 
   return (
     <div className="max-w-4xl space-y-5">
+
+      {/* Toast */}
+      {saved && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-[#43B02A] text-white text-sm font-medium rounded-xl shadow-lg animate-fade-in">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Tersimpan!
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => router.push('/projects')} className="text-gray-400 hover:text-gray-700">
@@ -246,7 +248,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
         </button>
       </div>
 
-      <form onSubmit={saveProject} className="space-y-5">
+      <form onSubmit={handleSaveAll} className="space-y-5">
         {/* Project Info */}
         <Section title="Informasi Project">
           <div className="grid grid-cols-2 gap-4">
@@ -358,14 +360,6 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
           )}
         </Section>
 
-        <div className="flex justify-end">
-          <button type="submit" disabled={savingProject}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
-            <Save size={14} /> {savingProject ? 'Menyimpan...' : 'Simpan Project'}
-          </button>
-        </div>
-      </form>
-
       {/* Termins */}
       <Section title="Termin Pembayaran">
         <div className="space-y-3">
@@ -431,17 +425,17 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
           )}
         </div>
 
-        <div className="flex justify-end pt-2">
-          <button
-            type="button"
-            onClick={saveTermins}
-            disabled={savingTermins}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
-          >
-            <Save size={14} /> {savingTermins ? 'Menyimpan...' : 'Simpan Termins'}
-          </button>
-        </div>
       </Section>
+
+      {/* Single save button */}
+      <div className="flex justify-end">
+        <button type="submit" disabled={saving}
+          className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+          <Save size={14} /> {saving ? 'Menyimpan...' : 'Simpan Semua'}
+        </button>
+      </div>
+    </form>
+
     </div>
   )
 }
