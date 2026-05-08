@@ -2,20 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
 
-async function findOrCreateClient(fullName: string) {
+async function lookupClient(fullName: string): Promise<number | null> {
   const existing = await prisma.client.findFirst({
     where: { fullName: { equals: fullName, mode: 'insensitive' } },
   })
-  if (existing) return existing.id
-  const initial = fullName
-    .split(/\s+/)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
-  const taken = await prisma.client.findUnique({ where: { initial } })
-  const finalInitial = taken ? initial + '2' : initial
-  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
-  return created.id
+  return existing?.id ?? null
 }
 
 function parseDateDMY(val: unknown): Date | null {
@@ -110,9 +101,13 @@ export async function POST(req: NextRequest) {
       subServiceId = ssMatch?.id ?? null
     }
 
-    try {
-      const clientId = await findOrCreateClient(clientName)
+    const clientId = await lookupClient(clientName)
+    if (clientId === null) {
+      skipped.push({ row: rowNum, reason: `Client "${clientName}" not found — add them in the Team/Client list first` })
+      continue
+    }
 
+    try {
       const opp = await prisma.opportunity.create({
         data: {
           proposalName,
