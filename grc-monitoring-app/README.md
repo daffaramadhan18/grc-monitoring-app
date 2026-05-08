@@ -1,183 +1,167 @@
 # RSM CC3 — GRC Monitoring App
 
-Internal web app for RSM CC3 (IT GRC & Cybersecurity division).  
-Replaces Excel-based pipeline and project monitoring.
+Internal web app for the IT GRC & Cybersecurity division to track opportunities, active projects, and team allocation — replacing Excel-based monitoring.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| ORM | Prisma 5 |
+| Database | PostgreSQL |
+| Icons | Lucide React |
+| Excel | xlsx |
+| Charts | Recharts |
+
+---
 
 ## Modules
 
 | Module | Description |
 |---|---|
-| **Dashboard** | Win rate, revenue pipeline, team workload |
-| **Opportunity Tracker** | Pipeline CRM with 10 statuses |
-| **Project Management** | Active projects, SPK/PKS, termin payments, team hours |
+| **Dashboard** | KPI cards (Win Rate, Pipeline Value, Active Projects, Revenue Collected), win rate chart, team workload table |
+| **Opportunities** | Pipeline CRM — create/edit/delete, quarterly revenue projection, sort by column, multi-select bulk delete, Excel import/export |
+| **Projects** | Engagement tracker — create/edit, SPK/PKS PDF upload, termin payment milestones (up to 4), alokasi hours tracking, Excel import/export |
+| **Team** | Member CRUD, resource allocation breakdown (active projects vs proposals), capacity badges (Available / At Capacity / Overloaded) |
 
 ---
 
-## First-Time Setup (Windows)
+## Prerequisites
 
-Follow every step in order. You only do this once.
-
-### Step 1 — Install prerequisites
-
-Download and install:
-- **Node.js 20 LTS**: https://nodejs.org/en/download (choose "Windows Installer")
-- **Git**: https://git-scm.com/download/win
-
-After installing, open a new **Command Prompt** (Win+R → `cmd`) and verify:
-```
-node -v
-npm -v
-git --version
-```
-All three should print a version number.
+- Node.js 18+
+- PostgreSQL (tested on 18.3)
+- npm
 
 ---
 
-### Step 2 — Clone the repository
+## First-time Setup
 
-```cmd
-cd C:\Users\YourName\Documents
-git clone https://github.com/daffaramadhan18/daffa-ramadhan.git
-cd daffa-ramadhan\grc-monitoring-app
-```
-
----
-
-### Step 3 — Install dependencies
-
-Inside the `grc-monitoring-app` folder:
-```cmd
+```bash
+# 1. Install dependencies
+cd grc-monitoring-app
 npm install
-```
-This downloads all packages (~2-3 minutes, requires internet).
 
----
+# 2. Create the database
+# Open psql as a superuser and run:
+CREATE USER admin WITH PASSWORD 'admin';
+CREATE DATABASE rsm_grc OWNER admin;
 
-### Step 4 — Create your Supabase project
+# 3. Check .env — edit credentials if yours differ
+#    DATABASE_URL="postgresql://admin:admin@localhost:5432/rsm_grc"
 
-1. Go to https://supabase.com and sign up (free)
-2. Click **"New Project"**
-   - Organization: create one or use personal
-   - Name: `rsm-cc3-grc`
-   - Database Password: choose a strong password and **save it**
-   - Region: pick the closest (e.g. Singapore)
-3. Wait ~2 minutes for the project to be ready
-4. Go to **Project Settings → API**
-   - Copy **Project URL** (looks like `https://abcdefgh.supabase.co`)
-   - Copy **anon / public** key (long string starting with `eyJ...`)
-   - Copy **service_role** key (another long `eyJ...` string — keep this secret!)
+# 4. Push schema to the database
+npx prisma db push
 
----
+# 5. Seed initial data (service types, sub-services, 14 team members)
+npx prisma db seed
 
-### Step 5 — Configure environment variables
-
-In the `grc-monitoring-app` folder, create a file named `.env.local` (exact name, no other extension):
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...your_anon_key...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...your_service_role_key...
+# 6. Start the dev server
+npm run dev
+# → http://localhost:3000
 ```
 
-Replace the values with what you copied in Step 4.
-
-> **Windows tip**: Open Notepad, paste the content, then File → Save As → change "Save as type" to "All Files" → name it `.env.local`
-
 ---
 
-### Step 6 — Run the database migration
+## Daily Usage
 
-1. Go to your Supabase project → **SQL Editor** → **New Query**
-2. Open the file `supabase/migrations/001_initial_schema.sql` in Notepad
-3. Select all (Ctrl+A), copy, paste into the SQL Editor
-4. Click **Run**  — you should see "Success. No rows returned"
-5. Repeat with `supabase/migrations/002_seed_data.sql`
-
-This creates all tables, indexes, and RLS policies.
-
----
-
-### Step 7 — Start the development server
-
-```cmd
+```bash
+cd grc-monitoring-app
 npm run dev
 ```
 
-Open your browser at: **http://localhost:3000**
+---
 
-You should see the RSM CC3 dashboard.
+## Excel Import / Export
+
+Every module with tabular data has **Export** and **Import** buttons in the top-right header.
+
+- **Export** — downloads all current data as `.xlsx`
+- **Import** — opens a modal where you can:
+  1. Click **Download Template** to get the correct column structure
+  2. Fill in your data
+  3. Upload the file and click **Import**
+  4. A summary shows how many rows were imported and which were skipped (with reasons)
+
+Supported for: Opportunities, Projects (including up to 4 termin rows per project).
 
 ---
 
-## Import data from Excel
+## File Uploads (SPK / PKS)
 
-If you have existing data in an Excel file:
-
-### Prepare your Excel file
-
-Name the file `pipeline.xlsx` and place it at:
-```
-grc-monitoring-app\scripts\data\pipeline.xlsx
-```
-(Create the `data` folder if it doesn't exist.)
-
-Your Excel should have sheets named:
-- `Opportunities` — with columns: Title, Client, Status, Service, Sub Service, Value, Submitted Date, PIC, Notes
-- `Projects` — with columns: Project Name, Client, SPK Number, PKS Number, Start Date, End Date, Total Value, Status, Termin 1 Fee, Termin 1 Paid, Termin 2 Fee, Termin 2 Paid, Termin 3 Fee, Termin 3 Paid, Termin 4 Fee, Termin 4 Paid
-
-Column names are flexible — the script tries common Indonesian/English variants.
-
-### Run the import
-
-Make sure `.env.local` is set up, then:
-```cmd
-node scripts/import-excel.js
-```
-
-The script is safe to re-run — it won't create duplicate clients or team members.
+- PDF documents are uploaded via the project detail page or the New Project modal
+- Files are stored in `public/uploads/` with a timestamp prefix
+- Download links appear on the project detail page once a file is attached
+- Click the **×** button next to a file to remove it (then save)
+- `public/uploads/.gitkeep` is committed; uploaded PDFs are ignored by git
 
 ---
 
-## Development commands
+## Key Behaviours
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start local dev server at http://localhost:3000 |
-| `npm run build` | Build production bundle |
-| `npm run lint` | Check code for errors |
-| `node scripts/import-excel.js` | Import from Excel |
+- Setting an Opportunity status to **Win** automatically creates a linked Project record
+- BigInt fields (`harga`, `confirmedFee`, `fee`) are serialized to Number in all API responses
+- After any schema change, run `npx prisma db push` (no migration files are used)
+- Service Type is optional on Opportunities — leave blank if not yet determined
 
 ---
 
-## Project structure
+## Project Structure
 
 ```
 grc-monitoring-app/
-├── src/
-│   ├── app/
-│   │   ├── dashboard/          # Dashboard page + charts
-│   │   ├── opportunities/      # List, detail pages
-│   │   ├── projects/           # List, detail pages
-│   │   └── api/                # REST API routes
-│   ├── components/
-│   │   └── layout/             # Sidebar, Header
-│   ├── lib/
-│   │   ├── supabase.ts         # Supabase client
-│   │   └── utils.ts            # Formatting helpers
-│   └── types/
-│       └── index.ts            # TypeScript interfaces
-├── supabase/
-│   └── migrations/             # SQL schema files
-└── scripts/
-    └── import-excel.js         # Data import script
+├── prisma/
+│   ├── schema.prisma          # DB models
+│   └── seed.ts                # Service types, sub-services, team members
+├── public/
+│   └── uploads/               # Uploaded PDF files (gitignored except .gitkeep)
+└── src/
+    ├── app/
+    │   ├── api/
+    │   │   ├── opportunities/ # CRUD + import/export/template
+    │   │   ├── projects/      # CRUD + termins + import/export/template
+    │   │   ├── team/          # CRUD
+    │   │   └── upload/        # PDF upload handler
+    │   ├── dashboard/
+    │   ├── opportunities/
+    │   ├── projects/
+    │   │   └── [id]/          # Project detail page
+    │   └── team/
+    ├── components/
+    │   ├── layout/Sidebar.tsx
+    │   └── ui/CurrencyInput.tsx
+    └── lib/
+        ├── prisma.ts          # Prisma singleton
+        ├── serialize.ts       # BigInt → Number for JSON responses
+        └── utils.ts           # Status constants, color maps, formatters
 ```
 
 ---
 
-## Tech stack
+## API Reference
 
-- **Next.js 14** (App Router) — React framework
-- **Supabase** — PostgreSQL database + API (free tier)
-- **Tailwind CSS** — styling
-- **Recharts** — dashboard charts
-- **TypeScript** — type safety
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/opportunities` | List all opportunities |
+| POST | `/api/opportunities` | Create opportunity |
+| PUT | `/api/opportunities/[id]` | Update; auto-creates Project on Win |
+| DELETE | `/api/opportunities/[id]` | Delete |
+| GET | `/api/opportunities/export` | Download `.xlsx` |
+| POST | `/api/opportunities/import` | Bulk import from `.xlsx` |
+| GET | `/api/opportunities/template` | Download blank import template |
+| GET | `/api/projects` | List all projects |
+| POST | `/api/projects` | Create project |
+| PUT | `/api/projects/[id]` | Update project |
+| PUT | `/api/projects/[id]/termins` | Replace all termins for a project |
+| DELETE | `/api/projects/[id]` | Delete project + all termins |
+| GET | `/api/projects/export` | Download `.xlsx` |
+| POST | `/api/projects/import` | Bulk import from `.xlsx` |
+| GET | `/api/projects/template` | Download blank import template |
+| GET | `/api/team` | List team members |
+| POST | `/api/team` | Create team member |
+| PUT | `/api/team/[id]` | Update team member |
+| DELETE | `/api/team/[id]` | Delete (blocked if assigned to active records) |
+| POST | `/api/upload` | Upload a PDF file; returns `{ path, filename }` |
