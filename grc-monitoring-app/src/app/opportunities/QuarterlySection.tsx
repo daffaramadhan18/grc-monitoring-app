@@ -13,7 +13,7 @@ interface Props { opps: Opp[] }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const DEAD = new Set(['Win','Lose','Withdrawal','Cancelled','Transfer to others'])
+const DEAD = new Set(['Win','Lose','Withdraw','Cancelled','Transfer to others'])
 
 const QUARTERS = [
   { label: 'Q1', months: [1,2,3],   range: 'Jan – Mar' },

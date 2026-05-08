@@ -17,7 +17,7 @@ interface Opp {
   id: number; proposalName: string; clientId: number; client: Client
   serviceTypeId: number | null; serviceType: ServiceType | null
   subServiceId: number | null; subService: SubService | null
-  fase: string | null; status: string; probability: string | null
+  phase: string | null; status: string; probability: string | null
   harga: number | null; revenueCf: number | null; rrPercentage: number | null
   expectedDate: string | null; submittedDate: string | null; notes: string | null
   micInitial: string | null
@@ -48,8 +48,8 @@ const SUB_SERVICES: Record<string, string[]> = {
 
 const emptyForm = () => ({
   proposalName: '', clientName: '', serviceTypeId: '', subServiceId: '',
-  fase: '', status: 'Submitted', probability: '',
-  revenueCf: '', harga: '', rrPercentage: '',
+  phase: '', status: 'In progress', probability: '',
+  harga: '', revenueCf: '', rrPercentage: '',
   expectedDate: '', submittedDate: '', notes: '',
   micInitial: '',
   tm1Initial: '', tm2Initial: '', tm3Initial: '',
@@ -141,7 +141,7 @@ export default function OpportunitiesClient({
       clientName:    opp.client.fullName,
       serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
       subServiceId:  opp.subService?.name ?? '',
-      fase:          opp.fase          ?? '',
+      phase:         opp.phase         ?? '',
       status:        opp.status,
       probability:   opp.probability   ?? '',
       revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)    : '',
@@ -333,7 +333,7 @@ export default function OpportunitiesClient({
 
       {/* Summary pills */}
       <div className="flex flex-wrap gap-2">
-        {(['Win','In progress','Waiting for Result','Submitted'] as const).map((s) => (
+        {(['Win','In progress','Waiting for Result','Backlog'] as const).map((s) => (
           <span key={s} className={`px-3 py-1 rounded-full text-xs font-medium ${OPP_STATUS_COLORS[s]}`}>
             {s}: {opps.filter((o) => o.status === s).length}
           </span>
@@ -381,7 +381,7 @@ export default function OpportunitiesClient({
                 </th>
                 <th className={`text-left ${thCls}`}>Service</th>
                 <th className={`text-left ${thCls}`}>Sub-service</th>
-                <th className={`text-left ${thCls}`}>Fase</th>
+                <th className={`text-left ${thCls}`}>Phase</th>
                 <th className={`text-left ${thSortCls}`} onClick={() => handleSort('status')}>
                   Status <SortIcon field="status" current={sortField} dir={sortDir} />
                 </th>
@@ -430,7 +430,7 @@ export default function OpportunitiesClient({
                     </td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{opp.serviceType?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{opp.subService?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{opp.fase ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{opp.phase ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {opp.status}
@@ -577,13 +577,13 @@ export default function OpportunitiesClient({
                 </Field>
               </div>
 
-              {/* 5-6-7. Fase + Status + Probability */}
+              {/* 5-6-7. Phase + Status + Probability */}
               <div className="grid grid-cols-3 gap-4">
-                <Field label="Fase">
-                  <select className={selectCls} value={form.fase}
-                    onChange={(e) => set('fase', e.target.value)}>
+                <Field label="Phase">
+                  <select className={selectCls} value={form.phase}
+                    onChange={(e) => set('phase', e.target.value)}>
                     <option value="">— (opsional)</option>
-                    {['RFP','RFI','Diskusi Awal'].map((f) => <option key={f}>{f}</option>)}
+                    {['RFP','RFI','Diskusi Awal','Transferred'].map((f) => <option key={f}>{f}</option>)}
                   </select>
                 </Field>
                 <Field label="Opportunity Status" required>
@@ -601,13 +601,13 @@ export default function OpportunitiesClient({
                 </Field>
               </div>
 
-              {/* 8-9-10. Revenue CF + Harga + %RR */}
+              {/* 8-9-10. Harga + Revenue CF + %RR */}
               <div className="grid grid-cols-3 gap-4">
-                <Field label="Revenue CF (IDR)">
-                  <CurrencyInput value={form.revenueCf} onChange={(v) => set('revenueCf', v)} />
-                </Field>
                 <Field label="Harga (IDR)">
                   <CurrencyInput value={form.harga} onChange={(v) => set('harga', v)} />
+                </Field>
+                <Field label="Revenue CF (IDR)">
+                  <CurrencyInput value={form.revenueCf} onChange={(v) => set('revenueCf', v)} />
                 </Field>
                 <Field label="%RR">
                   <input type="number" step="0.01" className={inputCls} value={form.rrPercentage}

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 
 export async function GET() {
   const headers = [
-    'Proposal Name', 'Client Name', 'Service Type', 'Sub-service', 'Fase', 'Status',
+    'Proposal Name', 'Client Name', 'Service Type', 'Sub-service', 'Phase', 'Status',
     'Probability', 'Harga', 'Revenue CF', '%RR', 'Expected Date', 'Submitted Date',
     'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'Notes',
   ]

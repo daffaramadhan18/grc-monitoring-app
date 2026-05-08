@@ -12,7 +12,7 @@ export default async function TeamPage() {
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
     prisma.opportunity.findMany({
-      where: { status: { notIn: ['Win','Lose','Withdrawal','Transfer to others'] } },
+      where: { status: { notIn: ['Win','Lose','Withdraw','Cancelled','Transfer to others'] } },
       select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),

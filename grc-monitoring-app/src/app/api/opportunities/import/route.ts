@@ -79,8 +79,8 @@ export async function POST(req: NextRequest) {
 
     const serviceTypeName = String(row[2] ?? '').trim()
     const subServiceName  = String(row[3] ?? '').trim()
-    const fase            = String(row[4] ?? '').trim() || null
-    const status          = String(row[5] ?? '').trim() || 'Submitted'
+    const phase           = String(row[4] ?? '').trim() || null
+    const status          = String(row[5] ?? '').trim() || 'In progress'
     const probability     = String(row[6] ?? '').trim() || null
     const harga           = parseNumber(row[7])
     const revenueCf       = parseNumber(row[8])
@@ -96,18 +96,14 @@ export async function POST(req: NextRequest) {
     const tm6Initial      = String(row[18] ?? '').trim() || null
     const notes           = String(row[19] ?? '').trim() || null
 
-    // Resolve service type
-    const stMatch = serviceTypes.find(
-      (st) => st.name.toLowerCase() === serviceTypeName.toLowerCase()
-    )
-    if (!stMatch) {
-      skipped.push({ row: rowNum, reason: `Service Type "${serviceTypeName}" not found` })
-      continue
-    }
+    // Resolve service type (optional)
+    const stMatch = serviceTypeName
+      ? serviceTypes.find((st) => st.name.toLowerCase() === serviceTypeName.toLowerCase())
+      : undefined
 
-    // Resolve sub-service
+    // Resolve sub-service (optional)
     let subServiceId: number | null = null
-    if (subServiceName) {
+    if (stMatch && subServiceName) {
       const ssMatch = stMatch.subServices.find(
         (ss) => ss.name.toLowerCase() === subServiceName.toLowerCase()
       )
@@ -121,9 +117,9 @@ export async function POST(req: NextRequest) {
         data: {
           proposalName,
           clientId,
-          serviceTypeId: stMatch.id,
+          serviceTypeId: stMatch?.id ?? null,
           subServiceId,
-          fase,
+          phase,
           status,
           probability,
           harga:         harga     != null ? BigInt(Math.round(harga))     : null,

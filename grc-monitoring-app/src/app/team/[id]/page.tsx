@@ -17,7 +17,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   const [proposals, projects] = await Promise.all([
     prisma.opportunity.findMany({
       where: {
-        status: { notIn: ['Win', 'Lose', 'Withdrawal', 'Transfer to others'] },
+        status: { notIn: ['Win', 'Lose', 'Withdraw', 'Cancelled', 'Transfer to others'] },
         OR: orFilter,
       },
       include: { client: true, serviceType: true },

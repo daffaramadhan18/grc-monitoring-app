@@ -41,7 +41,7 @@ async function getStats() {
     in_progress_count: opps.filter((o) => o.status === "In progress").length,
     win_rate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
     pipeline_value: opps
-      .filter((o) => !["Lose", "Withdrawal", "Transfer to others"].includes(o.status))
+      .filter((o) => !["Lose", "Withdraw", "Cancelled", "Transfer to others"].includes(o.status))
       .reduce((s, o) => s + Number(o.harga ?? 0), 0),
     active_projects: projects.filter((p) => p.status !== "Finish").length,
     total_revenue: termins

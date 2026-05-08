@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
-import { formatRupiah, formatDate, STATUS_COLORS } from "@/lib/utils"
+import { formatRupiah, formatDate, OPP_STATUS_COLORS } from "@/lib/utils"
 import Link from "next/link"
 import { ArrowLeft, Pencil } from "lucide-react"
 
@@ -13,19 +13,19 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   if (!opp) notFound()
 
   const rows: [string, React.ReactNode][] = [
-    ["Status", <span key="status" className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[opp.status]}`}>{opp.status}</span>],
+    ["Status", <span key="status" className={`px-2 py-0.5 rounded-full text-xs font-medium ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>{opp.status}</span>],
     ["Client", `${opp.client.initial} — ${opp.client.fullName}`],
-    ["Service Type", opp.serviceType.name],
-    ["Sub-Service", opp.subService.name],
-    ["Fase", opp.fase ?? "—"],
+    ["Service Type", opp.serviceType?.name ?? "—"],
+    ["Sub-Service", opp.subService?.name ?? "—"],
+    ["Phase", opp.phase ?? "—"],
     ["Probability", opp.probability ?? "—"],
     ["Harga", formatRupiah(Number(opp.harga ?? 0))],
     ["Revenue CF", formatRupiah(Number(opp.revenueCf ?? 0))],
     ["RR %", opp.rrPercentage != null ? `${opp.rrPercentage}%` : "—"],
     ["MIC", opp.micInitial ?? "—"],
     ["TM", [opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].filter(Boolean).join(", ") || "—"],
-    ["Submitted Date", formatDate(opp.submittedDate?.toISOString())],
     ["Expected Date", formatDate(opp.expectedDate?.toISOString())],
+    ["Submitted Date", formatDate(opp.submittedDate?.toISOString())],
     ["Notes", opp.notes ?? "—"],
   ]
 

@@ -1,18 +1,16 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export type OpportunityFase = 'RFI' | 'RFP' | 'Diskusi Awal'
+export type OpportunityPhase = 'RFI' | 'RFP' | 'Diskusi Awal' | 'Transferred'
 
 export type OpportunityStatus =
-  | 'Submitted'
   | 'Win'
   | 'Lose'
   | 'Waiting for Result'
-  | 'Waiting for RFP'
-  | 'Backlog'
   | 'Withdraw'
   | 'Cancelled'
-  | 'Transferred'
-  | 'In Progress'
+  | 'Backlog'
+  | 'Transfer to others'
+  | 'In progress'
 
 export type OpportunityProbability = 'High' | 'Medium' | 'Low'
 
@@ -54,7 +52,7 @@ export interface Opportunity {
   sub_service_id: number | null
   client_id: number
   proposal_name: string
-  fase: OpportunityFase | null
+  phase: OpportunityPhase | null
   status: OpportunityStatus
   probability: OpportunityProbability | null
   revenue_cf: number | null

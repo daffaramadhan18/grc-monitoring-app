@@ -24,7 +24,7 @@ export async function GET() {
   })
 
   const headers = [
-    'Proposal Name', 'Client Name', 'Service Type', 'Sub-service', 'Fase', 'Status',
+    'Proposal Name', 'Client Name', 'Service Type', 'Sub-service', 'Phase', 'Status',
     'Probability', 'Harga', 'Revenue CF', '%RR', 'Expected Date', 'Submitted Date',
     'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'Notes',
   ]
@@ -32,9 +32,9 @@ export async function GET() {
   const dataRows = opps.map((o) => [
     o.proposalName,
     o.client.fullName,
-    o.serviceType.name,
+    o.serviceType?.name ?? '',
     o.subService?.name ?? '',
-    o.fase ?? '',
+    o.phase ?? '',
     o.status,
     o.probability ?? '',
     o.harga != null ? Number(o.harga) : '',

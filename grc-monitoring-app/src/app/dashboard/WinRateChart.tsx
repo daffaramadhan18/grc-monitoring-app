@@ -5,11 +5,11 @@ import type { DashboardStats } from "@/types"
 const STATUS_COLORS: Record<string, string> = {
   Win:                  "#43B02A",
   Lose:                 "#EF4444",
-  Submitted:            "#009CDE",
-  "In progress":        "#60A5FA",
+  "In progress":        "#009CDE",
   "Waiting for Result": "#F59E0B",
   Backlog:              "#9CA3AF",
-  Withdrawal:           "#6B7280",
+  Withdraw:             "#6B7280",
+  Cancelled:            "#94A3B8",
   "Transfer to others": "#8B5CF6",
 }
 

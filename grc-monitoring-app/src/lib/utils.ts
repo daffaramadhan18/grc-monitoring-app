@@ -32,13 +32,13 @@ export function toInputDate(dateStr: string | null | undefined): string {
 // ─── Opportunity status ────────────────────────────────────────────────────────
 
 export const OPP_STATUSES = [
-  'Submitted',
-  'Withdrawal',
   'Win',
   'Lose',
   'Waiting for Result',
-  'Transfer to others',
+  'Withdraw',
+  'Cancelled',
   'Backlog',
+  'Transfer to others',
   'In progress',
 ] as const
 
@@ -46,10 +46,10 @@ export const OPP_STATUS_COLORS: Record<string, string> = {
   Win:                  'bg-[#43B02A]/15 text-[#2d7a1a]',
   Lose:                 'bg-red-100 text-red-700',
   'Waiting for Result': 'bg-amber-100 text-amber-700',
-  Submitted:            'bg-[#009CDE]/15 text-[#006fa0]',
   'In progress':        'bg-[#009CDE]/15 text-[#006fa0]',
   Backlog:              'bg-gray-100 text-gray-600',
-  Withdrawal:           'bg-gray-100 text-gray-600',
+  Withdraw:             'bg-gray-100 text-gray-600',
+  Cancelled:            'bg-gray-100 text-gray-600',
   'Transfer to others': 'bg-gray-100 text-gray-600',
 }
 
