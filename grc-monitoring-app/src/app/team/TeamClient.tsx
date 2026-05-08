@@ -191,10 +191,13 @@ export default function TeamClient({ members: initial, allocation }: Props) {
               {members.map((m) => (
                 <tr key={m.id} className="hover:bg-gray-50/60 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => router.push(`/team/${m.id}`)}
+                      className="flex items-center gap-3 text-left hover:underline"
+                    >
                       <Avatar initial={m.initial} />
                       <span className="font-medium text-gray-900">{m.fullName}</span>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex px-2 py-0.5 rounded font-mono text-xs font-semibold bg-slate-100 text-slate-700">

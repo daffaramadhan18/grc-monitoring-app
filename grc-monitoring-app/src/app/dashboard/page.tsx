@@ -3,11 +3,13 @@ import { formatRupiah } from "@/lib/utils"
 import { TrendingUp, FolderKanban, DollarSign, Award } from "lucide-react"
 import WinRateChart from "./WinRateChart"
 import WorkloadTable from "./WorkloadTable"
+import ProjectStatusChart from "./ProjectStatusChart"
+import RevenueBreakdown from "./RevenueBreakdown"
 
 async function getStats() {
   const [opps, projects, termins] = await Promise.all([
     prisma.opportunity.findMany({ select: { status: true, harga: true } }),
-    prisma.project.findMany({ select: { status: true } }),
+    prisma.project.findMany({ select: { status: true, confirmedFee: true } }),
     prisma.termin.findMany({ select: { fee: true, status: true } }),
   ])
 
@@ -15,14 +17,31 @@ async function getStats() {
   const loses = opps.filter((o) => o.status === "Lose").length
   const decided = wins + loses
 
+  const opp_by_status: Record<string, number> = {}
+  for (const o of opps) {
+    opp_by_status[o.status] = (opp_by_status[o.status] ?? 0) + 1
+  }
+
+  const project_by_status: Record<string, number> = {}
+  for (const p of projects) {
+    project_by_status[p.status] = (project_by_status[p.status] ?? 0) + 1
+  }
+
+  const revenue_by_termin_status: Record<string, number> = {}
+  for (const t of termins) {
+    if (!t.status) continue
+    revenue_by_termin_status[t.status] =
+      (revenue_by_termin_status[t.status] ?? 0) + Number(t.fee ?? 0)
+  }
+
   return {
     total_opportunities: opps.length,
     win_count: wins,
     lose_count: loses,
-    in_progress_count: opps.filter((o) => o.status === "In Progress").length,
+    in_progress_count: opps.filter((o) => o.status === "In progress").length,
     win_rate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
     pipeline_value: opps
-      .filter((o) => !["Lose", "Cancelled", "Withdraw"].includes(o.status))
+      .filter((o) => !["Lose", "Withdrawal", "Transfer to others"].includes(o.status))
       .reduce((s, o) => s + Number(o.harga ?? 0), 0),
     active_projects: projects.filter((p) => p.status !== "Finish").length,
     total_revenue: termins
@@ -31,6 +50,10 @@ async function getStats() {
     pending_revenue: termins
       .filter((t) => t.status !== "Paid")
       .reduce((s, t) => s + Number(t.fee ?? 0), 0),
+    opp_by_status,
+    project_by_status,
+    total_confirmed_fee: projects.reduce((s, p) => s + Number(p.confirmedFee ?? 0), 0),
+    revenue_by_termin_status,
   }
 }
 
@@ -95,15 +118,19 @@ export default async function DashboardPage() {
           sub={`${formatRupiah(stats.pending_revenue)} pending`} />
       </div>
 
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-medium text-gray-600 mb-4">Opportunity Pipeline</h2>
+        <WinRateChart stats={stats} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-medium text-gray-600 mb-4">Opportunity Pipeline</h2>
-          <WinRateChart stats={stats} />
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-medium text-gray-600 mb-4">Team Workload</h2>
-          <WorkloadTable workload={workload} />
-        </div>
+        <ProjectStatusChart stats={stats} />
+        <RevenueBreakdown stats={stats} />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-medium text-gray-600 mb-4">Team Workload</h2>
+        <WorkloadTable workload={workload} />
       </div>
     </div>
   )

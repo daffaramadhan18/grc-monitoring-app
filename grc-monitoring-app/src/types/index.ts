@@ -131,4 +131,8 @@ export interface DashboardStats {
   active_projects: number
   total_revenue: number
   pending_revenue: number
+  opp_by_status: Record<string, number>
+  project_by_status: Record<string, number>
+  total_confirmed_fee: number
+  revenue_by_termin_status: Record<string, number>
 }
