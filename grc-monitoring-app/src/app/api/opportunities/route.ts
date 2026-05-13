@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       clientId,
       serviceTypeId,
       subServiceId,
+      clientInitial: b.clientInitial  || null,
       phase:         b.phase         || null,
       status:        b.status        || 'In progress',
       probability:   b.probability   || null,

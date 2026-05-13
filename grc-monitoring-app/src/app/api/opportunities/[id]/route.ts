@@ -47,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       clientId,
       serviceTypeId,
       subServiceId,
+      clientInitial: b.clientInitial  || null,
       phase:         b.phase         || null,
       status:        b.status,
       probability:   b.probability   || null,

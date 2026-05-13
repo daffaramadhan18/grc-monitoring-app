@@ -3,9 +3,11 @@ import * as XLSX from 'xlsx'
 
 export async function GET() {
   const headers = [
-    'Proposal Name', 'Client Name', 'Service Type', 'Sub-service', 'Phase', 'Status',
-    'Probability', 'Harga', 'Revenue CF', '%RR', 'Expected Date', 'Submitted Date',
-    'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'Notes',
+    'Client Initial', 'Client Name', 'Service Type', 'Sub-service', 'Proposal Name',
+    'Phase', 'Submitted Date', 'Status', 'Probability', 'Notes', '%RR',
+    'Harga', 'Revenue CF',
+    'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6',
+    'Expected Date',
   ]
 
   const wb = XLSX.utils.book_new()

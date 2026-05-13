@@ -24,24 +24,27 @@ export async function GET() {
   })
 
   const headers = [
-    'Proposal Name', 'Client Name', 'Service Type', 'Sub-service', 'Phase', 'Status',
-    'Probability', 'Harga', 'Revenue CF', '%RR', 'Expected Date', 'Submitted Date',
-    'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'Notes',
+    'Client Initial', 'Client Name', 'Service Type', 'Sub-service', 'Proposal Name',
+    'Phase', 'Submitted Date', 'Status', 'Probability', 'Notes', '%RR',
+    'Harga', 'Revenue CF',
+    'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6',
+    'Expected Date',
   ]
 
   const dataRows = opps.map((o) => [
-    o.proposalName,
+    o.clientInitial ?? o.client.initial,
     o.client.fullName,
     o.serviceType?.name ?? '',
     o.subService?.name ?? '',
+    o.proposalName,
     o.phase ?? '',
+    fmtDate(o.submittedDate),
     o.status,
     o.probability ?? '',
+    o.notes ?? '',
+    o.rrPercentage ?? '',
     o.harga != null ? Number(o.harga) : '',
     o.revenueCf != null ? Number(o.revenueCf) : '',
-    o.rrPercentage ?? '',
-    fmtDate(o.expectedDate),
-    fmtDate(o.submittedDate),
     o.micInitial ?? '',
     o.tm1Initial ?? '',
     o.tm2Initial ?? '',
@@ -49,7 +52,7 @@ export async function GET() {
     o.tm4Initial ?? '',
     o.tm5Initial ?? '',
     o.tm6Initial ?? '',
-    o.notes ?? '',
+    fmtDate(o.expectedDate),
   ])
 
   const wb = XLSX.utils.book_new()

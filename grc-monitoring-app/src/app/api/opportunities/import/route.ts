@@ -59,33 +59,42 @@ export async function POST(req: NextRequest) {
     const row = dataRows[i]
     const rowNum = i + 2 // 1-indexed, accounting for header
 
-    const proposalName = String(row[0] ?? '').trim()
-    if (!proposalName) continue // skip empty rows silently
+    // col 4 = Proposal Name (skip row silently if blank)
+    const proposalName = String(row[4] ?? '').trim()
+    if (!proposalName) continue
 
+    // col 1 = Client Name (required)
     const clientName = String(row[1] ?? '').trim()
     if (!clientName) {
       skipped.push({ row: rowNum, reason: 'Client Name is blank' })
       continue
     }
 
+    // Column order matches template/export:
+    // 0: Client Initial, 1: Client Name, 2: Service Type, 3: Sub-service, 4: Proposal Name,
+    // 5: Phase, 6: Submitted Date, 7: Status, 8: Probability, 9: Notes, 10: %RR,
+    // 11: Harga, 12: Revenue CF, 13: MIC, 14-19: TM1-TM6, 20: Expected Date
+    const clientInitial   = String(row[0] ?? '').trim() || null
+    // row[1] is clientName (already parsed above)
     const serviceTypeName = String(row[2] ?? '').trim()
     const subServiceName  = String(row[3] ?? '').trim()
-    const phase           = String(row[4] ?? '').trim() || null
-    const status          = String(row[5] ?? '').trim() || 'In progress'
-    const probability     = String(row[6] ?? '').trim() || null
-    const harga           = parseNumber(row[7])
-    const revenueCf       = parseNumber(row[8])
-    const rrPercentage    = parseNumber(row[9])
-    const expectedDate    = parseDateDMY(row[10])
-    const submittedDate   = parseDateDMY(row[11])
-    const micInitial      = String(row[12] ?? '').trim() || null
-    const tm1Initial      = String(row[13] ?? '').trim() || null
-    const tm2Initial      = String(row[14] ?? '').trim() || null
-    const tm3Initial      = String(row[15] ?? '').trim() || null
-    const tm4Initial      = String(row[16] ?? '').trim() || null
-    const tm5Initial      = String(row[17] ?? '').trim() || null
-    const tm6Initial      = String(row[18] ?? '').trim() || null
-    const notes           = String(row[19] ?? '').trim() || null
+    // row[4] is proposalName (already parsed above)
+    const phase           = String(row[5] ?? '').trim() || null
+    const submittedDate   = parseDateDMY(row[6])
+    const status          = String(row[7] ?? '').trim() || 'In progress'
+    const probability     = String(row[8] ?? '').trim() || null
+    const notes           = String(row[9] ?? '').trim() || null
+    const rrPercentage    = parseNumber(row[10])
+    const harga           = parseNumber(row[11])
+    const revenueCf       = parseNumber(row[12])
+    const micInitial      = String(row[13] ?? '').trim() || null
+    const tm1Initial      = String(row[14] ?? '').trim() || null
+    const tm2Initial      = String(row[15] ?? '').trim() || null
+    const tm3Initial      = String(row[16] ?? '').trim() || null
+    const tm4Initial      = String(row[17] ?? '').trim() || null
+    const tm5Initial      = String(row[18] ?? '').trim() || null
+    const tm6Initial      = String(row[19] ?? '').trim() || null
+    const expectedDate    = parseDateDMY(row[20])
 
     // Resolve service type (optional)
     const stMatch = serviceTypeName
@@ -112,6 +121,7 @@ export async function POST(req: NextRequest) {
         data: {
           proposalName,
           clientId,
+          clientInitial,
           serviceTypeId: stMatch?.id ?? null,
           subServiceId,
           phase,

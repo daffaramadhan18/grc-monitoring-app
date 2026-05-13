@@ -46,6 +46,7 @@ model Opportunity {
   serviceType   ServiceType?  @relation(fields: [serviceTypeId], references: [id])
   subServiceId  Int?
   subService    SubService?  @relation(fields: [subServiceId], references: [id])
+  clientInitial String?
   phase         String?
   status        String
   probability   String?

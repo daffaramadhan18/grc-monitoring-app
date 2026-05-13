@@ -16,9 +16,9 @@ interface Props { opps: Opp[] }
 const DEAD = new Set(['Win','Lose','Withdraw','Cancelled','Transfer to others'])
 
 const QUARTERS = [
-  { label: 'Q1', months: [1,2,3],   range: 'Jan – Mar' },
-  { label: 'Q2', months: [4,5,6],   range: 'Apr – Jun' },
-  { label: 'Q3', months: [7,8,9],   range: 'Jul – Sep' },
+  { label: 'Q1', months: [1,2,3],    range: 'Jan – Mar' },
+  { label: 'Q2', months: [4,5,6],    range: 'Apr – Jun' },
+  { label: 'Q3', months: [7,8,9],    range: 'Jul – Sep' },
   { label: 'Q4', months: [10,11,12], range: 'Oct – Dec' },
 ]
 
@@ -43,18 +43,21 @@ function teamInitials(opp: Opp): string[] {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function QuarterlySection({ opps }: Props) {
-  // Only active proposals with an expected date
-  const active = opps.filter((o) => !DEAD.has(o.status) && o.expectedDate)
+  // Only opportunities with an expectedDate
+  const withDate = opps.filter((o) => o.expectedDate)
 
-  // Aggregate per quarter
   const quarters = QUARTERS.map((q) => {
-    const inQ = active.filter((o) => {
+    // All opps in this quarter (for harga total + team)
+    const inQ = withDate.filter((o) => {
       const m = new Date(o.expectedDate!).getMonth() + 1
       return q.months.includes(m)
     })
+    // Active proposals (for count label)
+    const activeInQ = inQ.filter((o) => !DEAD.has(o.status))
+
     const total = inQ.reduce((s, o) => s + (o.harga ?? 0), 0)
     const uniqueTeam = [...new Set(inQ.flatMap(teamInitials))]
-    return { ...q, count: inQ.length, total, team: uniqueTeam }
+    return { ...q, total, activeCount: activeInQ.length, team: uniqueTeam }
   })
 
   const maxTotal = Math.max(...quarters.map((q) => q.total), 1)
@@ -63,7 +66,9 @@ export default function QuarterlySection({ opps }: Props) {
     <div className="space-y-2">
       <div>
         <h2 className="text-sm font-semibold text-gray-700">Quarterly Potential Revenue &amp; Team Projection</h2>
-        <p className="text-xs text-gray-400 mt-0.5">Active proposals only · grouped by Expected Date</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Harga cumulative per quarter (by Expected Date) · active proposal count excludes closed statuses
+        </p>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
@@ -80,7 +85,7 @@ export default function QuarterlySection({ opps }: Props) {
               {/* Count + value */}
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">
-                  {q.count} proposal{q.count !== 1 ? 's' : ''}
+                  {q.activeCount} active proposal{q.activeCount !== 1 ? 's' : ''}
                 </div>
                 <div className="text-lg font-semibold text-gray-900 leading-tight">
                   {q.total > 0 ? formatIDRShort(q.total) : <span className="text-gray-300">—</span>}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -15,6 +15,7 @@ interface SubService  { id: number; name: string; serviceTypeId: number }
 interface TeamMember  { id: number; initial: string; fullName: string; level: string }
 interface Opp {
   id: number; proposalName: string; clientId: number; client: Client
+  clientInitial: string | null
   serviceTypeId: number | null; serviceType: ServiceType | null
   subServiceId: number | null; subService: SubService | null
   phase: string | null; status: string; probability: string | null
@@ -31,7 +32,7 @@ interface Props {
   teamMembers: TeamMember[]
 }
 
-// ─── Sub-service map (hardcoded per spec) ─────────────────────────────────────
+// ─── Sub-service map ──────────────────────────────────────────────────────────
 
 const SUB_SERVICES: Record<string, string[]> = {
   'IT GRC': [
@@ -47,7 +48,7 @@ const SUB_SERVICES: Record<string, string[]> = {
 // ─── Empty form ───────────────────────────────────────────────────────────────
 
 const emptyForm = () => ({
-  proposalName: '', clientName: '', serviceTypeId: '', subServiceId: '',
+  proposalName: '', clientName: '', clientInitial: '', serviceTypeId: '', subServiceId: '',
   phase: '', status: 'In progress', probability: '',
   harga: '', revenueCf: '', rrPercentage: '',
   expectedDate: '', submittedDate: '', notes: '',
@@ -90,7 +91,71 @@ function SortIcon({ field, current, dir }: { field: SortField; current: SortFiel
     : <ChevronDown size={12} className="inline ml-1 text-[#009CDE]" />
 }
 
+// ─── Resizable column hook ────────────────────────────────────────────────────
+
+const MIN_COL_WIDTH = 80
+
+function useResizableColumns(count: number, defaultWidths: number[]) {
+  const [widths, setWidths] = useState<number[]>(defaultWidths)
+  const dragging = useRef<{ col: number; startX: number; startW: number } | null>(null)
+
+  const onMouseDown = useCallback((col: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = { col, startX: e.clientX, startW: widths[col] }
+  }, [widths])
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging.current) return
+      const { col, startX, startW } = dragging.current
+      const delta = e.clientX - startX
+      setWidths((prev) => {
+        const next = [...prev]
+        next[col] = Math.max(MIN_COL_WIDTH, startW + delta)
+        return next
+      })
+    }
+    function onMouseUp() { dragging.current = null }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  return { widths, onMouseDown }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
+
+// Column order: Client Initial, Client Name, Service Type, Sub-service, Proposal Name,
+//               Phase, Submitted Date, Status, Probability, Notes, %RR,
+//               Harga, Revenue CF, MIC, TM1–TM6
+const DEFAULT_WIDTHS = [
+  40,  // checkbox
+  90,  // Client Initial
+  140, // Client Name
+  110, // Service Type
+  120, // Sub-service
+  180, // Proposal Name
+  90,  // Phase
+  110, // Submitted Date
+  130, // Status
+  90,  // Probability
+  140, // Notes
+  70,  // %RR
+  130, // Harga
+  130, // Revenue CF
+  70,  // MIC
+  60,  // TM1
+  60,  // TM2
+  60,  // TM3
+  60,  // TM4
+  60,  // TM5
+  60,  // TM6
+  44,  // delete
+]
 
 export default function OpportunitiesClient({
   opportunities: initial, serviceTypes, teamMembers,
@@ -108,15 +173,13 @@ export default function OpportunitiesClient({
   const [importResult, setImportResult] = useState<{ imported: number; skipped: { row: number; reason: string }[] } | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
 
-  // Sort state
   const [sortField, setSortField] = useState<SortField>('proposalName')
   const [sortDir, setSortDir]     = useState<SortDir>('asc')
-
-  // Multi-select state
-  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [selected, setSelected]   = useState<Set<number>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
-  // Sub-services for currently selected service type name
+  const { widths, onMouseDown } = useResizableColumns(DEFAULT_WIDTHS.length, DEFAULT_WIDTHS)
+
   const selectedTypeName = serviceTypes.find((s) => String(s.id) === form.serviceTypeId)?.name ?? ''
   const availableSubs    = SUB_SERVICES[selectedTypeName] ?? []
 
@@ -139,13 +202,14 @@ export default function OpportunitiesClient({
     setForm({
       proposalName:  opp.proposalName,
       clientName:    opp.client.fullName,
+      clientInitial: opp.clientInitial  ?? '',
       serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
       subServiceId:  opp.subService?.name ?? '',
-      phase:         opp.phase         ?? '',
+      phase:         opp.phase          ?? '',
       status:        opp.status,
       probability:   opp.probability   ?? '',
-      revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)    : '',
       harga:         opp.harga         != null ? String(opp.harga)        : '',
+      revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)    : '',
       rrPercentage:  opp.rrPercentage  != null ? String(opp.rrPercentage) : '',
       expectedDate:  toInputDate(opp.expectedDate),
       submittedDate: toInputDate(opp.submittedDate),
@@ -305,8 +369,22 @@ export default function OpportunitiesClient({
     }
   }
 
-  const thCls = 'px-4 py-3 text-gray-500 font-medium select-none'
-  const thSortCls = `${thCls} cursor-pointer hover:text-gray-700`
+  // ─── Resize handle ────────────────────────────────────────────────────────────
+
+  // col index (0-based, skipping checkbox col 0 and delete col last)
+  // We give resize handles to cols 1..N-2
+  function ResizeHandle({ col }: { col: number }) {
+    return (
+      <span
+        onMouseDown={(e) => onMouseDown(col, e)}
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#009CDE]/30 select-none z-10"
+        style={{ touchAction: 'none' }}
+      />
+    )
+  }
+
+  const thBase = 'relative px-3 py-3 text-gray-500 font-medium text-left text-xs whitespace-nowrap overflow-hidden'
+  const thSort = `${thBase} cursor-pointer hover:text-gray-700 select-none`
 
   return (
     <div className="space-y-5">
@@ -345,7 +423,6 @@ export default function OpportunitiesClient({
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
-        {/* Floating bulk action bar */}
         {selected.size > 0 && (
           <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
             <span className="font-medium">{selected.size} item dipilih</span>
@@ -362,53 +439,101 @@ export default function OpportunitiesClient({
             </button>
           </div>
         )}
+
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="w-full text-sm">
+          <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: widths.reduce((a, b) => a + b, 0) }}>
+            <colgroup>
+              {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
+            </colgroup>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-4 py-3 w-10">
+                {/* Checkbox */}
+                <th className={thBase} style={{ width: widths[0] }}>
                   <input type="checkbox"
                     checked={sortedOpps.length > 0 && selected.size === sortedOpps.length}
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
-                <th className={`text-left ${thSortCls} min-w-[180px]`} onClick={() => handleSort('proposalName')}>
-                  Proposal Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                {/* Client Initial */}
+                <th className={thBase} style={{ width: widths[1] }}>
+                  Client Initial<ResizeHandle col={1} />
                 </th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('client')}>
-                  Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                {/* Client Name */}
+                <th className={`${thSort}`} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
+                  Client Name<SortIcon field="client" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={2} />
                 </th>
-                <th className={`text-left ${thCls}`}>Service</th>
-                <th className={`text-left ${thCls}`}>Sub-service</th>
-                <th className={`text-left ${thCls}`}>Phase</th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('status')}>
-                  Status <SortIcon field="status" current={sortField} dir={sortDir} />
+                {/* Service Type */}
+                <th className={thBase} style={{ width: widths[3] }}>
+                  Service Type<ResizeHandle col={3} />
                 </th>
-                <th className={`text-right ${thSortCls}`} onClick={() => handleSort('harga')}>
-                  Harga <SortIcon field="harga" current={sortField} dir={sortDir} />
+                {/* Sub-service */}
+                <th className={thBase} style={{ width: widths[4] }}>
+                  Sub-service<ResizeHandle col={4} />
                 </th>
-                <th className={`text-left ${thCls}`}>Prob.</th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('expectedDate')}>
-                  Expected <SortIcon field="expectedDate" current={sortField} dir={sortDir} />
+                {/* Proposal Name */}
+                <th className={thSort} style={{ width: widths[5] }} onClick={() => handleSort('proposalName')}>
+                  Proposal Name<SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={5} />
                 </th>
-                <th className={`text-left ${thCls}`}>MIC</th>
-                <th className={`text-left ${thCls}`}>Team</th>
-                <th className={`text-left ${thCls}`}>Notes</th>
-                <th className="px-4 py-3 w-10"></th>
+                {/* Phase */}
+                <th className={thBase} style={{ width: widths[6] }}>
+                  Phase<ResizeHandle col={6} />
+                </th>
+                {/* Submitted Date */}
+                <th className={thBase} style={{ width: widths[7] }}>
+                  Submitted Date<ResizeHandle col={7} />
+                </th>
+                {/* Status */}
+                <th className={thSort} style={{ width: widths[8] }} onClick={() => handleSort('status')}>
+                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={8} />
+                </th>
+                {/* Probability */}
+                <th className={thBase} style={{ width: widths[9] }}>
+                  Prob.<ResizeHandle col={9} />
+                </th>
+                {/* Notes */}
+                <th className={thBase} style={{ width: widths[10] }}>
+                  Notes<ResizeHandle col={10} />
+                </th>
+                {/* %RR */}
+                <th className={thBase} style={{ width: widths[11] }}>
+                  %RR<ResizeHandle col={11} />
+                </th>
+                {/* Harga */}
+                <th className={thSort} style={{ width: widths[12] }} onClick={() => handleSort('harga')}>
+                  Harga<SortIcon field="harga" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={12} />
+                </th>
+                {/* Revenue CF */}
+                <th className={thBase} style={{ width: widths[13] }}>
+                  Revenue CF<ResizeHandle col={13} />
+                </th>
+                {/* MIC */}
+                <th className={thBase} style={{ width: widths[14] }}>
+                  MIC<ResizeHandle col={14} />
+                </th>
+                {/* TM1–TM6 */}
+                {[15,16,17,18,19,20].map((ci, i) => (
+                  <th key={ci} className={thBase} style={{ width: widths[ci] }}>
+                    TM{i+1}<ResizeHandle col={ci} />
+                  </th>
+                ))}
+                {/* Delete */}
+                <th className={thBase} style={{ width: widths[21] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={14} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={22} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
               )}
               {sortedOpps.map((opp) => {
-                const team = [opp.tm1Initial, opp.tm2Initial, opp.tm3Initial,
-                              opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].filter(Boolean) as string[]
                 const isSelected = selected.has(opp.id)
                 return (
                   <tr
@@ -416,42 +541,40 @@ export default function OpportunitiesClient({
                     className={`group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
                     onClick={() => openEdit(opp)}
                   >
-                    <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected}
                         onChange={() => toggleSelect(opp.id)}
                         className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">
-                      {opp.proposalName}
+                    <td className="px-3 py-2.5 text-gray-600 font-mono text-xs truncate">
+                      {opp.clientInitial ?? opp.client.initial}
                     </td>
-                    <td className="px-4 py-3 text-gray-600" title={opp.client.fullName}>
-                      {opp.client.initial}
+                    <td className="px-3 py-2.5 text-gray-700 truncate" title={opp.client.fullName}>
+                      {opp.client.fullName}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{opp.serviceType?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{opp.subService?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{opp.phase ?? '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.serviceType?.name ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.subService?.name ?? '—'}</td>
+                    <td className="px-3 py-2.5 font-medium text-gray-900 truncate">{opp.proposalName}</td>
+                    <td className="px-3 py-2.5 text-gray-500 truncate">{opp.phase ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.submittedDate)}</td>
+                    <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {opp.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-                      {formatRupiah(opp.harga)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{opp.probability ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(opp.expectedDate)}</td>
-                    <td className="px-4 py-3 text-gray-600">{opp.micInitial ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {team.map((t) => <TeamBadge key={t} initial={t} />)}
-                        {team.length === 0 && <span className="text-gray-300">—</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 max-w-[120px] truncate text-xs">
-                      {opp.notes ?? ''}
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 py-2.5 text-gray-500 truncate">{opp.probability ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-400 truncate text-xs">{opp.notes ?? ''}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-right">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.harga)}</td>
+                    <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.revenueCf)}</td>
+                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.micInitial ?? '—'}</td>
+                    {[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].map((t, i) => (
+                      <td key={i} className="px-3 py-2.5 text-gray-500 truncate">
+                        {t ? <TeamBadge initial={t} /> : <span className="text-gray-200">—</span>}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleDelete(opp.id)}
                         disabled={deleting === opp.id}
@@ -521,7 +644,7 @@ export default function OpportunitiesClient({
         </div>
       )}
 
-      {/* ── Modal ────────────────────────────────────────────────────────── */}
+      {/* ── Add/Edit Modal ────────────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModal(false)} />
@@ -543,14 +666,23 @@ export default function OpportunitiesClient({
                   onChange={(e) => set('proposalName', e.target.value)} required autoFocus />
               </Field>
 
-              {/* 2. Client Name */}
-              <Field label="Client Name" required>
-                <input className={inputCls} value={form.clientName}
-                  onChange={(e) => set('clientName', e.target.value)}
-                  required placeholder="Nama lengkap client" />
-              </Field>
+              {/* 2–3. Client Initial + Client Name */}
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="Client Initial">
+                  <input className={inputCls} value={form.clientInitial}
+                    onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
+                    placeholder="e.g. BRI" maxLength={6} />
+                </Field>
+                <div className="col-span-2">
+                  <Field label="Client Name" required>
+                    <input className={inputCls} value={form.clientName}
+                      onChange={(e) => set('clientName', e.target.value)}
+                      required placeholder="Nama lengkap client" />
+                  </Field>
+                </div>
+              </div>
 
-              {/* 3-4. Service Type + Sub-service */}
+              {/* 4–5. Service Type + Sub-service */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Service Type">
                   <select className={selectCls} value={form.serviceTypeId}
@@ -577,7 +709,7 @@ export default function OpportunitiesClient({
                 </Field>
               </div>
 
-              {/* 5-6-7. Phase + Status + Probability */}
+              {/* 6–7–8. Phase + Status + Probability */}
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Phase">
                   <select className={selectCls} value={form.phase}
@@ -586,7 +718,7 @@ export default function OpportunitiesClient({
                     {['RFP','RFI','Diskusi Awal','Transferred'].map((f) => <option key={f}>{f}</option>)}
                   </select>
                 </Field>
-                <Field label="Opportunity Status" required>
+                <Field label="Status" required>
                   <select className={selectCls} value={form.status}
                     onChange={(e) => set('status', e.target.value)} required>
                     {OPP_STATUSES.map((s) => <option key={s}>{s}</option>)}
@@ -601,7 +733,7 @@ export default function OpportunitiesClient({
                 </Field>
               </div>
 
-              {/* 8-9-10. Harga + Revenue CF + %RR */}
+              {/* 9–10–11. Harga + Revenue CF + %RR */}
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Harga (IDR)">
                   <CurrencyInput value={form.harga} onChange={(v) => set('harga', v)} />
@@ -615,7 +747,7 @@ export default function OpportunitiesClient({
                 </Field>
               </div>
 
-              {/* 11-12. Dates */}
+              {/* 12–13. Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Expected Date">
                   <input type="date" className={inputCls} value={form.expectedDate}
@@ -627,7 +759,7 @@ export default function OpportunitiesClient({
                 </Field>
               </div>
 
-              {/* 13. MIC + TM1–TM3 */}
+              {/* 14. MIC + TM1–TM3 */}
               <div className="grid grid-cols-4 gap-4">
                 <Field label="MIC">
                   <select className={selectCls} value={form.micInitial}
@@ -670,7 +802,6 @@ export default function OpportunitiesClient({
                   placeholder="(opsional)" />
               </Field>
 
-              {/* Footer */}
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button type="button" onClick={() => setModal(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
