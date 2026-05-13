@@ -59,29 +59,39 @@ async function getStats() {
 
 async function getWorkload() {
   const members = await prisma.teamMember.findMany()
-  const projects = await prisma.project.findMany({
-    where: { status: { not: "Finish" } },
-    select: {
-      micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-      tm4Initial: true, tm5Initial: true, tm6Initial: true,
-      alokasiHours: true, currentHours: true,
-    },
-  })
+  const [projects, opps] = await Promise.all([
+    prisma.project.findMany({
+      where: { status: { in: ["Fieldwork", "Reporting"] } },
+      select: {
+        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+        alokasiHours: true, currentHours: true,
+      },
+    }),
+    prisma.opportunity.findMany({
+      where: { status: { in: ["Waiting for Result", "Backlog", "In progress"] } },
+      select: {
+        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+      },
+    }),
+  ])
+
+  const TM = ["micInitial","tm1Initial","tm2Initial","tm3Initial","tm4Initial","tm5Initial","tm6Initial"] as const
 
   return members.map((m) => {
-    const myProjects = projects.filter((p) =>
-      [p.micInitial, p.tm1Initial, p.tm2Initial, p.tm3Initial,
-       p.tm4Initial, p.tm5Initial, p.tm6Initial].includes(m.initial)
-    )
+    const myProjects = projects.filter((p) => TM.some((f) => p[f] === m.initial))
+    const myProposals = opps.filter((o) => TM.some((f) => o[f] === m.initial))
     return {
       initial: m.initial,
       fullName: m.fullName,
       active_projects: myProjects.length,
+      active_proposals: myProposals.length,
       alokasi_hours: myProjects.reduce((s, p) => s + (p.alokasiHours ?? 0), 0),
       current_hours: myProjects.reduce((s, p) => s + (p.currentHours ?? 0), 0),
     }
-  }).filter((m) => m.active_projects > 0)
-    .sort((a, b) => b.active_projects - a.active_projects)
+  }).filter((m) => m.active_projects > 0 || m.active_proposals > 0)
+    .sort((a, b) => (b.active_projects + b.active_proposals) - (a.active_projects + a.active_proposals))
 }
 
 const StatCard = ({ label, value, icon: Icon, sub }: {

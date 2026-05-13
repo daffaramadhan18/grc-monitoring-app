@@ -40,10 +40,12 @@ function avatarColor(initial: string) {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
-function capacityBadge(total: number) {
-  if (total >= 8) return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700' }
-  if (total >= 5) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700' }
-  return              { label: 'Available',     cls: 'bg-[#43B02A]/15 text-[#2d7a1a]' }
+function capacityBadge(projects: number, proposals: number) {
+  if (projects > 2 || proposals > 2)
+    return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700' }
+  if (projects === 2 && proposals === 2)
+    return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700' }
+  return   { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]' }
 }
 
 const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
@@ -60,8 +62,7 @@ function roleOf(row: Record<string, any>, initial: string): string {
 
 export default function TeamMemberClient({ member, proposals, projects }: Props) {
   const router = useRouter()
-  const total = projects.length + proposals.length
-  const badge = capacityBadge(total)
+  const badge = capacityBadge(projects.length, proposals.length)
 
   return (
     <div className="space-y-6">

@@ -7,12 +7,12 @@ export default async function TeamPage() {
   const [members, activeProjects, activeOpps] = await Promise.all([
     prisma.teamMember.findMany({ orderBy: { fullName: 'asc' } }),
     prisma.project.findMany({
-      where: { status: { not: 'Finish' } },
+      where: { status: { in: ['Fieldwork', 'Reporting'] } },
       select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
     prisma.opportunity.findMany({
-      where: { status: { notIn: ['Win','Lose','Withdraw','Cancelled','Transfer to others'] } },
+      where: { status: { in: ['Waiting for Result', 'Backlog', 'In progress'] } },
       select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),

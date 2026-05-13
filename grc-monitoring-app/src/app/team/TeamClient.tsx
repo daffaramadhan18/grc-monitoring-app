@@ -49,10 +49,12 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
 
 // ─── Capacity badge ───────────────────────────────────────────────────────────
 
-function capacityBadge(total: number) {
-  if (total >= 8) return { label: 'Overloaded',   cls: 'bg-red-100 text-red-700',         order: 0 }
-  if (total >= 5) return { label: 'At Capacity',  cls: 'bg-amber-100 text-amber-700',     order: 1 }
-  return              { label: 'Available',      cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
+function capacityBadge(projects: number, proposals: number) {
+  if (projects > 2 || proposals > 2)
+    return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
+  if (projects === 2 && proposals === 2)
+    return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     order: 1 }
+  return   { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -149,7 +151,7 @@ export default function TeamClient({ members: initial, allocation }: Props) {
   const allocRows = members.map((m) => {
     const a      = allocation[m.initial] ?? { projects: 0, proposals: 0 }
     const total  = a.projects + a.proposals
-    const badge  = capacityBadge(total)
+    const badge  = capacityBadge(a.projects, a.proposals)
     return { member: m, ...a, total, badge }
   }).sort((a, b) => {
     if (a.badge.order !== b.badge.order) return a.badge.order - b.badge.order
