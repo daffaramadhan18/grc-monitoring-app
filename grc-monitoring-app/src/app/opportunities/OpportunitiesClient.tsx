@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import QuarterlySection from './QuarterlySection'
 import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
@@ -59,10 +59,27 @@ const emptyForm = () => ({
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
-function TeamBadge({ initial }: { initial: string }) {
+const AVATAR_COLORS = [
+  '#009CDE', '#43B02A', '#58595B', '#F59E0B', '#8B5CF6', '#EC4899',
+]
+function avatarColor(initial: string) {
+  const hash = initial.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
+function AvatarBubble({ initial, isMic }: { initial: string; isMic: boolean }) {
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-      {initial}
+    <span
+      className="relative inline-flex items-center justify-center w-7 h-7 rounded-full text-white font-semibold text-[10px] shrink-0 select-none"
+      style={{ backgroundColor: isMic ? '#2D2D2D' : avatarColor(initial) }}
+      title={isMic ? `MIC: ${initial}` : initial}
+    >
+      {initial.slice(0, 2)}
+      {isMic && (
+        <span className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 flex items-center justify-center">
+          <Crown size={7} className="text-white" />
+        </span>
+      )}
     </span>
   )
 }
@@ -131,7 +148,7 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 
 // Column order: Client Initial, Client Name, Service Type, Sub-service, Proposal Name,
 //               Phase, Submitted Date, Status, Probability, Notes, %RR,
-//               Harga, Revenue CF, MIC, TM1–TM6
+//               Harga, Revenue CF, Team (MIC+TM1-TM6), delete
 const DEFAULT_WIDTHS = [
   40,  // checkbox
   90,  // Client Initial
@@ -147,13 +164,7 @@ const DEFAULT_WIDTHS = [
   70,  // %RR
   130, // Harga
   130, // Revenue CF
-  70,  // MIC
-  60,  // TM1
-  60,  // TM2
-  60,  // TM3
-  60,  // TM4
-  60,  // TM5
-  60,  // TM6
+  180, // Team
   44,  // delete
 ]
 
@@ -511,24 +522,18 @@ export default function OpportunitiesClient({
                 <th className={thBase} style={{ width: widths[13] }}>
                   Revenue CF<ResizeHandle col={13} />
                 </th>
-                {/* MIC */}
+                {/* Team (MIC + TM1–TM6) */}
                 <th className={thBase} style={{ width: widths[14] }}>
-                  MIC<ResizeHandle col={14} />
+                  Team<ResizeHandle col={14} />
                 </th>
-                {/* TM1–TM6 */}
-                {[15,16,17,18,19,20].map((ci, i) => (
-                  <th key={ci} className={thBase} style={{ width: widths[ci] }}>
-                    TM{i+1}<ResizeHandle col={ci} />
-                  </th>
-                ))}
                 {/* Delete */}
-                <th className={thBase} style={{ width: widths[21] }} />
+                <th className={thBase} style={{ width: widths[15] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={22} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={16} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
@@ -568,12 +573,17 @@ export default function OpportunitiesClient({
                     <td className="px-3 py-2.5 text-gray-600 text-right">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
                     <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.harga)}</td>
                     <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.revenueCf)}</td>
-                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.micInitial ?? '—'}</td>
-                    {[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].map((t, i) => (
-                      <td key={i} className="px-3 py-2.5 text-gray-500 truncate">
-                        {t ? <TeamBadge initial={t} /> : <span className="text-gray-200">—</span>}
-                      </td>
-                    ))}
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-0.5 flex-wrap">
+                        {opp.micInitial && <AvatarBubble initial={opp.micInitial} isMic />}
+                        {[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial]
+                          .filter(Boolean)
+                          .map((t) => <AvatarBubble key={t} initial={t!} isMic={false} />)}
+                        {!opp.micInitial && ![opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].some(Boolean) && (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleDelete(opp.id)}
