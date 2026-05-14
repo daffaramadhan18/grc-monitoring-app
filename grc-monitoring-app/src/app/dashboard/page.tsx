@@ -1,147 +1,110 @@
-import { prisma } from "@/lib/prisma"
-import { formatRupiah } from "@/lib/utils"
-import { TrendingUp, FolderKanban, DollarSign, Award } from "lucide-react"
-import WinRateChart from "./WinRateChart"
-import WorkloadTable from "./WorkloadTable"
-import ProjectStatusChart from "./ProjectStatusChart"
-import RevenueBreakdown from "./RevenueBreakdown"
-
-async function getStats() {
-  const [opps, projects, termins] = await Promise.all([
-    prisma.opportunity.findMany({ select: { status: true, harga: true } }),
-    prisma.project.findMany({ select: { status: true, confirmedFee: true } }),
-    prisma.termin.findMany({ select: { fee: true, status: true } }),
-  ])
-
-  const wins = opps.filter((o) => o.status === "Win").length
-  const loses = opps.filter((o) => o.status === "Lose").length
-  const decided = wins + loses
-
-  const opp_by_status: Record<string, number> = {}
-  for (const o of opps) {
-    opp_by_status[o.status] = (opp_by_status[o.status] ?? 0) + 1
-  }
-
-  const project_by_status: Record<string, number> = {}
-  for (const p of projects) {
-    project_by_status[p.status] = (project_by_status[p.status] ?? 0) + 1
-  }
-
-  const revenue_by_termin_status: Record<string, number> = {}
-  for (const t of termins) {
-    if (!t.status) continue
-    revenue_by_termin_status[t.status] =
-      (revenue_by_termin_status[t.status] ?? 0) + Number(t.fee ?? 0)
-  }
-
-  return {
-    total_opportunities: opps.length,
-    win_count: wins,
-    lose_count: loses,
-    in_progress_count: opps.filter((o) => o.status === "In progress").length,
-    win_rate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
-    pipeline_value: opps
-      .filter((o) => !["Lose", "Withdraw", "Cancelled", "Transfer to others"].includes(o.status))
-      .reduce((s, o) => s + Number(o.harga ?? 0), 0),
-    active_projects: projects.filter((p) => p.status !== "Finish").length,
-    total_revenue: termins
-      .filter((t) => t.status === "Paid")
-      .reduce((s, t) => s + Number(t.fee ?? 0), 0),
-    pending_revenue: termins
-      .filter((t) => t.status !== "Paid")
-      .reduce((s, t) => s + Number(t.fee ?? 0), 0),
-    opp_by_status,
-    project_by_status,
-    total_confirmed_fee: projects.reduce((s, p) => s + Number(p.confirmedFee ?? 0), 0),
-    revenue_by_termin_status,
-  }
-}
+import { prisma } from '@/lib/prisma'
+import { serialize } from '@/lib/serialize'
+import SummaryCards from './SummaryCards'
+import ProposalPipeline from './ProposalPipeline'
+import TeamWorkload from './TeamWorkload'
+import OngoingProjects from './OngoingProjects'
 
 async function getWorkload() {
-  const members = await prisma.teamMember.findMany()
+  const members = await prisma.teamMember.findMany({ select: { id: true, initial: true, fullName: true, level: true } })
   const [projects, opps] = await Promise.all([
     prisma.project.findMany({
-      where: { status: { in: ["Fieldwork", "Reporting"] } },
-      select: {
-        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-        tm4Initial: true, tm5Initial: true, tm6Initial: true,
-        alokasiHours: true, currentHours: true,
-      },
+      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+      select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+                tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
     prisma.opportunity.findMany({
-      where: { status: { in: ["Waiting for Result", "Backlog", "In progress"] } },
-      select: {
-        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-        tm4Initial: true, tm5Initial: true, tm6Initial: true,
-      },
+      where: { status: { in: ['Waiting for Result', 'Backlog', 'In progress'] } },
+      select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+                tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
   ])
 
-  const TM = ["micInitial","tm1Initial","tm2Initial","tm3Initial","tm4Initial","tm5Initial","tm6Initial"] as const
+  const TM = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 
-  return members.map((m) => {
-    const myProjects = projects.filter((p) => TM.some((f) => p[f] === m.initial))
-    const myProposals = opps.filter((o) => TM.some((f) => o[f] === m.initial))
-    return {
-      initial: m.initial,
-      fullName: m.fullName,
-      active_projects: myProjects.length,
-      active_proposals: myProposals.length,
-      alokasi_hours: myProjects.reduce((s, p) => s + (p.alokasiHours ?? 0), 0),
-      current_hours: myProjects.reduce((s, p) => s + (p.currentHours ?? 0), 0),
-    }
-  }).filter((m) => m.active_projects > 0 || m.active_proposals > 0)
+  return members.map((m) => ({
+    id:               m.id,
+    initial:          m.initial,
+    fullName:         m.fullName,
+    level:            m.level,
+    active_projects:  projects.filter((p) => TM.some((f) => p[f] === m.initial)).length,
+    active_proposals: opps.filter((o) => TM.some((f) => o[f] === m.initial)).length,
+  })).filter((m) => m.active_projects > 0 || m.active_proposals > 0)
     .sort((a, b) => (b.active_projects + b.active_proposals) - (a.active_projects + a.active_proposals))
 }
 
-const StatCard = ({ label, value, icon: Icon, sub }: {
-  label: string; value: string; icon: any; sub?: string
-}) => (
-  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-    <div className="flex items-start justify-between">
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
-        {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
-      </div>
-      <div className="p-2.5 bg-[#009CDE]/10 rounded-lg">
-        <Icon size={20} className="text-[#009CDE]" />
-      </div>
-    </div>
-  </div>
-)
-
 export default async function DashboardPage() {
-  const [stats, workload] = await Promise.all([getStats(), getWorkload()])
+  const [
+    oppsWinLose,
+    activeProposals,
+    ongoingProjectsCount,
+    confirmedFeeAgg,
+    pipeline,
+    workload,
+    ongoingProjects,
+  ] = await Promise.all([
+    prisma.opportunity.findMany({
+      where: { status: { in: ['Win', 'Lose', 'Withdraw', 'Cancelled'] } },
+      select: { status: true },
+    }),
+    prisma.opportunity.count({
+      where: { status: { in: ['Waiting for Result', 'In progress', 'Backlog'] } },
+    }),
+    prisma.project.count({
+      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+    }),
+    prisma.project.aggregate({
+      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+      _sum: { confirmedFee: true },
+    }),
+    prisma.opportunity.findMany({
+      where: { status: { in: ['Waiting for Result', 'In progress', 'Backlog'] } },
+      select: {
+        id: true, proposalName: true, status: true, phase: true, expectedDate: true,
+        client: { select: { initial: true, fullName: true } },
+        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+      },
+      orderBy: [{ expectedDate: 'asc' }],
+    }),
+    getWorkload(),
+    prisma.project.findMany({
+      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+      select: {
+        id: true, proposalName: true, status: true, endDate: true,
+        client: { select: { initial: true, fullName: true } },
+        termins: { select: { status: true } },
+      },
+      orderBy: { endDate: 'asc' },
+    }),
+  ])
+
+  const wins  = oppsWinLose.filter((o) => o.status === 'Win').length
+  const total = oppsWinLose.length
+  const winRate     = total > 0 ? Math.round((wins / total) * 100) : 0
+  const confirmedFee = Number(confirmedFeeAgg._sum.confirmedFee ?? 0)
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Win Rate" value={`${stats.win_rate}%`} icon={Award}
-          sub={`${stats.win_count}W / ${stats.lose_count}L`} />
-        <StatCard label="Pipeline Value" value={formatRupiah(stats.pipeline_value)} icon={TrendingUp}
-          sub={`${stats.total_opportunities} opportunities`} />
-        <StatCard label="Active Projects" value={String(stats.active_projects)} icon={FolderKanban} />
-        <StatCard label="Revenue Collected" value={formatRupiah(stats.total_revenue)} icon={DollarSign}
-          sub={`${formatRupiah(stats.pending_revenue)} pending`} />
+      <SummaryCards
+        activeProposals={activeProposals}
+        ongoingProjects={ongoingProjectsCount}
+        winRate={winRate}
+        confirmedFee={confirmedFee}
+      />
+
+      <div className="grid grid-cols-5 gap-6">
+        <div className="col-span-3">
+          <ProposalPipeline opps={serialize(pipeline) as any} />
+        </div>
+        <div className="col-span-2">
+          <TeamWorkload workload={workload} />
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-medium text-gray-600 mb-4">Opportunity Pipeline</h2>
-        <WinRateChart stats={stats} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ProjectStatusChart stats={stats} />
-        <RevenueBreakdown stats={stats} />
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-medium text-gray-600 mb-4">Team Workload</h2>
-        <WorkloadTable workload={workload} />
-      </div>
+      <OngoingProjects projects={serialize(ongoingProjects) as any} />
     </div>
   )
 }
