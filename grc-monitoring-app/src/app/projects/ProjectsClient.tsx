@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 
@@ -132,6 +132,25 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
   const [selected, setSelected]     = useState<Set<number>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
+  const [filters, setFilters] = useState({
+    search: '',
+    statuses: new Set<string>(),
+    teamMember: '',
+  })
+
+  function toggleStatusFilter(s: string) {
+    setFilters((f) => {
+      const next = new Set(f.statuses)
+      next.has(s) ? next.delete(s) : next.add(s)
+      return { ...f, statuses: next }
+    })
+  }
+
+  const activeFilterCount =
+    (filters.search ? 1 : 0) +
+    filters.statuses.size +
+    (filters.teamMember ? 1 : 0)
+
   function set(field: string, value: string) {
     setForm((f) => {
       const next = { ...f, [field]: value }
@@ -210,7 +229,21 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
   }
 
   const sortedProjects = useMemo(() => {
-    return [...projects].sort((a, b) => {
+    let result = projects
+
+    if (filters.search)
+      result = result.filter((p) =>
+        p.proposalName.toLowerCase().includes(filters.search.toLowerCase()))
+
+    if (filters.statuses.size > 0)
+      result = result.filter((p) => filters.statuses.has(p.status))
+
+    if (filters.teamMember)
+      result = result.filter((p) =>
+        [p.micInitial, p.tm1Initial, p.tm2Initial, p.tm3Initial,
+         p.tm4Initial, p.tm5Initial, p.tm6Initial].includes(filters.teamMember))
+
+    return [...result].sort((a, b) => {
       let av: string | number = ''
       let bv: string | number = ''
       if (sortField === 'proposalName')  { av = a.proposalName; bv = b.proposalName }
@@ -222,7 +255,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [projects, sortField, sortDir])
+  }, [projects, sortField, sortDir, filters])
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
@@ -300,6 +333,66 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
           </span>
         ))}
       </div>
+
+      {/* Filter bar */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              className="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]"
+              placeholder="Search engagement name..."
+              value={filters.search}
+              onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+            />
+          </div>
+          {/* Team Member */}
+          <select
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE] min-w-[150px]"
+            value={filters.teamMember}
+            onChange={(e) => setFilters((f) => ({ ...f, teamMember: e.target.value }))}
+          >
+            <option value="">All Team Members</option>
+            {teamMembers.map((m) => <option key={m.initial} value={m.initial}>{m.initial} – {m.fullName}</option>)}
+          </select>
+          {/* Clear filters */}
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => setFilters({ search: '', statuses: new Set(), teamMember: '' })}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg hover:border-red-200 hover:bg-red-50 transition-colors"
+            >
+              <X size={12} /> Clear ({activeFilterCount})
+            </button>
+          )}
+        </div>
+        {/* Status chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {PROJ_STATUSES.map((s) => {
+            const active = filters.statuses.has(s)
+            return (
+              <button
+                key={s}
+                onClick={() => toggleStatusFilter(s)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  active
+                    ? `${PROJ_STATUS_COLORS[s] ?? 'bg-gray-200 text-gray-700'} border-transparent`
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {s}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Result count */}
+      {activeFilterCount > 0 && (
+        <p className="text-xs text-gray-400 px-1">
+          Showing {sortedProjects.length} of {projects.length} projects
+        </p>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
