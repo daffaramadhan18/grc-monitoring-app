@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search, Filter, Pencil, Loader2, Check } from 'lucide-react'
 import MobileOppCard from './MobileOppCard'
@@ -157,6 +158,7 @@ const PROBABILITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 export default function OpportunitiesClient({
   opportunities: initial, serviceTypes, teamMembers,
 }: Props) {
+  const router = useRouter()
   const { data: opps = initial, mutate: revalidate } = useSWR<Opp[]>('/api/opportunities', fetcher, { fallbackData: initial })
   const [modalOpen, setModal]     = useState(false)
   const [editing, setEditing]     = useState<Opp | null>(null)
@@ -1051,7 +1053,7 @@ export default function OpportunitiesClient({
         ) : (
           <div className="rsm-mlist">
             {sortedOpps.map(opp => (
-              <MobileOppCard key={opp.id} opp={opp as any} onTap={() => openEdit(opp)} onDelete={(o) => setDeleteTarget(o as unknown as Opp)} />
+              <MobileOppCard key={opp.id} opp={opp as any} onTap={(o) => router.push(`/opportunities/${o.id}`)} onDelete={(o) => setDeleteTarget(o as unknown as Opp)} />
             ))}
           </div>
         )}
@@ -1082,7 +1084,7 @@ export default function OpportunitiesClient({
         {/* FAB */}
         <button
           className="rsm-fab md:hidden"
-          onClick={() => { haptic(); openNew() }}
+          onClick={() => { haptic(); router.push('/opportunities/new') }}
           aria-label="Add Opportunity"
         >
           <Plus size={26} />

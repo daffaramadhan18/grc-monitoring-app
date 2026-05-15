@@ -212,7 +212,7 @@ export default function EditOpportunityModal({
 
                 <Field label="Proposal Name" required>
                   <input className={inputCls} value={form.proposalName}
-                    onChange={(e) => set('proposalName', e.target.value)} required autoFocus />
+                    onChange={(e) => set('proposalName', e.target.value)} required />
                 </Field>
 
                 <div className="grid grid-cols-3 gap-4">

@@ -1,0 +1,417 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft } from 'lucide-react'
+import CurrencyInput from '@/components/ui/CurrencyInput'
+import { OPP_STATUSES, toInputDate } from '@/lib/utils'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface OppFull {
+  id: number
+  proposalName: string
+  clientName: string | null
+  clientInitial: string | null
+  serviceTypeId: number | null
+  serviceType: { id: number; name: string } | null
+  subServiceId: number | null
+  subService: { id: number; name: string; serviceTypeId: number } | null
+  phase: string | null
+  status: string
+  probability: number | null
+  riskLevel: string | null
+  harga: number | null
+  revenueCf: number | null
+  rrPercentage: number | null
+  expectedDate: string | null
+  submittedDate: string | null
+  notes: string | null
+  micInitial: string | null
+  tm1Initial: string | null
+  tm2Initial: string | null
+  tm3Initial: string | null
+  tm4Initial: string | null
+  tm5Initial: string | null
+  tm6Initial: string | null
+}
+
+interface ServiceType {
+  id: number
+  name: string
+  subServices: { id: number; name: string; serviceTypeId: number }[]
+}
+
+interface TeamMember { id: number; initial: string; fullName: string; level: string }
+
+interface Props {
+  opp: OppFull
+  serviceTypes: ServiceType[]
+  teamMembers: TeamMember[]
+}
+
+// ─── Sub-service map ──────────────────────────────────────────────────────────
+
+const SUB_SERVICES: Record<string, string[]> = {
+  'IT GRC': [
+    'IT Audit & Compliance', 'LPS-SCV', 'Managed Service',
+    'IT Maturity', 'OT Audit', 'MRTI', 'IT Governance', 'ISO',
+  ],
+  'Cybersecurity': [
+    'VAPT', 'Red Teaming', 'Cyber Maturity Assessment', 'Managed Service',
+  ],
+  'Privacy': [],
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE] min-h-[44px] bg-white'
+const selectCls = inputCls
+
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function OpportunityEditPage({ opp, serviceTypes, teamMembers }: Props) {
+  const router = useRouter()
+
+  const [form, setForm] = useState({
+    proposalName:  opp.proposalName,
+    clientName:    opp.clientName    ?? '',
+    clientInitial: opp.clientInitial ?? '',
+    serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
+    subServiceId:  opp.subService?.name ?? '',
+    phase:         opp.phase          ?? '',
+    status:        opp.status,
+    probability:   opp.probability   != null ? String(opp.probability)   : '',
+    riskLevel:     opp.riskLevel     ?? '',
+    harga:         opp.harga         != null ? String(opp.harga)         : '',
+    revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)     : '',
+    rrPercentage:  opp.rrPercentage  != null ? String(opp.rrPercentage)  : '',
+    expectedDate:  toInputDate(opp.expectedDate),
+    submittedDate: toInputDate(opp.submittedDate),
+    notes:         opp.notes         ?? '',
+    micInitial:    opp.micInitial    ?? '',
+    tm1Initial:    opp.tm1Initial    ?? '',
+    tm2Initial:    opp.tm2Initial    ?? '',
+    tm3Initial:    opp.tm3Initial    ?? '',
+    tm4Initial:    opp.tm4Initial    ?? '',
+    tm5Initial:    opp.tm5Initial    ?? '',
+    tm6Initial:    opp.tm6Initial    ?? '',
+  })
+
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast]   = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  function set(field: string, value: string) {
+    setForm((f) => {
+      const next = { ...f, [field]: value }
+      if (field === 'serviceTypeId') next.subServiceId = ''
+      return next
+    })
+  }
+
+  const selectedTypeName = serviceTypes.find((s) => String(s.id) === form.serviceTypeId)?.name ?? ''
+  const availableSubs    = SUB_SERVICES[selectedTypeName] ?? []
+  const tmOptions        = [{ initial: '', fullName: '—' }, ...teamMembers]
+
+  async function handleUpdate() {
+    if (!form.proposalName) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/opportunities/${opp.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? res.statusText)
+      }
+      router.back()
+    } catch (err: any) {
+      setToast('Error: ' + err.message)
+      setTimeout(() => setToast(null), 4000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/opportunities/${opp.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? res.statusText)
+      }
+      router.push('/opportunities')
+    } catch (err: any) {
+      setToast('Error: ' + err.message)
+      setTimeout(() => setToast(null), 4000)
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Sticky Header */}
+      <div
+        className="sticky top-0 z-10 bg-white border-b border-gray-200 flex items-center px-4 py-3 gap-3"
+        style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+      >
+        <button
+          onClick={() => router.back()}
+          className="p-2 -ml-2 text-gray-500 hover:text-gray-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
+        >
+          <ChevronLeft size={22} />
+        </button>
+        <h1 className="flex-1 text-center text-base font-semibold text-gray-800">Edit Opportunity</h1>
+        <button
+          onClick={handleUpdate}
+          disabled={saving}
+          className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition-colors min-h-[44px]"
+          style={{ backgroundColor: '#009CDE' }}
+        >
+          {saving ? 'Saving...' : 'Update'}
+        </button>
+      </div>
+
+      {/* Form */}
+      <div className="flex flex-col gap-4 p-4 pb-32">
+
+        <Field label="Proposal Name" required>
+          <input
+            className={inputCls}
+            value={form.proposalName}
+            onChange={(e) => set('proposalName', e.target.value)}
+          />
+        </Field>
+
+        <Field label="Client Name" required>
+          <input
+            className={inputCls}
+            value={form.clientName}
+            onChange={(e) => set('clientName', e.target.value)}
+            placeholder="Nama lengkap client"
+          />
+        </Field>
+
+        <Field label="Client Initial">
+          <input
+            className={inputCls}
+            value={form.clientInitial}
+            onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
+            placeholder="e.g. BRI"
+            maxLength={6}
+          />
+        </Field>
+
+        <Field label="Service Type">
+          <select
+            className={selectCls}
+            value={form.serviceTypeId}
+            onChange={(e) => set('serviceTypeId', e.target.value)}
+          >
+            <option value="">— (opsional)</option>
+            {serviceTypes.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Sub-service">
+          <select
+            className={selectCls}
+            value={form.subServiceId}
+            onChange={(e) => set('subServiceId', e.target.value)}
+            disabled={!form.serviceTypeId || availableSubs.length === 0}
+          >
+            <option value="">
+              {!form.serviceTypeId
+                ? '— (pilih service type dulu)'
+                : availableSubs.length === 0
+                  ? 'Tidak ada sub-service'
+                  : '— (opsional)'}
+            </option>
+            {availableSubs.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </Field>
+
+        <Field label="Phase">
+          <select
+            className={selectCls}
+            value={form.phase}
+            onChange={(e) => set('phase', e.target.value)}
+          >
+            <option value="">— (opsional)</option>
+            {['RFP', 'RFI', 'Diskusi Awal', 'Transferred'].map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Status" required>
+          <select
+            className={selectCls}
+            value={form.status}
+            onChange={(e) => set('status', e.target.value)}
+          >
+            {OPP_STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </Field>
+
+        <Field label="Probability (%)">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            className={inputCls}
+            value={form.probability}
+            onChange={(e) => set('probability', e.target.value)}
+            placeholder="e.g. 75"
+          />
+        </Field>
+
+        <Field label="Risk Level">
+          <select
+            className={selectCls}
+            value={form.riskLevel}
+            onChange={(e) => set('riskLevel', e.target.value)}
+          >
+            <option value="">— (opsional)</option>
+            {['Low', 'Medium', 'High'].map((r) => <option key={r}>{r}</option>)}
+          </select>
+        </Field>
+
+        <Field label="Harga (Rp)">
+          <CurrencyInput value={form.harga} onChange={(v) => set('harga', v)} />
+        </Field>
+
+        <Field label="Revenue CF (Rp)">
+          <CurrencyInput value={form.revenueCf} onChange={(v) => set('revenueCf', v)} />
+        </Field>
+
+        <Field label="%RR">
+          <input
+            type="number"
+            step="0.01"
+            className={inputCls}
+            value={form.rrPercentage}
+            onChange={(e) => set('rrPercentage', e.target.value)}
+            placeholder="0"
+          />
+        </Field>
+
+        <Field label="Submitted Date">
+          <input
+            type="date"
+            className={inputCls}
+            value={form.submittedDate}
+            onChange={(e) => set('submittedDate', e.target.value)}
+          />
+        </Field>
+
+        <Field label="Expected Date">
+          <input
+            type="date"
+            className={inputCls}
+            value={form.expectedDate}
+            onChange={(e) => set('expectedDate', e.target.value)}
+          />
+        </Field>
+
+        <Field label="MIC">
+          <select
+            className={selectCls}
+            value={form.micInitial}
+            onChange={(e) => set('micInitial', e.target.value)}
+          >
+            {tmOptions.map((m) => (
+              <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
+            ))}
+          </select>
+        </Field>
+
+        {(['tm1Initial', 'tm2Initial', 'tm3Initial', 'tm4Initial', 'tm5Initial', 'tm6Initial'] as const).map((k, i) => (
+          <Field key={k} label={`TM${i + 1}`}>
+            <select
+              className={selectCls}
+              value={form[k]}
+              onChange={(e) => set(k, e.target.value)}
+            >
+              {tmOptions.map((m) => (
+                <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
+              ))}
+            </select>
+          </Field>
+        ))}
+
+        <Field label="Notes">
+          <textarea
+            className={inputCls}
+            rows={3}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder="(opsional)"
+            style={{ minHeight: 80 }}
+          />
+        </Field>
+
+        {/* Delete section */}
+        {!showDeleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full py-3 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors mt-2"
+          >
+            Hapus Opportunity
+          </button>
+        ) : (
+          <div className="border border-red-200 rounded-xl p-4 space-y-3 bg-red-50">
+            <p className="text-sm font-medium text-red-700">Yakin hapus opportunity ini?</p>
+            <p className="text-xs text-red-500">{opp.proposalName}</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-60 transition-colors"
+              >
+                {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-4 right-4 z-50 flex items-center gap-3 px-4 py-3 bg-red-600 text-white text-sm rounded-xl shadow-xl">
+          <span className="flex-1">{toast}</span>
+          <button onClick={() => setToast(null)} className="text-white/70 hover:text-white shrink-0">✕</button>
+        </div>
+      )}
+    </div>
+  )
+}

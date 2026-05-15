@@ -278,15 +278,17 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
               </select>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Start Date">
-              <input type="date" className={inputCls} value={form.startedDate}
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">Start Date</label>
+              <input type="date" className={`${inputCls} min-h-[44px]`} value={form.startedDate}
                 onChange={(e) => setField('startedDate', e.target.value)} />
-            </Field>
-            <Field label="End Date">
-              <input type="date" className={inputCls} value={form.endDate}
+            </div>
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">End Date</label>
+              <input type="date" className={`${inputCls} min-h-[44px]`} value={form.endDate}
                 onChange={(e) => setField('endDate', e.target.value)} />
-            </Field>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="SPK">
