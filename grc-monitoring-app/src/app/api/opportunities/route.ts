@@ -8,27 +8,9 @@ async function resolveSubService(name: string | undefined | null, serviceTypeId:
   return ss?.id ?? null
 }
 
-async function findOrCreateClient(fullName: string) {
-  const existing = await prisma.client.findFirst({
-    where: { fullName: { equals: fullName, mode: 'insensitive' } },
-  })
-  if (existing) return existing.id
-  // Auto-generate initial from words (e.g. "Bank BRI" → "BBRI", capped at 4)
-  const initial = fullName
-    .split(/\s+/)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
-  // Ensure initial is unique
-  const taken = await prisma.client.findUnique({ where: { initial } })
-  const finalInitial = taken ? initial + '2' : initial
-  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
-  return created.id
-}
-
 export async function GET() {
   const data = await prisma.opportunity.findMany({
-    include: { client: true, serviceType: true, subService: true },
+    include: { serviceType: true, subService: true },
     orderBy: { createdAt: 'desc' },
   })
   return NextResponse.json(serialize(data))
@@ -38,15 +20,14 @@ export async function POST(req: NextRequest) {
   const b = await req.json()
   const serviceTypeId = b.serviceTypeId ? Number(b.serviceTypeId) : null
   const subServiceId  = serviceTypeId ? await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId) : null
-  const clientId      = await findOrCreateClient(b.clientName)
 
   const data = await prisma.opportunity.create({
     data: {
       proposalName:  b.proposalName,
-      clientId,
+      clientName:    b.clientName    || null,
+      clientInitial: b.clientInitial || null,
       serviceTypeId,
       subServiceId,
-      clientInitial: b.clientInitial  || null,
       phase:         b.phase         || null,
       status:        b.status        || 'In progress',
       probability:   b.probability   != null && b.probability !== '' ? Number(b.probability) : null,
@@ -65,7 +46,7 @@ export async function POST(req: NextRequest) {
       tm5Initial:    b.tm5Initial    || null,
       tm6Initial:    b.tm6Initial    || null,
     },
-    include: { client: true, serviceType: true, subService: true },
+    include: { serviceType: true, subService: true },
   })
   return NextResponse.json(serialize(data), { status: 201 })
 }

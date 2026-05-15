@@ -60,7 +60,7 @@ export default async function DashboardPage({
       select: {
         id: true, proposalName: true, status: true, phase: true,
         expectedDate: true, harga: true,
-        client: { select: { initial: true, fullName: true } },
+        clientName: true, clientInitial: true,
         micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
         tm4Initial: true, tm5Initial: true, tm6Initial: true,
       },
@@ -71,7 +71,7 @@ export default async function DashboardPage({
       where: { status: { in: ['Fieldwork', 'Reporting'] }, ...projDateFilter },
       select: {
         id: true, proposalName: true, status: true, endDate: true, confirmedFee: true,
-        client: { select: { initial: true, fullName: true } },
+        clientName: true, clientInitial: true,
         termins: { select: { status: true } },
       },
       orderBy: { endDate: 'asc' },

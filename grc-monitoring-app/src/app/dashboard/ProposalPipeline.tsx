@@ -10,7 +10,8 @@ interface PipelineOpp {
   status: string
   phase: string | null
   expectedDate: string | null
-  client: { initial: string; fullName: string }
+  clientName: string | null
+  clientInitial: string | null
   micInitial: string | null
   tm1Initial: string | null
   tm2Initial: string | null
@@ -100,10 +101,10 @@ export default function ProposalPipeline({ opps }: Props) {
                         {/* Client badge */}
                         <span
                           className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-xs shrink-0"
-                          style={{ backgroundColor: avatarColor(opp.client.initial) }}
-                          title={opp.client.fullName}
+                          style={{ backgroundColor: avatarColor(opp.clientInitial ?? opp.clientName ?? '?') }}
+                          title={opp.clientName ?? ''}
                         >
-                          {opp.client.initial.slice(0, 2)}
+                          {(opp.clientInitial ?? opp.clientName ?? '?').slice(0, 2)}
                         </span>
 
                         {/* Name + phase */}

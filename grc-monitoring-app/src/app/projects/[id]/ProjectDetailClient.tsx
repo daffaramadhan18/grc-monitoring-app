@@ -8,11 +8,12 @@ import { formatRupiah, toInputDate, PROJ_STATUSES, PROJ_STATUS_COLORS, TERMIN_ST
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Client     { id: number; initial: string; fullName: string }
 interface TeamMember { id: number; initial: string; fullName: string; level: string }
 interface TerminRow  { terminNumber: number; percentage: string; fee: string; status: string }
 interface Project {
-  id: number; proposalName: string; clientId: number; client: Client
+  id: number; proposalName: string
+  clientName: string | null
+  clientInitial: string | null
   projectOwner: string | null; status: string
   micInitial: string | null
   tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
@@ -23,7 +24,7 @@ interface Project {
   termins: { id: number; terminNumber: number; percentage: number | null; fee: number | null; status: string | null }[]
 }
 
-interface Props { project: Project; clients: Client[]; teamMembers: TeamMember[] }
+interface Props { project: Project; teamMembers: TeamMember[] }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,13 +107,14 @@ function FileUploadOrDownload({ path, onUploaded, onClear }: { path: string; onU
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export default function ProjectDetailClient({ project, clients, teamMembers }: Props) {
+export default function ProjectDetailClient({ project, teamMembers }: Props) {
   const router = useRouter()
 
   // Project form state
   const [form, setForm] = useState({
     proposalName:  project.proposalName,
-    clientId:      String(project.clientId),
+    clientName:    project.clientName    ?? '',
+    clientInitial: project.clientInitial ?? '',
     projectOwner:  project.projectOwner  ?? '',
     status:        project.status,
     micInitial:    project.micInitial    ?? '',
@@ -229,7 +231,7 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold text-gray-800 truncate">{project.proposalName}</h1>
-          <p className="text-xs text-gray-400 mt-0.5">{project.client.initial} — {project.client.fullName}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{project.clientInitial ?? ''}{project.clientInitial && project.clientName ? ' — ' : ''}{project.clientName ?? ''}</p>
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${PROJ_STATUS_COLORS[form.status] ?? 'bg-gray-100 text-gray-600'}`}>
           {form.status}
@@ -251,10 +253,15 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
               <input className={inputCls} value={form.proposalName}
                 onChange={(e) => setField('proposalName', e.target.value)} />
             </Field>
-            <Field label="Client">
-              <select className={selectCls} value={form.clientId} onChange={(e) => setField('clientId', e.target.value)}>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.initial} — {c.fullName}</option>)}
-              </select>
+            <Field label="Client Initial">
+              <input className={inputCls} value={form.clientInitial}
+                onChange={(e) => setField('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
+                placeholder="e.g. BRI" maxLength={6} />
+            </Field>
+            <Field label="Client Name">
+              <input className={inputCls} value={form.clientName}
+                onChange={(e) => setField('clientName', e.target.value)}
+                placeholder="Nama lengkap client" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">

@@ -7,12 +7,11 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const id = Number(params.id)
   if (isNaN(id)) notFound()
 
-  const [project, clients, teamMembers] = await Promise.all([
+  const [project, teamMembers] = await Promise.all([
     prisma.project.findUnique({
       where: { id },
-      include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
+      include: { termins: { orderBy: { terminNumber: 'asc' } } },
     }),
-    prisma.client.findMany({ orderBy: { fullName: 'asc' } }),
     prisma.teamMember.findMany({ orderBy: { fullName: 'asc' } }),
   ])
 
@@ -21,7 +20,6 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   return (
     <ProjectDetailClient
       project={serialize(project)}
-      clients={serialize(clients)}
       teamMembers={serialize(teamMembers)}
     />
   )

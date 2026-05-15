@@ -8,26 +8,10 @@ async function resolveSubService(name: string | undefined | null, serviceTypeId:
   return ss?.id ?? null
 }
 
-async function findOrCreateClient(fullName: string) {
-  const existing = await prisma.client.findFirst({
-    where: { fullName: { equals: fullName, mode: 'insensitive' } },
-  })
-  if (existing) return existing.id
-  const initial = fullName
-    .split(/\s+/)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
-  const taken = await prisma.client.findUnique({ where: { initial } })
-  const finalInitial = taken ? initial + '2' : initial
-  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
-  return created.id
-}
-
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const data = await prisma.opportunity.findUnique({
     where: { id: Number(params.id) },
-    include: { client: true, serviceType: true, subService: true },
+    include: { serviceType: true, subService: true },
   })
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(serialize(data))
@@ -38,23 +22,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const id = Number(params.id)
     const b  = await req.json()
     const serviceTypeId = b.serviceTypeId ? Number(b.serviceTypeId) : null
-
-    // When serviceType changes, the old subService belongs to the previous type.
-    // Resolve against the new serviceTypeId; returns null if not found (safe fallback).
     const subServiceId = serviceTypeId
       ? await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
       : null
-
-    const clientId = await findOrCreateClient(b.clientName)
 
     const updated = await prisma.opportunity.update({
       where: { id },
       data: {
         proposalName:  b.proposalName,
-        clientId,
+        clientName:    b.clientName    || null,
+        clientInitial: b.clientInitial || null,
         serviceTypeId,
         subServiceId,
-        clientInitial: b.clientInitial  || null,
         phase:         b.phase         || null,
         status:        b.status,
         probability:   b.probability   != null && b.probability !== '' ? Number(b.probability) : null,
@@ -73,7 +52,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         tm5Initial:    b.tm5Initial    || null,
         tm6Initial:    b.tm6Initial    || null,
       },
-      include: { client: true, serviceType: true, subService: true },
+      include: { serviceType: true, subService: true },
     })
 
     // Auto-create project when status becomes Win
@@ -84,7 +63,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           data: {
             opportunityId: id,
             proposalName:  updated.proposalName,
-            clientId:      updated.clientId,
+            clientName:    updated.clientName,
+            clientInitial: updated.clientInitial,
             micInitial:    updated.micInitial,
             tm1Initial:    updated.tm1Initial,
             tm2Initial:    updated.tm2Initial,

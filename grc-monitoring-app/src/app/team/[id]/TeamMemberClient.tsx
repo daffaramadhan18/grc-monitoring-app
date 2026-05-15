@@ -12,7 +12,7 @@ interface Proposal {
   id: number; proposalName: string; status: string; expectedDate: string | null
   micInitial: string | null; tm1Initial: string | null; tm2Initial: string | null
   tm3Initial: string | null; tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
-  client?: { fullName: string } | null
+  clientName?: string | null
   serviceType?: { name: string } | null
 }
 
@@ -23,7 +23,7 @@ interface Project {
   startedDate: string | null; endDate: string | null; confirmedFee: number | null
   micInitial: string | null; tm1Initial: string | null; tm2Initial: string | null
   tm3Initial: string | null; tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
-  client?: { fullName: string } | null
+  clientName?: string | null
   termins?: Termin[]
 }
 

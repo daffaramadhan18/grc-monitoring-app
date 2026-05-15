@@ -2,32 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
 
-async function findOrCreateClient(fullName: string, clientInitial: string | null): Promise<number> {
-  // 1. Lookup by initial first
-  if (clientInitial) {
-    const byInitial = await prisma.client.findUnique({ where: { initial: clientInitial } })
-    if (byInitial) return byInitial.id
-  }
-
-  // 2. Lookup by name
-  const byName = await prisma.client.findFirst({
-    where: { fullName: { equals: fullName, mode: 'insensitive' } },
-  })
-  if (byName) return byName.id
-
-  // 3. Create new — use provided initial or derive from name
-  const derived = fullName
-    .split(/\s+/)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
-  const initial = clientInitial || derived
-  const taken = await prisma.client.findUnique({ where: { initial } })
-  const finalInitial = taken ? derived + '2' : initial
-  const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
-  return created.id
-}
-
 function parseDateDMY(val: unknown): Date | null {
   if (!val) return null
   const str = String(val).trim()
@@ -74,44 +48,43 @@ export async function POST(req: NextRequest) {
     const engagementName = String(row[0] ?? '').trim()
     if (!engagementName) continue
 
-    const clientName   = String(row[1] ?? '').trim()
-    if (!clientName) {
-      skipped.push({ row: rowNum, reason: 'Client Name is blank' })
-      continue
-    }
+    // Column order: 0: Engagement Name, 1: Client Name, 2: Client Initial, 3: Project Owner,
+    // 4: Status, 5: Start Date, 6: End Date, 7: Confirmed Fee, 8: SPK, 9: PKS,
+    // 10: MIC, 11-16: TM1-TM6, 17-28: Termins (%, fee, status) x4
+    const clientName    = String(row[1] ?? '').trim() || null
+    const clientInitial = String(row[2] ?? '').trim() || null
+    const projectOwner  = String(row[3] ?? '').trim() || null
+    const status        = String(row[4] ?? '').trim() || 'Planning'
+    const startDate     = parseDateDMY(row[5])
+    const endDate       = parseDateDMY(row[6])
+    const confirmedFee  = parseNumber(row[7])
+    const spk           = String(row[8] ?? '').trim() || null
+    const pks           = String(row[9] ?? '').trim() || null
+    const micInitial    = String(row[10] ?? '').trim() || null
+    const tm1Initial    = String(row[11] ?? '').trim() || null
+    const tm2Initial    = String(row[12] ?? '').trim() || null
+    const tm3Initial    = String(row[13] ?? '').trim() || null
+    const tm4Initial    = String(row[14] ?? '').trim() || null
+    const tm5Initial    = String(row[15] ?? '').trim() || null
+    const tm6Initial    = String(row[16] ?? '').trim() || null
 
-    const projectOwner = String(row[2] ?? '').trim() || null
-    const status       = String(row[3] ?? '').trim() || 'Planning'
-    const startDate    = parseDateDMY(row[4])
-    const endDate      = parseDateDMY(row[5])
-    const confirmedFee = parseNumber(row[6])
-    const spk          = String(row[7] ?? '').trim() || null
-    const pks          = String(row[8] ?? '').trim() || null
-    const micInitial   = String(row[9] ?? '').trim() || null
-    const tm1Initial   = String(row[10] ?? '').trim() || null
-    const tm2Initial   = String(row[11] ?? '').trim() || null
-    const tm3Initial   = String(row[12] ?? '').trim() || null
-    const tm4Initial   = String(row[13] ?? '').trim() || null
-    const tm5Initial   = String(row[14] ?? '').trim() || null
-    const tm6Initial   = String(row[15] ?? '').trim() || null
-
-    // Termin data [%, fee, status] x4, cols 16-27
+    // Termin data [%, fee, status] x4, cols 17-28
     const terminData: Array<{ pct: number | null; fee: number | null; status: string | null }> = []
     for (let t = 0; t < 4; t++) {
-      const base = 16 + t * 3
-      const pct    = parseNumber(row[base])
-      const fee    = parseNumber(row[base + 1])
-      const tStatus = String(row[base + 2] ?? '').trim() || null
-      terminData.push({ pct, fee, status: tStatus })
+      const base = 17 + t * 3
+      terminData.push({
+        pct:    parseNumber(row[base]),
+        fee:    parseNumber(row[base + 1]),
+        status: String(row[base + 2] ?? '').trim() || null,
+      })
     }
 
     try {
-      const clientId = await findOrCreateClient(clientName, null)
-
       const project = await prisma.project.create({
         data: {
           proposalName: engagementName,
-          clientId,
+          clientName,
+          clientInitial,
           projectOwner,
           status,
           startedDate:   startDate,
@@ -129,7 +102,6 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // Create termins
       for (let t = 0; t < 4; t++) {
         const { pct, fee, status: tStatus } = terminData[t]
         if (pct == null && fee == null) continue

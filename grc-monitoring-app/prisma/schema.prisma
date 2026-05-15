@@ -22,14 +22,6 @@ model SubService {
   opportunities Opportunity[]
 }
 
-model Client {
-  id            Int           @id @default(autoincrement())
-  initial       String        @unique
-  fullName      String
-  opportunities Opportunity[]
-  projects      Project[]
-}
-
 model TeamMember {
   id       Int    @id @default(autoincrement())
   initial  String @unique
@@ -40,13 +32,12 @@ model TeamMember {
 model Opportunity {
   id            Int          @id @default(autoincrement())
   proposalName  String
-  clientId      Int
-  client        Client       @relation(fields: [clientId], references: [id])
+  clientName    String?
+  clientInitial String?
   serviceTypeId Int?
   serviceType   ServiceType?  @relation(fields: [serviceTypeId], references: [id])
   subServiceId  Int?
   subService    SubService?  @relation(fields: [subServiceId], references: [id])
-  clientInitial String?
   phase         String?
   status        String
   probability   Float?
@@ -74,8 +65,8 @@ model Project {
   opportunityId Int?         @unique
   opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
   proposalName  String
-  clientId      Int
-  client        Client       @relation(fields: [clientId], references: [id])
+  clientName    String?
+  clientInitial String?
   projectOwner  String?
   micInitial    String?
   tm1Initial    String?

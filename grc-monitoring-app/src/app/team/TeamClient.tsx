@@ -9,8 +9,8 @@ import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-
 interface Member { id: number; fullName: string; initial: string; level: string }
 interface Alloc  { projects: number; proposals: number }
 
-interface ProjectRow  { id: number; proposalName: string; status: string; endDate: string | null; client: { initial: string; fullName: string } }
-interface ProposalRow { id: number; proposalName: string; status: string; client: { initial: string; fullName: string } }
+interface ProjectRow  { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }
+interface ProposalRow { id: number; proposalName: string; status: string; clientInitial: string | null }
 
 interface Details {
   projects:  ProjectRow[]
@@ -456,7 +456,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     {detailData.projects.map((p) => (
                       <div key={p.id} className="bg-gray-50 rounded-lg px-3 py-2.5 space-y-1">
                         <div className="text-sm font-medium text-gray-900 leading-snug">{p.proposalName}</div>
-                        <div className="text-xs text-gray-500">{p.client.fullName}</div>
+                        <div className="text-xs text-gray-500">{p.clientName ?? ''}</div>
                         <div className="flex items-center gap-2 flex-wrap pt-0.5">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_CLS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
                             {p.status}
@@ -484,7 +484,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     {detailData.proposals.map((o) => (
                       <div key={o.id} className="bg-gray-50 rounded-lg px-3 py-2.5 space-y-1">
                         <div className="text-sm font-medium text-gray-900 leading-snug">{o.proposalName}</div>
-                        <div className="text-xs text-gray-500">{o.client.fullName}</div>
+                        <div className="text-xs text-gray-500">{''}</div>
                         <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                           {o.status}
                         </span>

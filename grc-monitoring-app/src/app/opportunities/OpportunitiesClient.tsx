@@ -9,12 +9,12 @@ import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Client      { id: number; initial: string; fullName: string }
 interface ServiceType { id: number; name: string }
 interface SubService  { id: number; name: string; serviceTypeId: number }
 interface TeamMember  { id: number; initial: string; fullName: string; level: string }
 interface Opp {
-  id: number; proposalName: string; clientId: number; client: Client
+  id: number; proposalName: string
+  clientName: string | null
   clientInitial: string | null
   serviceTypeId: number | null; serviceType: ServiceType | null
   subServiceId: number | null; subService: SubService | null
@@ -263,8 +263,8 @@ export default function OpportunitiesClient({
     setEditing(opp)
     setForm({
       proposalName:  opp.proposalName,
-      clientName:    opp.client.fullName,
-      clientInitial: opp.clientInitial  ?? '',
+      clientName:    opp.clientName    ?? '',
+      clientInitial: opp.clientInitial ?? '',
       serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
       subServiceId:  opp.subService?.name ?? '',
       phase:         opp.phase          ?? '',
@@ -379,7 +379,7 @@ export default function OpportunitiesClient({
     if (filters.search)
       result = result.filter((o) =>
         o.proposalName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        o.client.fullName.toLowerCase().includes(filters.search.toLowerCase()) ||
+        (o.clientName ?? '').toLowerCase().includes(filters.search.toLowerCase()) ||
         (o.clientInitial ?? '').toLowerCase().includes(filters.search.toLowerCase()))
 
     if (filters.statuses.size > 0)
@@ -397,7 +397,7 @@ export default function OpportunitiesClient({
       let av: string | number = ''
       let bv: string | number = ''
       if (sortField === 'proposalName') { av = a.proposalName; bv = b.proposalName }
-      else if (sortField === 'client')  { av = a.client.initial; bv = b.client.initial }
+      else if (sortField === 'client')  { av = a.clientInitial ?? ''; bv = b.clientInitial ?? '' }
       else if (sortField === 'status')  { av = a.status; bv = b.status }
       else if (sortField === 'harga')   { av = a.harga ?? 0; bv = b.harga ?? 0 }
       else if (sortField === 'expectedDate') { av = a.expectedDate ?? ''; bv = b.expectedDate ?? '' }
@@ -711,10 +711,10 @@ export default function OpportunitiesClient({
                       />
                     </td>
                     <td className="px-3 py-2.5 text-gray-600 font-mono text-xs truncate">
-                      {opp.clientInitial ?? opp.client.initial}
+                      {opp.clientInitial ?? '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-700 truncate" title={opp.client.fullName}>
-                      {opp.client.fullName}
+                    <td className="px-3 py-2.5 text-gray-700 truncate" title={opp.clientName ?? ''}>
+                      {opp.clientName ?? '—'}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600 truncate">{opp.serviceType?.name ?? '—'}</td>
                     <td className="px-3 py-2.5 text-gray-600 truncate">{opp.subService?.name ?? '—'}</td>

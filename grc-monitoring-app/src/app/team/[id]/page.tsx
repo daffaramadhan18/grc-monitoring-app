@@ -20,7 +20,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
         status: { in: ['Waiting for Result', 'Backlog', 'In progress'] },
         OR: orFilter,
       },
-      include: { client: true, serviceType: true },
+      include: { serviceType: true },
       orderBy: { expectedDate: 'asc' },
     }),
     prisma.project.findMany({
@@ -28,7 +28,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
         status: { in: ['Fieldwork', 'Reporting'] },
         OR: orFilter,
       },
-      include: { client: true, termins: true },
+      include: { termins: true },
       orderBy: { startedDate: 'asc' },
     }),
   ])

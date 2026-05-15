@@ -5,7 +5,7 @@ import OpportunitiesClient from './OpportunitiesClient'
 export default async function OpportunitiesPage() {
   const [opportunities, serviceTypes, teamMembers] = await Promise.all([
     prisma.opportunity.findMany({
-      include: { client: true, serviceType: true, subService: true },
+      include: { serviceType: true, subService: true },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.serviceType.findMany({ orderBy: { name: 'asc' } }),

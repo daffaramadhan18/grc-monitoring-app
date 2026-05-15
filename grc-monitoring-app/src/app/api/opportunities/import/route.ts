@@ -2,29 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
 
-async function findOrCreateClient(fullName: string, providedInitial: string | null): Promise<number> {
-  const existing = await prisma.client.findFirst({
-    where: { fullName: { equals: fullName, mode: 'insensitive' } },
-  })
-  if (existing) return existing.id
-
-  // Auto-generate initial from first letter of each word, capped at 4 chars
-  const generated = fullName
-    .split(/\s+/)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-    .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
-
-  let initial = providedInitial?.toUpperCase().slice(0, 4) || generated
-
-  // Ensure uniqueness
-  const taken = await prisma.client.findUnique({ where: { initial } })
-  if (taken) initial = initial + '2'
-
-  const created = await prisma.client.create({ data: { fullName, initial } })
-  return created.id
-}
-
 function parseDateDMY(val: unknown): Date | null {
   if (!val) return null
   const str = String(val).trim()
@@ -33,10 +10,8 @@ function parseDateDMY(val: unknown): Date | null {
     const [d, m, y] = parts.map(Number)
     if (!isNaN(d) && !isNaN(m) && !isNaN(y)) return new Date(y, m - 1, d)
   }
-  // fallback: try excel serial or ISO
   const n = Number(val)
   if (!isNaN(n) && n > 1000) {
-    // Excel date serial
     const date = XLSX.SSF.parse_date_code(n)
     if (date) return new Date(date.y, date.m - 1, date.d)
   }
@@ -62,39 +37,26 @@ export async function POST(req: NextRequest) {
   const ws = wb.Sheets[wb.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][]
 
-  // row 0 = header, skip
   const dataRows = rows.slice(1)
-
   let imported = 0
   const skipped: { row: number; reason: string }[] = []
 
-  // Pre-fetch service types for matching
   const serviceTypes = await prisma.serviceType.findMany({ include: { subServices: true } })
 
   for (let i = 0; i < dataRows.length; i++) {
     const row = dataRows[i]
-    const rowNum = i + 2 // 1-indexed, accounting for header
+    const rowNum = i + 2
 
-    // col 4 = Proposal Name (skip row silently if blank)
     const proposalName = String(row[4] ?? '').trim()
     if (!proposalName) continue
 
-    // col 1 = Client Name (required)
-    const clientName = String(row[1] ?? '').trim()
-    if (!clientName) {
-      skipped.push({ row: rowNum, reason: 'Client Name is blank' })
-      continue
-    }
-
-    // Column order matches template/export:
-    // 0: Client Initial, 1: Client Name, 2: Service Type, 3: Sub-service, 4: Proposal Name,
+    // Column order: 0: Client Initial, 1: Client Name, 2: Service Type, 3: Sub-service, 4: Proposal Name,
     // 5: Phase, 6: Submitted Date, 7: Status, 8: Probability (%), 9: Notes, 10: %RR,
     // 11: Harga, 12: Revenue CF, 13: MIC, 14-19: TM1-TM6, 20: Expected Date, 21: Risk Level
     const clientInitial   = String(row[0] ?? '').trim() || null
-    // row[1] is clientName (already parsed above)
+    const clientName      = String(row[1] ?? '').trim() || null
     const serviceTypeName = String(row[2] ?? '').trim()
     const subServiceName  = String(row[3] ?? '').trim()
-    // row[4] is proposalName (already parsed above)
     const phase           = String(row[5] ?? '').trim() || null
     const submittedDate   = parseDateDMY(row[6])
     const status          = String(row[7] ?? '').trim() || 'In progress'
@@ -113,12 +75,10 @@ export async function POST(req: NextRequest) {
     const expectedDate    = parseDateDMY(row[20])
     const riskLevel       = String(row[21] ?? '').trim() || null
 
-    // Resolve service type (optional)
     const stMatch = serviceTypeName
       ? serviceTypes.find((st) => st.name.toLowerCase() === serviceTypeName.toLowerCase())
       : undefined
 
-    // Resolve sub-service (optional)
     let subServiceId: number | null = null
     if (stMatch && subServiceName) {
       const ssMatch = stMatch.subServices.find(
@@ -128,11 +88,10 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const clientId = await findOrCreateClient(clientName, clientInitial)
       const opp = await prisma.opportunity.create({
         data: {
           proposalName,
-          clientId,
+          clientName,
           clientInitial,
           serviceTypeId: stMatch?.id ?? null,
           subServiceId,
@@ -156,7 +115,6 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // Auto-create project if status is Win
       if (status === 'Win') {
         const existing = await prisma.project.findFirst({ where: { opportunityId: opp.id } })
         if (!existing) {
@@ -164,7 +122,8 @@ export async function POST(req: NextRequest) {
             data: {
               opportunityId: opp.id,
               proposalName,
-              clientId,
+              clientName,
+              clientInitial,
               micInitial,
               tm1Initial,
               tm2Initial,

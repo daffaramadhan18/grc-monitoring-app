@@ -19,13 +19,13 @@ function fmtDateForFilename(date: Date): string {
 
 export async function GET() {
   const projects = await prisma.project.findMany({
-    include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
+    include: { termins: { orderBy: { terminNumber: 'asc' } } },
     orderBy: { createdAt: 'desc' },
   })
 
   const headers = [
-    'Engagement Name', 'Client Name', 'Project Owner', 'Status', 'Start Date', 'End Date',
-    'Confirmed Fee', 'SPK', 'PKS',
+    'Engagement Name', 'Client Name', 'Client Initial', 'Project Owner', 'Status',
+    'Start Date', 'End Date', 'Confirmed Fee', 'SPK', 'PKS',
     'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6',
     'Termin 1 %', 'Termin 1 Fee', 'Termin 1 Status',
     'Termin 2 %', 'Termin 2 Fee', 'Termin 2 Status',
@@ -46,8 +46,9 @@ export async function GET() {
 
     return [
       p.proposalName,
-      p.client.fullName,
-      p.projectOwner ?? '',
+      p.clientName    ?? '',
+      p.clientInitial ?? '',
+      p.projectOwner  ?? '',
       p.status,
       fmtDate(p.startedDate),
       fmtDate(p.endDate),

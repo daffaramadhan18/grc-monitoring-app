@@ -10,7 +10,7 @@ export default async function TeamPage() {
       where: { status: { in: ['Fieldwork', 'Reporting'] } },
       select: {
         id: true, proposalName: true, status: true, endDate: true,
-        client: { select: { initial: true, fullName: true } },
+        clientName: true, clientInitial: true,
         micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
         tm4Initial: true, tm5Initial: true, tm6Initial: true,
       },
@@ -19,7 +19,7 @@ export default async function TeamPage() {
       where: { status: 'In progress' },
       select: {
         id: true, proposalName: true, status: true,
-        client: { select: { initial: true, fullName: true } },
+        clientInitial: true,
         micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
         tm4Initial: true, tm5Initial: true, tm6Initial: true,
       },
@@ -58,8 +58,8 @@ export default async function TeamPage() {
 
   // Serialize dates
   const serializedDetails: Record<string, {
-    projects: { id: number; proposalName: string; status: string; endDate: string | null; client: { initial: string; fullName: string } }[]
-    proposals: { id: number; proposalName: string; status: string; client: { initial: string; fullName: string } }[]
+    projects: { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }[]
+    proposals: { id: number; proposalName: string; status: string; clientInitial: string | null }[]
   }> = {}
 
   for (const [ini, d] of Object.entries(details)) {
@@ -69,13 +69,14 @@ export default async function TeamPage() {
         proposalName: p.proposalName,
         status: p.status,
         endDate: p.endDate ? p.endDate.toISOString().slice(0, 10) : null,
-        client: p.client,
+        clientInitial: p.clientInitial ?? null,
+        clientName: p.clientName ?? null,
       })),
       proposals: d.proposals.map((o) => ({
         id: o.id,
         proposalName: o.proposalName,
         status: o.status,
-        client: o.client,
+        clientInitial: o.clientInitial ?? null,
       })),
     }
   }

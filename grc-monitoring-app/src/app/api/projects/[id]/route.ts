@@ -5,7 +5,7 @@ import { serialize } from '@/lib/serialize'
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const data = await prisma.project.findUnique({
     where: { id: Number(params.id) },
-    include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
+    include: { termins: { orderBy: { terminNumber: 'asc' } } },
   })
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(serialize(data))
@@ -17,7 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id: Number(params.id) },
     data: {
       proposalName:  b.proposalName,
-      clientId:      Number(b.clientId),
+      clientName:    b.clientName    || null,
+      clientInitial: b.clientInitial || null,
       projectOwner:  b.projectOwner  || null,
       micInitial:    b.micInitial    || null,
       tm1Initial:    b.tm1Initial    || null,
@@ -33,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       pks:           b.pks           || null,
       confirmedFee:  b.confirmedFee  ? BigInt(b.confirmedFee)  : null,
     },
-    include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
+    include: { termins: { orderBy: { terminNumber: 'asc' } } },
   })
   return NextResponse.json(serialize(data))
 }

@@ -7,14 +7,14 @@ import { ArrowLeft, Pencil } from "lucide-react"
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const opp = await prisma.opportunity.findUnique({
     where: { id: Number(params.id) },
-    include: { client: true, serviceType: true, subService: true },
+    include: { serviceType: true, subService: true },
   })
 
   if (!opp) notFound()
 
   const rows: [string, React.ReactNode][] = [
     ["Status", <span key="status" className={`px-2 py-0.5 rounded-full text-xs font-medium ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>{opp.status}</span>],
-    ["Client", `${opp.client.initial} — ${opp.client.fullName}`],
+    ["Client", `${opp.clientInitial ?? ''}${opp.clientInitial && opp.clientName ? ' — ' : ''}${opp.clientName ?? ''}`],
     ["Service Type", opp.serviceType?.name ?? "—"],
     ["Sub-Service", opp.subService?.name ?? "—"],
     ["Phase", opp.phase ?? "—"],

@@ -19,7 +19,7 @@ function fmtDateForFilename(date: Date): string {
 
 export async function GET() {
   const opps = await prisma.opportunity.findMany({
-    include: { client: true, serviceType: true, subService: true },
+    include: { serviceType: true, subService: true },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -32,8 +32,8 @@ export async function GET() {
   ]
 
   const dataRows = opps.map((o) => [
-    o.clientInitial ?? o.client.initial,
-    o.client.fullName,
+    o.clientInitial ?? '',
+    o.clientName    ?? '',
     o.serviceType?.name ?? '',
     o.subService?.name ?? '',
     o.proposalName,

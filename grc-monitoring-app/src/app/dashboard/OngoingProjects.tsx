@@ -9,7 +9,8 @@ interface OngoingProject {
   proposalName: string
   status: string
   endDate: string | null
-  client: { initial: string; fullName: string }
+  clientName: string | null
+  clientInitial: string | null
   termins: { status: string | null }[]
 }
 
@@ -71,8 +72,8 @@ export default function OngoingProjects({ projects }: Props) {
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="px-5 py-3">
-                      <span className="text-xs font-mono font-semibold text-gray-600 bg-slate-100 px-1.5 py-0.5 rounded" title={p.client.fullName}>
-                        {p.client.initial}
+                      <span className="text-xs font-mono font-semibold text-gray-600 bg-slate-100 px-1.5 py-0.5 rounded" title={p.clientName ?? ''}>
+                        {p.clientInitial ?? p.clientName ?? '—'}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900 max-w-[220px] truncate">{p.proposalName}</td>

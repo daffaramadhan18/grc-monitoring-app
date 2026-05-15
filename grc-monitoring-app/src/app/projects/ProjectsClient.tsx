@@ -7,11 +7,12 @@ import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 
-interface Client     { id: number; initial: string; fullName: string }
 interface TeamMember { id: number; initial: string; fullName: string; level: string }
 interface Termin     { id: number; terminNumber: number; fee: number | null; status: string | null }
 interface Project {
-  id: number; proposalName: string; clientId: number; client: Client
+  id: number; proposalName: string
+  clientName: string | null
+  clientInitial: string | null
   projectOwner: string | null; status: string
   micInitial: string | null
   tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
@@ -21,11 +22,12 @@ interface Project {
   termins: Termin[]
 }
 
-interface Props { projects: Project[]; clients: Client[]; teamMembers: TeamMember[] }
+interface Props { projects: Project[]; teamMembers: TeamMember[] }
 
 const emptyForm = () => ({
   engagementName: '',
   clientName:     '',
+  clientInitial:  '',
   projectOwner:   '',
   status:         'Planning',
   confirmedFee:   '',
@@ -112,7 +114,7 @@ function SortIcon({ field, current, dir }: { field: SortField; current: SortFiel
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export default function ProjectsClient({ projects: initial, clients, teamMembers }: Props) {
+export default function ProjectsClient({ projects: initial, teamMembers }: Props) {
   const router = useRouter()
   const [projects, setProjects]   = useState<Project[]>(initial)
   const [modalOpen, setModalOpen] = useState(false)
@@ -248,8 +250,8 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
     if (filters.search)
       result = result.filter((p) =>
         p.proposalName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        p.client.fullName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        (p.client.initial ?? '').toLowerCase().includes(filters.search.toLowerCase()))
+        (p.clientName ?? '').toLowerCase().includes(filters.search.toLowerCase()) ||
+        (p.clientInitial ?? '').toLowerCase().includes(filters.search.toLowerCase()))
 
     if (filters.statuses.size > 0)
       result = result.filter((p) => filters.statuses.has(p.status))
@@ -263,7 +265,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       let av: string | number = ''
       let bv: string | number = ''
       if (sortField === 'proposalName')  { av = a.proposalName; bv = b.proposalName }
-      else if (sortField === 'client')   { av = a.client.initial; bv = b.client.initial }
+      else if (sortField === 'client')   { av = a.clientInitial ?? ''; bv = b.clientInitial ?? '' }
       else if (sortField === 'status')   { av = a.status; bv = b.status }
       else if (sortField === 'confirmedFee') { av = a.confirmedFee ?? 0; bv = b.confirmedFee ?? 0 }
       else if (sortField === 'startedDate')  { av = a.startedDate ?? ''; bv = b.startedDate ?? '' }
@@ -481,7 +483,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                       />
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{proj.proposalName}</td>
-                    <td className="px-4 py-3 text-gray-600" title={proj.client.fullName}>{proj.client.initial}</td>
+                    <td className="px-4 py-3 text-gray-600" title={proj.clientName ?? ''}>{proj.clientInitial ?? proj.clientName ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{proj.projectOwner ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -583,11 +585,18 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                   onChange={(e) => set('engagementName', e.target.value)} required autoFocus />
               </Field>
 
-              <Field label="Client Name" required>
-                <input className={inputCls} value={form.clientName}
-                  onChange={(e) => set('clientName', e.target.value)}
-                  required placeholder="Nama client" />
-              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Client Initial">
+                  <input className={inputCls} value={form.clientInitial ?? ''}
+                    onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
+                    placeholder="e.g. BRI" maxLength={6} />
+                </Field>
+                <Field label="Client Name">
+                  <input className={inputCls} value={form.clientName ?? ''}
+                    onChange={(e) => set('clientName', e.target.value)}
+                    placeholder="Nama lengkap client" />
+                </Field>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Project Owner">
