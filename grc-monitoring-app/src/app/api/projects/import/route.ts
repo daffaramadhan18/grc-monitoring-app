@@ -2,18 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
 
-async function findOrCreateClient(fullName: string) {
-  const existing = await prisma.client.findFirst({
+async function findOrCreateClient(fullName: string, clientInitial: string | null): Promise<number> {
+  // 1. Lookup by initial first
+  if (clientInitial) {
+    const byInitial = await prisma.client.findUnique({ where: { initial: clientInitial } })
+    if (byInitial) return byInitial.id
+  }
+
+  // 2. Lookup by name
+  const byName = await prisma.client.findFirst({
     where: { fullName: { equals: fullName, mode: 'insensitive' } },
   })
-  if (existing) return existing.id
-  const initial = fullName
+  if (byName) return byName.id
+
+  // 3. Create new — use provided initial or derive from name
+  const derived = fullName
     .split(/\s+/)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
     .slice(0, 4) || fullName.slice(0, 4).toUpperCase()
+  const initial = clientInitial || derived
   const taken = await prisma.client.findUnique({ where: { initial } })
-  const finalInitial = taken ? initial + '2' : initial
+  const finalInitial = taken ? derived + '2' : initial
   const created = await prisma.client.create({ data: { fullName, initial: finalInitial } })
   return created.id
 }
@@ -96,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const clientId = await findOrCreateClient(clientName)
+      const clientId = await findOrCreateClient(clientName, null)
 
       const project = await prisma.project.create({
         data: {
