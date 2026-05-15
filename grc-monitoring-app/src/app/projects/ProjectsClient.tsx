@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -101,6 +101,58 @@ function FileUploadField({
     </div>
   )
 }
+
+// ─── Resizable columns ───────────────────────────────────────────────────────
+
+const MIN_COL_WIDTH = 80
+
+function useResizableColumns(count: number, defaultWidths: number[]) {
+  const [widths, setWidths] = useState<number[]>(defaultWidths)
+  const dragging = useRef<{ col: number; startX: number; startW: number } | null>(null)
+
+  const onMouseDown = useCallback((col: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = { col, startX: e.clientX, startW: widths[col] }
+  }, [widths])
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging.current) return
+      const { col, startX, startW } = dragging.current
+      const delta = e.clientX - startX
+      setWidths((prev) => {
+        const next = [...prev]
+        next[col] = Math.max(MIN_COL_WIDTH, startW + delta)
+        return next
+      })
+    }
+    function onMouseUp() { dragging.current = null }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  return { widths, onMouseDown }
+}
+
+// Column order: checkbox, Engagement Name, Client, Owner, Status, MIC, Team, Period, Confirmed Fee, Termins
+const DEFAULT_WIDTHS = [
+  40,  // checkbox
+  200, // Engagement Name
+  140, // Client
+  110, // Owner
+  120, // Status
+  80,  // MIC
+  160, // Team
+  180, // Period
+  140, // Confirmed Fee
+  100, // Termins
+]
+
+// ─── Sort ────────────────────────────────────────────────────────────────────
 
 type SortField = 'proposalName' | 'client' | 'status' | 'confirmedFee' | 'startedDate'
 type SortDir   = 'asc' | 'desc'
@@ -320,8 +372,20 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     }
   }
 
-  const thCls     = 'px-4 py-3 text-gray-500 font-medium select-none'
-  const thSortCls = `${thCls} cursor-pointer hover:text-gray-700`
+  const { widths, onMouseDown } = useResizableColumns(DEFAULT_WIDTHS.length, DEFAULT_WIDTHS)
+
+  function ResizeHandle({ col }: { col: number }) {
+    return (
+      <span
+        onMouseDown={(e) => onMouseDown(col, e)}
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#009CDE]/30 select-none z-10"
+        style={{ touchAction: 'none' }}
+      />
+    )
+  }
+
+  const thBase     = 'relative px-4 py-3 text-gray-500 font-medium text-left whitespace-nowrap overflow-hidden'
+  const thSortCls  = `${thBase} cursor-pointer hover:text-gray-700 select-none`
 
   return (
     <div className="rsm-page-in space-y-5">
@@ -430,35 +494,51 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
           </div>
         )}
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="w-full text-sm">
+          <table className="text-sm" style={{ tableLayout: 'fixed', width: `${widths.reduce((a, b) => a + b, 0)}px` }}>
+            <colgroup>
+              {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
+            </colgroup>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-4 py-3 w-10">
+                <th className={thBase} style={{ width: widths[0] }}>
                   <input type="checkbox"
                     checked={sortedProjects.length > 0 && selected.size === sortedProjects.length}
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
-                <th className={`text-left ${thSortCls} min-w-[180px]`} onClick={() => handleSort('proposalName')}>
+                <th className={thSortCls} style={{ width: widths[1] }} onClick={() => handleSort('proposalName')}>
                   Engagement Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={1} />
                 </th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('client')}>
+                <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
                   Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={2} />
                 </th>
-                <th className={`text-left ${thCls}`}>Owner</th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('status')}>
+                <th className={thBase} style={{ width: widths[3] }}>
+                  Owner<ResizeHandle col={3} />
+                </th>
+                <th className={thSortCls} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
                   Status <SortIcon field="status" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={4} />
                 </th>
-                <th className={`text-left ${thCls}`}>MIC</th>
-                <th className={`text-left ${thCls}`}>Team</th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('startedDate')}>
+                <th className={thBase} style={{ width: widths[5] }}>
+                  MIC<ResizeHandle col={5} />
+                </th>
+                <th className={thBase} style={{ width: widths[6] }}>
+                  Team<ResizeHandle col={6} />
+                </th>
+                <th className={thSortCls} style={{ width: widths[7] }} onClick={() => handleSort('startedDate')}>
                   Period <SortIcon field="startedDate" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={7} />
                 </th>
-                <th className={`text-right ${thSortCls}`} onClick={() => handleSort('confirmedFee')}>
+                <th className={`${thSortCls} text-right`} style={{ width: widths[8] }} onClick={() => handleSort('confirmedFee')}>
                   Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={8} />
                 </th>
-                <th className={`text-center ${thCls}`}>Termins</th>
+                <th className={`${thBase} text-center`} style={{ width: widths[9] }}>
+                  Termins<ResizeHandle col={9} />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
