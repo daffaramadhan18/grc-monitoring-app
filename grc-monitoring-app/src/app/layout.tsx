@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SWRProvider>
           <div className="flex h-screen overflow-x-hidden">
             <Sidebar />
-            <main className="w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-14 md:pt-0 md:p-6">
+            <main className="rsm-main w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-[56px] md:pt-0 md:p-6">
               {children}
               {/* Mobile safe-area spacer: bottom nav (64px) + device inset */}
               <div

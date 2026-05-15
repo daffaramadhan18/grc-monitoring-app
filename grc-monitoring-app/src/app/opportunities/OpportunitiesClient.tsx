@@ -176,6 +176,7 @@ export default function OpportunitiesClient({
   const [filterMonth, setFilterMonth] = useState('')
   const [flashedRow, setFlashedRow]   = useState<number | null>(null)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Opp | null>(null)
 
   const [filters, setFilters] = useState({
     search: '',
@@ -317,6 +318,20 @@ export default function OpportunitiesClient({
 
   async function handleDelete(id: number) {
     if (!window.confirm('Hapus opportunity ini?')) return
+    setDel(id)
+    try {
+      const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
+      revalidate()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setDel(null)
+    }
+  }
+
+  async function handleDeleteDirect(id: number) {
     setDel(id)
     try {
       const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
@@ -1036,8 +1051,31 @@ export default function OpportunitiesClient({
         ) : (
           <div className="rsm-mlist">
             {sortedOpps.map(opp => (
-              <MobileOppCard key={opp.id} opp={opp as any} onTap={() => openEdit(opp)} />
+              <MobileOppCard key={opp.id} opp={opp as any} onTap={() => openEdit(opp)} onDelete={(o) => setDeleteTarget(o as unknown as Opp)} />
             ))}
+          </div>
+        )}
+
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteTarget(null)} />
+            <div className="relative bg-white rounded-t-2xl px-5 pt-4 pb-8">
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+              <h3 className="text-base font-semibold text-gray-800 mb-1">Hapus Opportunity?</h3>
+              <p className="text-sm text-gray-500 mb-5">{deleteTarget.proposalName}</p>
+              <button
+                onClick={async () => { await handleDeleteDirect(deleteTarget.id); setDeleteTarget(null); }}
+                className="w-full py-3 mb-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors"
+              >
+                Ya, Hapus
+              </button>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="w-full py-3 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+            </div>
           </div>
         )}
 
@@ -1101,6 +1139,7 @@ export default function OpportunitiesClient({
           revalidate()
           setTimeout(() => setFlashedRow(null), 700)
         }}
+        onDelete={handleDelete}
       />
 
       {/* ── Bulk Edit bottom save bar ─────────────────────────────────────── */}

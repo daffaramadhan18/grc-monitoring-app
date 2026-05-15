@@ -128,13 +128,13 @@ export default function SummaryCards({
     whileHover: { rotate: -8, scale: 1.08, transition: { type: 'spring' as const, stiffness: 300, damping: 18 } },
   }
 
-  const cardCls = 'bg-white rounded-xl border border-gray-100 shadow-sm p-5 cursor-default'
+  const cardCls = 'bg-white rounded-xl border border-gray-100 shadow-sm p-5 cursor-default h-full'
 
   return (
-    <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-4" variants={container} initial="hidden" animate="show">
+    <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch" variants={container} initial="hidden" animate="show">
 
       {/* Card 1: Total Opportunities */}
-      <div className="relative" onMouseEnter={() => setHoveredCard(1)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" onMouseEnter={() => setHoveredCard(1)} onMouseLeave={() => setHoveredCard(null)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -179,7 +179,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 2: Win Rate */}
-      <div className="relative" onMouseEnter={() => setHoveredCard(2)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" onMouseEnter={() => setHoveredCard(2)} onMouseLeave={() => setHoveredCard(null)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -229,7 +229,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 3: Ongoing Projects */}
-      <div className="relative" onMouseEnter={() => setHoveredCard(3)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" onMouseEnter={() => setHoveredCard(3)} onMouseLeave={() => setHoveredCard(null)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -275,7 +275,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 4: Confirmed Fee */}
-      <div className="relative" onMouseEnter={() => setHoveredCard(4)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" onMouseEnter={() => setHoveredCard(4)} onMouseLeave={() => setHoveredCard(null)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">

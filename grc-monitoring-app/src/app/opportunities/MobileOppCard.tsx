@@ -1,5 +1,5 @@
 'use client'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Trash2 } from 'lucide-react'
 import { OPP_STATUS_COLORS, formatRupiah, formatDate } from '@/lib/utils'
 
 interface Opp {
@@ -18,7 +18,7 @@ function avatarBg(s: string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function MobileOppCard({ opp, onTap }: { opp: Opp; onTap: (o: any) => void }) {
+export default function MobileOppCard({ opp, onTap, onDelete }: { opp: Opp; onTap: (o: any) => void; onDelete?: (opp: Opp) => void }) {
   const team = [
     opp.micInitial ? { i: opp.micInitial, mic: true } : null,
     ...[opp.tm1Initial,opp.tm2Initial,opp.tm3Initial,opp.tm4Initial,opp.tm5Initial,opp.tm6Initial]
@@ -31,9 +31,20 @@ export default function MobileOppCard({ opp, onTap }: { opp: Opp; onTap: (o: any
     <article className="rsm-mcard" onClick={() => onTap(opp)}>
       <div className="rsm-mcard-top">
         <div className="rsm-mcard-name">{opp.proposalName}</div>
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
-          {opp.status}
-        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
+            {opp.status}
+          </span>
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(opp); }}
+              className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              aria-label="Hapus"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
       </div>
       <div className="rsm-mcard-client">
         {opp.clientInitial && (

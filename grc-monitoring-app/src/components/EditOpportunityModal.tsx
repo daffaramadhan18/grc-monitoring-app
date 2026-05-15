@@ -47,6 +47,7 @@ interface Props {
   serviceTypes: ServiceType[]
   teamMembers: TeamMember[]
   onSaved: (saved: OppFull) => void
+  onDelete?: (id: number) => void
 }
 
 // ─── Sub-service map ──────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ function Field({ label, children, required }: { label: string; children: React.R
   )
 }
 
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
+const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE] min-h-[44px]'
 const selectCls = inputCls
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ const selectCls = inputCls
 type SaveState = 'idle' | 'saving' | 'success' | 'error'
 
 export default function EditOpportunityModal({
-  open, onClose, opp, serviceTypes, teamMembers, onSaved,
+  open, onClose, opp, serviceTypes, teamMembers, onSaved, onDelete,
 }: Props) {
   const [form, setForm]           = useState(emptyForm())
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -197,17 +198,17 @@ export default function EditOpportunityModal({
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4 pointer-events-none"
           >
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl pointer-events-auto">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl pointer-events-auto overflow-y-auto max-h-[90vh]" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-gray-100">
                 <h2 className="text-base font-semibold text-gray-800">
                   {opp ? 'Edit Opportunity' : 'New Opportunity'}
                 </h2>
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                <button onClick={onClose} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 -mr-1">
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+              <form onSubmit={handleSubmit} className="px-4 md:px-6 py-5 space-y-4">
 
                 <Field label="Proposal Name" required>
                   <input className={inputCls} value={form.proposalName}
@@ -354,29 +355,42 @@ export default function EditOpportunityModal({
                     placeholder="(opsional)" />
                 </Field>
 
-                <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                  <button type="button" onClick={onClose}
-                    className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    Batal
-                  </button>
-                  <motion.button
-                    type="submit"
-                    disabled={saveState === 'saving' || saveState === 'success'}
-                    animate={saveState === 'error' ? { x: [-8, 8, -8, 8, 0] } : { x: 0 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ duration: 0.4 }}
-                    className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-colors
-                      ${saveState === 'success' ? 'bg-green-500 text-white' :
-                        saveState === 'error' ? 'bg-red-500 text-white' :
-                        'bg-[#009CDE] hover:bg-[#007BB5] text-white disabled:opacity-60'}`}
-                  >
-                    {saveState === 'saving' && <Loader2 size={14} className="animate-spin" />}
-                    {saveState === 'success' && <Check size={14} />}
-                    {saveState === 'saving' ? 'Menyimpan...' :
-                     saveState === 'success' ? 'Tersimpan' :
-                     saveState === 'error' ? 'Gagal' :
-                     (opp ? 'Update' : 'Simpan')}
-                  </motion.button>
+                <div className="pb-24" />
+
+                <div className="sticky bottom-0 bg-white pt-3 pb-4 border-t border-gray-100 space-y-2">
+                  {opp && onDelete && (
+                    <button
+                      type="button"
+                      onClick={() => { onClose(); onDelete(opp.id); }}
+                      className="w-full py-3 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+                    >
+                      Hapus Opportunity
+                    </button>
+                  )}
+                  <div className="flex justify-end gap-3">
+                    <button type="button" onClick={onClose}
+                      className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                      Batal
+                    </button>
+                    <motion.button
+                      type="submit"
+                      disabled={saveState === 'saving' || saveState === 'success'}
+                      animate={saveState === 'error' ? { x: [-8, 8, -8, 8, 0] } : { x: 0 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ duration: 0.4 }}
+                      className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-colors
+                        ${saveState === 'success' ? 'bg-green-500 text-white' :
+                          saveState === 'error' ? 'bg-red-500 text-white' :
+                          'bg-[#009CDE] hover:bg-[#007BB5] text-white disabled:opacity-60'}`}
+                    >
+                      {saveState === 'saving' && <Loader2 size={14} className="animate-spin" />}
+                      {saveState === 'success' && <Check size={14} />}
+                      {saveState === 'saving' ? 'Menyimpan...' :
+                       saveState === 'success' ? 'Tersimpan' :
+                       saveState === 'error' ? 'Gagal' :
+                       (opp ? 'Update' : 'Simpan')}
+                    </motion.button>
+                  </div>
                 </div>
               </form>
             </div>
