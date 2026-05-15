@@ -123,7 +123,7 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 // Column order: Client Initial, Client Name, Service Type, Sub-service, Proposal Name,
-//               Phase, Submitted Date, Status, Probability, Risk Level, Notes, %RR,
+//               Phase, Submitted Date, Expected Date, Status, Probability, Risk Level, Notes, %RR,
 //               Harga, Revenue CF, Team (MIC+TM1-TM6), delete
 const DEFAULT_WIDTHS = [
   40,  // checkbox
@@ -134,6 +134,7 @@ const DEFAULT_WIDTHS = [
   180, // Proposal Name
   90,  // Phase
   110, // Submitted Date
+  110, // Expected Date
   130, // Status
   80,  // Probability
   100, // Risk Level
@@ -544,48 +545,53 @@ export default function OpportunitiesClient({
                 <th className={thBase} style={{ width: widths[7] }}>
                   Submitted Date<ResizeHandle col={7} />
                 </th>
-                {/* Status */}
-                <th className={thSort} style={{ width: widths[8] }} onClick={() => handleSort('status')}>
-                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
+                {/* Expected Date */}
+                <th className={thSort} style={{ width: widths[8] }} onClick={() => handleSort('expectedDate')}>
+                  Expected Date<SortIcon field="expectedDate" current={sortField} dir={sortDir} />
                   <ResizeHandle col={8} />
                 </th>
+                {/* Status */}
+                <th className={thSort} style={{ width: widths[9] }} onClick={() => handleSort('status')}>
+                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={9} />
+                </th>
                 {/* Probability */}
-                <th className={thBase} style={{ width: widths[9] }}>
-                  Prob.<ResizeHandle col={9} />
+                <th className={thBase} style={{ width: widths[10] }}>
+                  Prob.<ResizeHandle col={10} />
                 </th>
                 {/* Risk Level */}
-                <th className={thBase} style={{ width: widths[10] }}>
-                  Risk<ResizeHandle col={10} />
+                <th className={thBase} style={{ width: widths[11] }}>
+                  Risk<ResizeHandle col={11} />
                 </th>
                 {/* Notes */}
-                <th className={thBase} style={{ width: widths[11] }}>
-                  Notes<ResizeHandle col={11} />
+                <th className={thBase} style={{ width: widths[12] }}>
+                  Notes<ResizeHandle col={12} />
                 </th>
                 {/* %RR */}
-                <th className={thBase} style={{ width: widths[12] }}>
-                  %RR<ResizeHandle col={12} />
+                <th className={thBase} style={{ width: widths[13] }}>
+                  %RR<ResizeHandle col={13} />
                 </th>
                 {/* Harga */}
-                <th className={thSort} style={{ width: widths[13] }} onClick={() => handleSort('harga')}>
+                <th className={thSort} style={{ width: widths[14] }} onClick={() => handleSort('harga')}>
                   Harga<SortIcon field="harga" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={13} />
+                  <ResizeHandle col={14} />
                 </th>
                 {/* Revenue CF */}
-                <th className={thBase} style={{ width: widths[14] }}>
-                  Revenue CF<ResizeHandle col={14} />
+                <th className={thBase} style={{ width: widths[15] }}>
+                  Revenue CF<ResizeHandle col={15} />
                 </th>
                 {/* Team (MIC + TM1–TM6) */}
-                <th className={thBase} style={{ width: widths[15] }}>
-                  Team<ResizeHandle col={15} />
+                <th className={thBase} style={{ width: widths[16] }}>
+                  Team<ResizeHandle col={16} />
                 </th>
                 {/* Delete */}
-                <th className={thBase} style={{ width: widths[16] }} />
+                <th className={thBase} style={{ width: widths[17] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={17} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={18} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
@@ -615,6 +621,7 @@ export default function OpportunitiesClient({
                     <td className="px-3 py-2.5 font-medium text-gray-900 truncate">{opp.proposalName}</td>
                     <td className="px-3 py-2.5 text-gray-500 truncate">{opp.phase ?? '—'}</td>
                     <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.submittedDate)}</td>
+                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.expectedDate)}</td>
                     <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {opp.status}
