@@ -3,9 +3,9 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
-import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
-import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
+import { formatRupiah, formatDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
+import EditOpportunityModal, { type OppFull } from '@/components/EditOpportunityModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,31 +31,6 @@ interface Props {
   serviceTypes: ServiceType[]
   teamMembers: TeamMember[]
 }
-
-// ─── Sub-service map ──────────────────────────────────────────────────────────
-
-const SUB_SERVICES: Record<string, string[]> = {
-  'IT GRC': [
-    'IT Audit & Compliance', 'LPS-SCV', 'Managed Service',
-    'IT Maturity', 'OT Audit', 'MRTI', 'IT Governance', 'ISO',
-  ],
-  'Cybersecurity': [
-    'VAPT', 'Red Teaming', 'Cyber Maturity Assessment', 'Managed Service',
-  ],
-  'Privacy': [],
-}
-
-// ─── Empty form ───────────────────────────────────────────────────────────────
-
-const emptyForm = () => ({
-  proposalName: '', clientName: '', clientInitial: '', serviceTypeId: '', subServiceId: '',
-  phase: '', status: 'In progress', probability: '', riskLevel: '',
-  harga: '', revenueCf: '', rrPercentage: '',
-  expectedDate: '', submittedDate: '', notes: '',
-  micInitial: '',
-  tm1Initial: '', tm2Initial: '', tm3Initial: '',
-  tm4Initial: '', tm5Initial: '', tm6Initial: '',
-})
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
@@ -98,20 +73,6 @@ function RiskBadge({ level }: { level: string | null }) {
     </span>
   )
 }
-
-function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
-const selectCls = inputCls
 
 type SortField = 'proposalName' | 'client' | 'status' | 'harga' | 'expectedDate'
 type SortDir   = 'asc' | 'desc'
@@ -191,8 +152,6 @@ export default function OpportunitiesClient({
   const [opps, setOpps]           = useState<Opp[]>(initial)
   const [modalOpen, setModal]     = useState(false)
   const [editing, setEditing]     = useState<Opp | null>(null)
-  const [form, setForm]           = useState(emptyForm())
-  const [saving, setSaving]       = useState(false)
   const [deleting, setDel]        = useState<number | null>(null)
   const [importOpen, setImport]   = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -242,77 +201,14 @@ export default function OpportunitiesClient({
 
   const { widths, onMouseDown } = useResizableColumns(DEFAULT_WIDTHS.length, DEFAULT_WIDTHS)
 
-  const selectedTypeName = serviceTypes.find((s) => String(s.id) === form.serviceTypeId)?.name ?? ''
-  const availableSubs    = SUB_SERVICES[selectedTypeName] ?? []
-
-  function set(field: string, value: string) {
-    setForm((f) => {
-      const next = { ...f, [field]: value }
-      if (field === 'serviceTypeId') next.subServiceId = ''
-      return next
-    })
-  }
-
   function openNew() {
     setEditing(null)
-    setForm(emptyForm())
     setModal(true)
   }
 
   function openEdit(opp: Opp) {
     setEditing(opp)
-    setForm({
-      proposalName:  opp.proposalName,
-      clientName:    opp.clientName    ?? '',
-      clientInitial: opp.clientInitial ?? '',
-      serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
-      subServiceId:  opp.subService?.name ?? '',
-      phase:         opp.phase          ?? '',
-      status:        opp.status,
-      probability:   opp.probability   != null ? String(opp.probability) : '',
-      riskLevel:     opp.riskLevel     ?? '',
-      harga:         opp.harga         != null ? String(opp.harga)        : '',
-      revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)    : '',
-      rrPercentage:  opp.rrPercentage  != null ? String(opp.rrPercentage) : '',
-      expectedDate:  toInputDate(opp.expectedDate),
-      submittedDate: toInputDate(opp.submittedDate),
-      notes:         opp.notes         ?? '',
-      micInitial:    opp.micInitial    ?? '',
-      tm1Initial:    opp.tm1Initial    ?? '',
-      tm2Initial:    opp.tm2Initial    ?? '',
-      tm3Initial:    opp.tm3Initial    ?? '',
-      tm4Initial:    opp.tm4Initial    ?? '',
-      tm5Initial:    opp.tm5Initial    ?? '',
-      tm6Initial:    opp.tm6Initial    ?? '',
-    })
     setModal(true)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.proposalName || !form.clientName) return
-    setSaving(true)
-    try {
-      const url    = editing ? `/api/opportunities/${editing.id}` : '/api/opportunities'
-      const method = editing ? 'PUT' : 'POST'
-      const res    = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const body = await res.json()
-      if (!res.ok) throw new Error(body.error ?? res.statusText)
-      const saved: Opp = body
-      setOpps((prev) => editing
-        ? prev.map((o) => o.id === saved.id ? saved : o)
-        : [saved, ...prev])
-      setModal(false)
-      router.refresh()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
-    } finally {
-      setSaving(false)
-    }
   }
 
   async function handleDelete(id: number) {
@@ -406,8 +302,6 @@ export default function OpportunitiesClient({
       return 0
     })
   }, [monthFilteredOpps, sortField, sortDir, filters])
-
-  const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
   function triggerDownload(blob: Blob, filename: string) {
     const a = document.createElement('a')
@@ -799,190 +693,18 @@ export default function OpportunitiesClient({
       )}
 
       {/* ── Add/Edit Modal ────────────────────────────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-800">
-                {editing ? 'Edit Opportunity' : 'New Opportunity'}
-              </h2>
-              <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-
-              {/* 1. Proposal Name */}
-              <Field label="Proposal Name" required>
-                <input className={inputCls} value={form.proposalName}
-                  onChange={(e) => set('proposalName', e.target.value)} required autoFocus />
-              </Field>
-
-              {/* 2–3. Client Initial + Client Name */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Client Initial">
-                  <input className={inputCls} value={form.clientInitial}
-                    onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
-                    placeholder="e.g. BRI" maxLength={6} />
-                </Field>
-                <div className="col-span-2">
-                  <Field label="Client Name" required>
-                    <input className={inputCls} value={form.clientName}
-                      onChange={(e) => set('clientName', e.target.value)}
-                      required placeholder="Nama lengkap client" />
-                  </Field>
-                </div>
-              </div>
-
-              {/* 4–5. Service Type + Sub-service */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Service Type">
-                  <select className={selectCls} value={form.serviceTypeId}
-                    onChange={(e) => set('serviceTypeId', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    {serviceTypes.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Sub-service">
-                  <select className={selectCls} value={form.subServiceId}
-                    onChange={(e) => set('subServiceId', e.target.value)}
-                    disabled={!form.serviceTypeId || availableSubs.length === 0}>
-                    <option value="">
-                      {!form.serviceTypeId
-                        ? '— (pilih service type dulu)'
-                        : availableSubs.length === 0
-                          ? 'Tidak ada sub-service'
-                          : '— (opsional)'}
-                    </option>
-                    {availableSubs.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-              </div>
-
-              {/* 6–7–8. Phase + Status + Probability */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Phase">
-                  <select className={selectCls} value={form.phase}
-                    onChange={(e) => set('phase', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    {['RFP','RFI','Diskusi Awal','Transferred'].map((f) => <option key={f}>{f}</option>)}
-                  </select>
-                </Field>
-                <Field label="Status" required>
-                  <select className={selectCls} value={form.status}
-                    onChange={(e) => set('status', e.target.value)} required>
-                    {OPP_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-                <Field label="Risk Level">
-                  <select className={selectCls} value={form.riskLevel}
-                    onChange={(e) => set('riskLevel', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    {['Low','Medium','High'].map((r) => <option key={r}>{r}</option>)}
-                  </select>
-                </Field>
-              </div>
-
-              {/* Probability */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Probability (%)">
-                  <div className="relative">
-                    <input type="number" min={0} max={100} step={1} className={inputCls}
-                      value={form.probability}
-                      onChange={(e) => set('probability', e.target.value)}
-                      placeholder="e.g. 75" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
-                  </div>
-                </Field>
-              </div>
-
-              {/* 9–10–11. Harga + Revenue CF + %RR */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Harga (IDR)">
-                  <CurrencyInput value={form.harga} onChange={(v) => set('harga', v)} />
-                </Field>
-                <Field label="Revenue CF (IDR)">
-                  <CurrencyInput value={form.revenueCf} onChange={(v) => set('revenueCf', v)} />
-                </Field>
-                <Field label="%RR">
-                  <input type="number" step="0.01" className={inputCls} value={form.rrPercentage}
-                    onChange={(e) => set('rrPercentage', e.target.value)} placeholder="0" />
-                </Field>
-              </div>
-
-              {/* 12–13. Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Expected Date">
-                  <input type="date" className={inputCls} value={form.expectedDate}
-                    onChange={(e) => set('expectedDate', e.target.value)} />
-                </Field>
-                <Field label="Submitted Date">
-                  <input type="date" className={inputCls} value={form.submittedDate}
-                    onChange={(e) => set('submittedDate', e.target.value)} />
-                </Field>
-              </div>
-
-              {/* 14. MIC + TM1–TM3 */}
-              <div className="grid grid-cols-4 gap-4">
-                <Field label="MIC">
-                  <select className={selectCls} value={form.micInitial}
-                    onChange={(e) => set('micInitial', e.target.value)}>
-                    {tmOptions.map((m) => (
-                      <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
-                    ))}
-                  </select>
-                </Field>
-                {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+1}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => (
-                        <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
-                      ))}
-                    </select>
-                  </Field>
-                ))}
-              </div>
-
-              {/* TM4–TM6 */}
-              <div className="grid grid-cols-3 gap-4">
-                {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+4}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => (
-                        <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
-                      ))}
-                    </select>
-                  </Field>
-                ))}
-              </div>
-
-              {/* Notes */}
-              <Field label="Notes">
-                <textarea className={inputCls} rows={3} value={form.notes}
-                  onChange={(e) => set('notes', e.target.value)}
-                  placeholder="(opsional)" />
-              </Field>
-
-              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button type="button" onClick={() => setModal(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Batal
-                </button>
-                <button type="submit" disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
-                  {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EditOpportunityModal
+        open={modalOpen}
+        onClose={() => setModal(false)}
+        opp={editing as OppFull | null}
+        serviceTypes={serviceTypes}
+        teamMembers={teamMembers}
+        onSaved={(saved) => {
+          setOpps((prev) => editing
+            ? prev.map((o) => o.id === saved.id ? (saved as Opp) : o)
+            : [saved as Opp, ...prev])
+        }}
+      />
 
       {/* ── Toast ────────────────────────────────────────────────────────── */}
       {toast && (
