@@ -106,15 +106,6 @@ export default function ProposalPipeline({ opps }: Props) {
                         className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer"
                         onClick={() => router.push('/opportunities')}
                       >
-                        {/* Client badge */}
-                        <span
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-xs shrink-0"
-                          style={{ backgroundColor: avatarColor(opp.clientInitial ?? opp.clientName ?? '?') }}
-                          title={opp.clientName ?? ''}
-                        >
-                          {(opp.clientInitial ?? opp.clientName ?? '?').slice(0, 2)}
-                        </span>
-
                         {/* Name + client */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{opp.proposalName}</p>
@@ -127,12 +118,6 @@ export default function ProposalPipeline({ opps }: Props) {
                         <span className="text-xs text-gray-600 whitespace-nowrap shrink-0 tabular-nums">
                           {opp.harga ? formatRupiah(opp.harga) : '—'}
                         </span>
-
-                        {/* Team avatars */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {opp.micInitial && <AvatarBubble initial={opp.micInitial} isMic />}
-                          {tms.map((t) => <AvatarBubble key={t} initial={t} isMic={false} />)}
-                        </div>
 
                         {/* Expected date */}
                         <span className={`text-xs whitespace-nowrap shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
