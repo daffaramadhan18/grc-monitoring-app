@@ -6,6 +6,7 @@ import ProposalPipeline from './ProposalPipeline'
 import TeamWorkload from './TeamWorkload'
 import OngoingProjects from './OngoingProjects'
 import DashboardFilters from './DashboardFilters'
+import QuarterlySection from '../opportunities/QuarterlySection'
 
 function monthRange(month: string | undefined) {
   if (!month) return null
@@ -109,6 +110,11 @@ export default async function DashboardPage({
         winRate={winRate}
         ongoingProjects={ongoingCount}
         confirmedFee={confirmedFee}
+      />
+
+      <QuarterlySection
+        opps={serialize(allFilteredOpps) as any}
+        year={searchParams.month ? Number(searchParams.month.split('-')[0]) : new Date().getFullYear()}
       />
 
       <div className="grid grid-cols-5 gap-6">

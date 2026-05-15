@@ -4,7 +4,6 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
-import QuarterlySection from './QuarterlySection'
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
 
@@ -211,11 +210,6 @@ export default function OpportunitiesClient({
       return d.getFullYear() === y && d.getMonth() + 1 === m
     })
   }, [opps, filterMonth])
-
-  // Year for quarterly section
-  const quarterYear = filterMonth
-    ? Number(filterMonth.split('-')[0])
-    : new Date().getFullYear()
 
   function toggleStatusFilter(s: string) {
     setFilters((f) => {
@@ -477,8 +471,6 @@ export default function OpportunitiesClient({
           </button>
         </div>
       </div>
-
-      <QuarterlySection opps={opps} year={quarterYear} />
 
       {/* Summary pills */}
       <div className="flex flex-wrap gap-2">
