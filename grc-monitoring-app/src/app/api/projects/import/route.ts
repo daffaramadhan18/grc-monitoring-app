@@ -77,20 +77,18 @@ export async function POST(req: NextRequest) {
     const confirmedFee = parseNumber(row[6])
     const spk          = String(row[7] ?? '').trim() || null
     const pks          = String(row[8] ?? '').trim() || null
-    const alokasiHours = parseNumber(row[9])
-    const currentHours = parseNumber(row[10])
-    const micInitial   = String(row[11] ?? '').trim() || null
-    const tm1Initial   = String(row[12] ?? '').trim() || null
-    const tm2Initial   = String(row[13] ?? '').trim() || null
-    const tm3Initial   = String(row[14] ?? '').trim() || null
-    const tm4Initial   = String(row[15] ?? '').trim() || null
-    const tm5Initial   = String(row[16] ?? '').trim() || null
-    const tm6Initial   = String(row[17] ?? '').trim() || null
+    const micInitial   = String(row[9] ?? '').trim() || null
+    const tm1Initial   = String(row[10] ?? '').trim() || null
+    const tm2Initial   = String(row[11] ?? '').trim() || null
+    const tm3Initial   = String(row[12] ?? '').trim() || null
+    const tm4Initial   = String(row[13] ?? '').trim() || null
+    const tm5Initial   = String(row[14] ?? '').trim() || null
+    const tm6Initial   = String(row[15] ?? '').trim() || null
 
-    // Termin data [%, fee, status] x4, cols 18-29
+    // Termin data [%, fee, status] x4, cols 16-27
     const terminData: Array<{ pct: number | null; fee: number | null; status: string | null }> = []
     for (let t = 0; t < 4; t++) {
-      const base = 18 + t * 3
+      const base = 16 + t * 3
       const pct    = parseNumber(row[base])
       const fee    = parseNumber(row[base + 1])
       const tStatus = String(row[base + 2] ?? '').trim() || null
@@ -111,8 +109,6 @@ export async function POST(req: NextRequest) {
           confirmedFee:  confirmedFee != null ? BigInt(Math.round(confirmedFee)) : null,
           spk,
           pks,
-          alokasiHours,
-          currentHours,
           micInitial,
           tm1Initial,
           tm2Initial,

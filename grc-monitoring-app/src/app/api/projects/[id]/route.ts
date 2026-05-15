@@ -32,8 +32,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       spk:           b.spk           || null,
       pks:           b.pks           || null,
       confirmedFee:  b.confirmedFee  ? BigInt(b.confirmedFee)  : null,
-      alokasiHours:  b.alokasiHours  ? Number(b.alokasiHours)  : null,
-      currentHours:  b.currentHours  ? Number(b.currentHours)  : null,
     },
     include: { client: true, termins: { orderBy: { terminNumber: 'asc' } } },
   })

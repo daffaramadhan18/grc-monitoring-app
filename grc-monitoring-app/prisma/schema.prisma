@@ -90,8 +90,6 @@ model Project {
   spk           String?
   pks           String?
   confirmedFee  BigInt?
-  alokasiHours  Float?
-  currentHours  Float?
   termins       Termin[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

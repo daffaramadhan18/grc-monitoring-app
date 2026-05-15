@@ -19,7 +19,7 @@ interface Project {
   tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
   startedDate: string | null; endDate: string | null
   spk: string | null; pks: string | null
-  confirmedFee: number | null; alokasiHours: number | null; currentHours: number | null
+  confirmedFee: number | null
   termins: { id: number; terminNumber: number; percentage: number | null; fee: number | null; status: string | null }[]
 }
 
@@ -127,8 +127,6 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
     spk:           project.spk           ?? '',
     pks:           project.pks           ?? '',
     confirmedFee:  project.confirmedFee  != null ? String(project.confirmedFee) : '',
-    alokasiHours:  project.alokasiHours  != null ? String(project.alokasiHours) : '',
-    currentHours:  project.currentHours  != null ? String(project.currentHours) : '',
   })
 
   // Termins state
@@ -210,9 +208,6 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
   }
 
   const tmOptions   = [{ initial: '', fullName: '—' }, ...teamMembers]
-  const hoursUsed   = Number(form.currentHours  || 0)
-  const hoursAlloc  = Number(form.alokasiHours  || 0)
-  const hoursPct    = hoursAlloc > 0 ? Math.min(Math.round((hoursUsed / hoursAlloc) * 100), 100) : 0
   const totalFee    = termins.reduce((s, t) => s + (Number(t.fee) || 0), 0)
   const paidFee     = termins.filter((t) => t.status === 'Paid').reduce((s, t) => s + (Number(t.fee) || 0), 0)
 
@@ -264,8 +259,11 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Project Owner">
-              <input className={inputCls} value={form.projectOwner}
-                onChange={(e) => setField('projectOwner', e.target.value)} placeholder="ITGRC-S / Non ITGRC-S" />
+              <select className={selectCls} value={form.projectOwner} onChange={(e) => setField('projectOwner', e.target.value)}>
+                <option value="">—</option>
+                <option value="ITGRC-S">ITGRC-S</option>
+                <option value="Non ITGRC-S">Non ITGRC-S</option>
+              </select>
             </Field>
             <Field label="Status">
               <select className={selectCls} value={form.status} onChange={(e) => setField('status', e.target.value)}>
@@ -329,35 +327,6 @@ export default function ProjectDetailClient({ project, clients, teamMembers }: P
               </Field>
             ))}
           </div>
-        </Section>
-
-        {/* Hours */}
-        <Section title="Alokasi Jam">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Alokasi Hours">
-              <input type="number" step="0.5" className={inputCls} value={form.alokasiHours}
-                onChange={(e) => setField('alokasiHours', e.target.value)} placeholder="0" />
-            </Field>
-            <Field label="Current Hours">
-              <input type="number" step="0.5" className={inputCls} value={form.currentHours}
-                onChange={(e) => setField('currentHours', e.target.value)} placeholder="0" />
-            </Field>
-          </div>
-          {hoursAlloc > 0 && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>{hoursUsed}h used</span>
-                <span className={hoursPct > 90 ? 'text-red-500 font-semibold' : ''}>{hoursPct}%</span>
-                <span>{hoursAlloc}h allocated</span>
-              </div>
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${hoursPct > 90 ? 'bg-red-400' : 'bg-[#009CDE]'}`}
-                  style={{ width: `${hoursPct}%` }}
-                />
-              </div>
-            </div>
-          )}
         </Section>
 
       {/* Termins */}

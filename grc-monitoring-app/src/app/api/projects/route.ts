@@ -49,8 +49,6 @@ export async function POST(req: NextRequest) {
       spk:           b.spk           || null,
       pks:           b.pks           || null,
       confirmedFee:  b.confirmedFee  ? BigInt(b.confirmedFee)  : null,
-      alokasiHours:  null,
-      currentHours:  null,
     },
     include: { client: true, termins: true },
   })

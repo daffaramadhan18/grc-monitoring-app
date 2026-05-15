@@ -17,7 +17,7 @@ interface Project {
   tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
   tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
   startedDate: string | null; endDate: string | null
-  confirmedFee: number | null; alokasiHours: number | null; currentHours: number | null
+  confirmedFee: number | null
   termins: Termin[]
 }
 
@@ -457,20 +457,18 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                   Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
                 </th>
                 <th className={`text-center ${thCls}`}>Termins</th>
-                <th className={`text-right ${thCls}`}>Hours</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedProjects.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
+                  <td colSpan={10} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
                 </tr>
               )}
               {sortedProjects.map((proj) => {
                 const team = [proj.tm1Initial, proj.tm2Initial, proj.tm3Initial,
                               proj.tm4Initial, proj.tm5Initial, proj.tm6Initial].filter(Boolean) as string[]
                 const paidCount = proj.termins.filter((t) => t.status === 'Paid').length
-                const hoursUsed = Math.round(((proj.currentHours ?? 0) / Math.max(proj.alokasiHours ?? 1, 1)) * 100)
                 const isSelected = selected.has(proj.id)
                 return (
                   <tr key={proj.id}
@@ -505,17 +503,6 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                     <td className="px-4 py-3 text-right text-gray-700">{formatRupiah(proj.confirmedFee)}</td>
                     <td className="px-4 py-3 text-center text-sm text-gray-600">
                       {proj.termins.length > 0 ? `${paidCount}/${proj.termins.length} paid` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {proj.alokasiHours ? (
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-xs text-gray-600">{proj.currentHours ?? 0}/{proj.alokasiHours}h</span>
-                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${hoursUsed > 90 ? 'bg-red-400' : 'bg-[#009CDE]'}`}
-                              style={{ width: `${Math.min(hoursUsed, 100)}%` }} />
-                          </div>
-                        </div>
-                      ) : '—'}
                     </td>
                   </tr>
                 )
@@ -669,10 +656,6 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
                   </Field>
                 ))}
               </div>
-
-              <p className="text-xs text-gray-400">
-                Alokasi Hours bisa diisi di halaman detail project setelah disimpan.
-              </p>
 
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button type="button" onClick={() => setModalOpen(false)}
