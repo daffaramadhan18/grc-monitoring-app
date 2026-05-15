@@ -137,9 +137,11 @@ export default function ProposalPipeline({ opps, serviceTypes, teamMembers }: Pr
                         </div>
 
                         {/* Harga */}
-                        <span className="text-xs text-gray-600 whitespace-nowrap shrink-0 tabular-nums">
-                          {opp.harga ? formatRupiah(opp.harga) : '—'}
-                        </span>
+                        {opp.harga ? (
+                          <span className="text-xs text-gray-600 whitespace-nowrap shrink-0 tabular-nums">
+                            {formatRupiah(opp.harga)}
+                          </span>
+                        ) : null}
 
                         {/* Expected date */}
                         <span className={`text-xs whitespace-nowrap shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
