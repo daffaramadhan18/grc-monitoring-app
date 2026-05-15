@@ -2,16 +2,25 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Member { id: number; fullName: string; initial: string; level: string }
 interface Alloc  { projects: number; proposals: number }
 
+interface ProjectRow  { id: number; proposalName: string; status: string; endDate: string | null; client: { initial: string; fullName: string } }
+interface ProposalRow { id: number; proposalName: string; status: string; client: { initial: string; fullName: string } }
+
+interface Details {
+  projects:  ProjectRow[]
+  proposals: ProposalRow[]
+}
+
 interface Props {
-  members: Member[]
+  members:    Member[]
   allocation: Record<string, Alloc>
+  details:    Record<string, Details>
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -26,7 +35,6 @@ const LEVELS = [
   'Intern',
 ] as const
 
-// Deterministic color from initial string — RSM brand palette
 const AVATAR_COLORS = [
   'bg-[#009CDE]', 'bg-[#43B02A]', 'bg-[#58595B]', 'bg-[#F59E0B]', 'bg-[#8B5CF6]', 'bg-[#EC4899]',
 ]
@@ -36,10 +44,10 @@ function avatarColor(initial: string) {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
-function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' }) {
-  const cls = size === 'sm'
-    ? 'w-8 h-8 text-xs'
-    : 'w-10 h-10 text-sm'
+function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' | 'lg' }) {
+  const cls = size === 'lg' ? 'w-12 h-12 text-base'
+            : size === 'sm' ? 'w-8 h-8 text-xs'
+            : 'w-10 h-10 text-sm'
   return (
     <div className={`${cls} ${avatarColor(initial)} rounded-full flex items-center justify-center text-white font-semibold shrink-0`}>
       {initial.slice(0, 2)}
@@ -47,22 +55,15 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
   )
 }
 
-// ─── Capacity badge (based on load %) ────────────────────────────────────────
-// Project load  = (projects / 2) × 100%
-// Proposal load = (proposals / 2) × 100%
+// ─── Capacity ─────────────────────────────────────────────────────────────────
 
-function loadPct(count: number): number {
-  return Math.round((count / 2) * 100)
-}
+function loadPct(count: number) { return Math.round((count / 2) * 100) }
 
 function capacityBadge(projects: number, proposals: number) {
-  const pp = loadPct(projects)
-  const qp = loadPct(proposals)
-  if (pp > 100 || qp > 100)
-    return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
-  if (pp === 100 && qp === 100)
-    return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     order: 1 }
-  return   { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
+  const pp = loadPct(projects), qp = loadPct(proposals)
+  if (pp > 100 || qp > 100) return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
+  if (pp === 100 && qp === 100) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700', order: 1 }
+  return { label: 'Available', cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -81,27 +82,48 @@ function Field({ label, children, required }: { label: string; children: React.R
   )
 }
 
+function fmtDate(iso: string | null) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const PROJ_STATUS_CLS: Record<string, string> = {
+  Fieldwork:  'bg-blue-100 text-blue-700',
+  Reporting:  'bg-purple-100 text-purple-700',
+  Planning:   'bg-gray-100 text-gray-600',
+  Completed:  'bg-green-100 text-green-700',
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function TeamClient({ members: initial, allocation }: Props) {
+export default function TeamClient({ members: initial, allocation, details }: Props) {
   const router = useRouter()
-  const [members, setMembers] = useState<Member[]>(initial)
-  const [modalOpen, setModalOpen] = useState(false)
+  const [members, setMembers]   = useState<Member[]>(initial)
+
+  // Manage Team drawer
+  const [manageOpen, setManageOpen] = useState(false)
+
+  // Add/Edit form modal
+  const [crudOpen, setCrudOpen]   = useState(false)
   const [editing, setEditing]     = useState<Member | null>(null)
   const [form, setForm] = useState({ fullName: '', initial: '', level: '' })
-  const [saving, setSaving]   = useState(false)
-  const [deleting, setDeleting] = useState<number | null>(null)
+  const [saving, setSaving]       = useState(false)
+  const [deleting, setDeleting]   = useState<number | null>(null)
+
+  // Member detail side panel
+  const [detailMember, setDetailMember] = useState<Member | null>(null)
 
   function openNew() {
     setEditing(null)
     setForm({ fullName: '', initial: '', level: '' })
-    setModalOpen(true)
+    setCrudOpen(true)
   }
 
   function openEdit(m: Member) {
     setEditing(m)
     setForm({ fullName: m.fullName, initial: m.initial, level: m.level })
-    setModalOpen(true)
+    setCrudOpen(true)
   }
 
   function set(field: string, value: string) {
@@ -122,13 +144,12 @@ export default function TeamClient({ members: initial, allocation }: Props) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? res.statusText)
-
       if (editing) {
         setMembers((prev) => prev.map((m) => m.id === data.id ? data : m))
       } else {
         setMembers((prev) => [...prev, data].sort((a, b) => a.fullName.localeCompare(b.fullName)))
       }
-      setModalOpen(false)
+      setCrudOpen(false)
       router.refresh()
     } catch (err: any) {
       alert(err.message)
@@ -155,97 +176,38 @@ export default function TeamClient({ members: initial, allocation }: Props) {
     }
   }
 
-  // ── Resource allocation rows (sorted: overloaded → at capacity → available, then by total desc)
   const allocRows = members.map((m) => {
-    const a      = allocation[m.initial] ?? { projects: 0, proposals: 0 }
-    const total  = a.projects + a.proposals
-    const badge  = capacityBadge(a.projects, a.proposals)
+    const a     = allocation[m.initial] ?? { projects: 0, proposals: 0 }
+    const total = a.projects + a.proposals
+    const badge = capacityBadge(a.projects, a.proposals)
     return { member: m, ...a, total, badge }
   }).sort((a, b) => {
     if (a.badge.order !== b.badge.order) return a.badge.order - b.badge.order
     return b.total - a.total
   })
 
-  return (
-    <div className="space-y-8">
-      {/* ── Team Members Table ───────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-800">Team Members</h1>
-          <button
-            onClick={openNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
-          >
-            <Plus size={16} /> Add Member
-          </button>
-        </div>
+  const detailAlloc   = detailMember ? (allocation[detailMember.initial] ?? { projects: 0, proposals: 0 }) : null
+  const detailData    = detailMember ? (details[detailMember.initial] ?? { projects: [], proposals: [] }) : null
+  const detailBadge   = detailAlloc  ? capacityBadge(detailAlloc.projects, detailAlloc.proposals) : null
 
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Member</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Initial</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Level</th>
-                <th className="px-4 py-3 text-gray-500 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {members.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-gray-400">
-                    Belum ada team member.
-                  </td>
-                </tr>
-              )}
-              {members.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => router.push(`/team/${m.id}`)}
-                      className="flex items-center gap-3 text-left hover:underline"
-                    >
-                      <Avatar initial={m.initial} />
-                      <span className="font-medium text-gray-900">{m.fullName}</span>
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex px-2 py-0.5 rounded font-mono text-xs font-semibold bg-slate-100 text-slate-700">
-                      {m.initial}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{m.level}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEdit(m)}
-                        className="p-1.5 text-gray-400 hover:text-[#009CDE] hover:bg-[#009CDE]/10 rounded transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(m)}
-                        disabled={deleting === m.id}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  return (
+    <div className="space-y-6">
+      {/* ── Page header ──────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-gray-800">Team</h1>
+        <button
+          onClick={() => setManageOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <Settings2 size={15} /> Manage Team
+        </button>
       </div>
 
       {/* ── Resource Allocation Breakdown ────────────────────────────────── */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">Resource Allocation Breakdown</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h2 className="text-base font-semibold text-gray-800">Resource Allocation Breakdown</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
             Project load = (Fieldwork/Reporting ÷ 2) × 100% · Proposal load = (In progress ÷ 2) × 100%
           </p>
         </div>
@@ -260,106 +222,152 @@ export default function TeamClient({ members: initial, allocation }: Props) {
             const pp = loadPct(projects)
             const qp = loadPct(proposals)
             return (
-              <div key={member.id} className="px-5 py-4 flex items-center gap-4">
-                {/* Avatar */}
+              <button
+                key={member.id}
+                onClick={() => setDetailMember(member)}
+                className="w-full px-5 py-4 flex items-center gap-4 hover:bg-gray-50/70 transition-colors text-left"
+              >
                 <Avatar initial={member.initial} size="sm" />
 
-                {/* Name + level */}
                 <div className="w-44 shrink-0">
                   <div className="font-medium text-sm text-gray-900">{member.fullName}</div>
                   <div className="text-xs text-gray-400">{member.level}</div>
                 </div>
 
-                {/* Load bars */}
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  {/* Project load */}
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-400 w-14 shrink-0">Projects</span>
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#009CDE] rounded-full transition-all"
-                        style={{ width: `${Math.min(pp, 100)}%` }}
-                      />
+                      <div className="h-full bg-[#009CDE] rounded-full transition-all" style={{ width: `${Math.min(pp, 100)}%` }} />
                     </div>
-                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pp > 100 ? 'text-red-500' : 'text-gray-600'}`}>
-                      {pp}%
-                    </span>
+                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pp > 100 ? 'text-red-500' : 'text-gray-600'}`}>{pp}%</span>
                   </div>
-                  {/* Proposal load */}
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-400 w-14 shrink-0">Proposals</span>
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#43B02A] rounded-full transition-all"
-                        style={{ width: `${Math.min(qp, 100)}%` }}
-                      />
+                      <div className="h-full bg-[#43B02A] rounded-full transition-all" style={{ width: `${Math.min(qp, 100)}%` }} />
                     </div>
-                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${qp > 100 ? 'text-red-500' : 'text-gray-600'}`}>
-                      {qp}%
-                    </span>
+                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${qp > 100 ? 'text-red-500' : 'text-gray-600'}`}>{qp}%</span>
                   </div>
                 </div>
 
-                {/* Capacity badge */}
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
                   {badge.label}
                 </span>
-              </div>
+              </button>
             )
           })}
         </div>
       </div>
 
-      {/* ── Modal ────────────────────────────────────────────────────────── */}
-      {modalOpen && (
+      {/* ── Manage Team drawer ────────────────────────────────────────────── */}
+      {manageOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalOpen(false)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setManageOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <h2 className="text-base font-semibold text-gray-800">Manage Team</h2>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={openNew}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
+                >
+                  <Plus size={14} /> Add Member
+                </button>
+                <button onClick={() => setManageOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
+                  <tr>
+                    <th className="text-left px-5 py-3 text-gray-500 font-medium">Member</th>
+                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Initial</th>
+                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Level</th>
+                    <th className="px-4 py-3 text-gray-500 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {members.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-5 py-10 text-center text-gray-400">
+                        Belum ada team member.
+                      </td>
+                    </tr>
+                  )}
+                  {members.map((m) => (
+                    <tr key={m.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar initial={m.initial} />
+                          <span className="font-medium text-gray-900">{m.fullName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex px-2 py-0.5 rounded font-mono text-xs font-semibold bg-slate-100 text-slate-700">
+                          {m.initial}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{m.level}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openEdit(m)}
+                            className="p-1.5 text-gray-400 hover:text-[#009CDE] hover:bg-[#009CDE]/10 rounded transition-colors" title="Edit">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => handleDelete(m)} disabled={deleting === m.id}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50" title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add/Edit form modal ───────────────────────────────────────────── */}
+      {crudOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setCrudOpen(false)} />
           <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-800">
                 {editing ? 'Edit Team Member' : 'Add Team Member'}
               </h2>
-              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setCrudOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
               <Field label="Full Name" required>
-                <input
-                  className={inputCls}
-                  value={form.fullName}
-                  onChange={(e) => set('fullName', e.target.value)}
-                  required
-                  autoFocus
-                />
+                <input className={inputCls} value={form.fullName}
+                  onChange={(e) => set('fullName', e.target.value)} required autoFocus />
               </Field>
 
               <Field label="Initial" required>
-                <input
-                  className={inputCls}
-                  value={form.initial}
+                <input className={inputCls} value={form.initial}
                   onChange={(e) => set('initial', e.target.value.toUpperCase().slice(0, 4))}
-                  required
-                  maxLength={4}
-                  placeholder="e.g. DR"
-                />
+                  required maxLength={4} placeholder="e.g. DR" />
                 <p className="text-xs text-gray-400 mt-1">Max 4 karakter, huruf kapital</p>
               </Field>
 
               <Field label="Level" required>
-                <select
-                  className={selectCls}
-                  value={form.level}
-                  onChange={(e) => set('level', e.target.value)}
-                  required
-                >
+                <select className={selectCls} value={form.level}
+                  onChange={(e) => set('level', e.target.value)} required>
                   <option value="">Pilih level...</option>
                   {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </Field>
 
-              {/* Preview avatar */}
               {form.initial && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <Avatar initial={form.initial} />
@@ -371,22 +379,121 @@ export default function TeamClient({ members: initial, allocation }: Props) {
               )}
 
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
+                <button type="button" onClick={() => setCrudOpen(false)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors"
-                >
+                <button type="submit" disabled={saving}
+                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Member detail side panel ──────────────────────────────────────── */}
+      {detailMember && detailAlloc && detailData && detailBadge && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDetailMember(null)} />
+          <div className="relative bg-white w-full max-w-sm h-full shadow-2xl flex flex-col overflow-hidden">
+
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <Avatar initial={detailMember.initial} size="lg" />
+                <div>
+                  <div className="font-semibold text-gray-900">{detailMember.fullName}</div>
+                  <div className="text-xs text-gray-400">{detailMember.level}</div>
+                  <span className={`mt-1 inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${detailBadge.cls}`}>
+                    {detailBadge.label}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setDetailMember(null)} className="text-gray-400 hover:text-gray-600 shrink-0 mt-0.5">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Load bars */}
+            <div className="px-5 py-4 border-b border-gray-100 space-y-2 shrink-0">
+              {[
+                { label: 'Project load',  count: detailAlloc.projects,  color: 'bg-[#009CDE]' },
+                { label: 'Proposal load', count: detailAlloc.proposals, color: 'bg-[#43B02A]' },
+              ].map(({ label, count, color }) => {
+                const pct = loadPct(count)
+                return (
+                  <div key={label} className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
+                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${color} rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                    </div>
+                    <span className={`text-xs font-semibold w-9 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>
+                      {pct}%
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+              {/* Active Projects */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Briefcase size={13} className="text-[#009CDE]" />
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    Active Projects ({detailData.projects.length})
+                  </span>
+                </div>
+                {detailData.projects.length === 0 ? (
+                  <p className="text-xs text-gray-400">No active projects.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailData.projects.map((p) => (
+                      <div key={p.id} className="bg-gray-50 rounded-lg px-3 py-2.5 space-y-1">
+                        <div className="text-sm font-medium text-gray-900 leading-snug">{p.proposalName}</div>
+                        <div className="text-xs text-gray-500">{p.client.fullName}</div>
+                        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_CLS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {p.status}
+                          </span>
+                          <span className="text-xs text-gray-400">Due {fmtDate(p.endDate)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Active Proposals */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText size={13} className="text-[#43B02A]" />
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    Active Proposals ({detailData.proposals.length})
+                  </span>
+                </div>
+                {detailData.proposals.length === 0 ? (
+                  <p className="text-xs text-gray-400">No active proposals.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailData.proposals.map((o) => (
+                      <div key={o.id} className="bg-gray-50 rounded-lg px-3 py-2.5 space-y-1">
+                        <div className="text-sm font-medium text-gray-900 leading-snug">{o.proposalName}</div>
+                        <div className="text-xs text-gray-500">{o.client.fullName}</div>
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          {o.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
           </div>
         </div>
       )}

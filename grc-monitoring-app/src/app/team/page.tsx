@@ -8,32 +8,77 @@ export default async function TeamPage() {
     prisma.teamMember.findMany({ orderBy: { fullName: 'asc' } }),
     prisma.project.findMany({
       where: { status: { in: ['Fieldwork', 'Reporting'] } },
-      select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-                tm4Initial: true, tm5Initial: true, tm6Initial: true },
+      select: {
+        id: true, proposalName: true, status: true, endDate: true,
+        client: { select: { initial: true, fullName: true } },
+        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+      },
     }),
-    // Proposal load = In progress only
     prisma.opportunity.findMany({
       where: { status: 'In progress' },
-      select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-                tm4Initial: true, tm5Initial: true, tm6Initial: true },
+      select: {
+        id: true, proposalName: true, status: true,
+        client: { select: { initial: true, fullName: true } },
+        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+      },
     }),
   ])
 
   const alloc: Record<string, { projects: number; proposals: number }> = {}
-  for (const m of members) alloc[m.initial] = { projects: 0, proposals: 0 }
+  const details: Record<string, {
+    projects: typeof activeProjects
+    proposals: typeof activeOpps
+  }> = {}
+
+  for (const m of members) {
+    alloc[m.initial]   = { projects: 0, proposals: 0 }
+    details[m.initial] = { projects: [], proposals: [] }
+  }
 
   for (const p of activeProjects) {
     for (const f of TM_FIELDS) {
       const ini = p[f]
-      if (ini && alloc[ini]) alloc[ini].projects++
+      if (ini && alloc[ini]) {
+        alloc[ini].projects++
+        details[ini].projects.push(p)
+      }
     }
   }
   for (const o of activeOpps) {
     for (const f of TM_FIELDS) {
       const ini = o[f]
-      if (ini && alloc[ini]) alloc[ini].proposals++
+      if (ini && alloc[ini]) {
+        alloc[ini].proposals++
+        details[ini].proposals.push(o)
+      }
     }
   }
 
-  return <TeamClient members={members} allocation={alloc} />
+  // Serialize dates
+  const serializedDetails: Record<string, {
+    projects: { id: number; proposalName: string; status: string; endDate: string | null; client: { initial: string; fullName: string } }[]
+    proposals: { id: number; proposalName: string; status: string; client: { initial: string; fullName: string } }[]
+  }> = {}
+
+  for (const [ini, d] of Object.entries(details)) {
+    serializedDetails[ini] = {
+      projects: d.projects.map((p) => ({
+        id: p.id,
+        proposalName: p.proposalName,
+        status: p.status,
+        endDate: p.endDate ? p.endDate.toISOString().slice(0, 10) : null,
+        client: p.client,
+      })),
+      proposals: d.proposals.map((o) => ({
+        id: o.id,
+        proposalName: o.proposalName,
+        status: o.status,
+        client: o.client,
+      })),
+    }
+  }
+
+  return <TeamClient members={members} allocation={alloc} details={serializedDetails} />
 }
