@@ -51,7 +51,7 @@ function AvatarBubble({ initial, isMic }: { initial: string; isMic: boolean }) {
     >
       {initial.slice(0, 2)}
       {isMic && (
-        <span className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 flex items-center justify-center">
+        <span className="rsm-crown-float absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 flex items-center justify-center">
           <Crown size={7} className="text-white" />
         </span>
       )}
@@ -378,7 +378,7 @@ export default function OpportunitiesClient({
   const thSort = `${thBase} cursor-pointer hover:text-gray-700 select-none`
 
   return (
-    <div className="space-y-5">
+    <div className="rsm-page-in space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Opportunities</h1>
@@ -393,7 +393,7 @@ export default function OpportunitiesClient({
             <Upload size={16} /> Import
           </button>
           <button onClick={openNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Opportunity
           </button>
         </div>
@@ -595,7 +595,7 @@ export default function OpportunitiesClient({
                 return (
                   <tr
                     key={opp.id}
-                    className={`group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
+                    className={`rsm-row-click group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
                     onClick={() => openEdit(opp)}
                   >
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -683,7 +683,7 @@ export default function OpportunitiesClient({
                   Tutup
                 </button>
                 <button onClick={handleImport} disabled={!importFile || importing}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>

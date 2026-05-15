@@ -104,13 +104,9 @@ export default function TeamWorkload({ workload }: Props) {
 
                 {/* Capacity badge */}
                 {badge.overloaded && !reduced ? (
-                  <motion.span
-                    className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}
-                    animate={{ scale: [1, 1.15, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-                  >
+                  <span className={`rsm-badge-heartbeat px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
                     {badge.label}
-                  </motion.span>
+                  </span>
                 ) : (
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
                     {badge.label}

@@ -406,7 +406,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
       {/* Single save button */}
       <div className="flex justify-end">
         <button type="submit" disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+          className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
           <Save size={14} /> {saving ? 'Menyimpan...' : 'Simpan Semua'}
         </button>
       </div>

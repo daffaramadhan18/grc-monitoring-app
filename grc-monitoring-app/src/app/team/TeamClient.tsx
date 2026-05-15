@@ -199,7 +199,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   const detailBadge   = detailAlloc  ? capacityBadge(detailAlloc.projects, detailAlloc.proposals) : null
 
   return (
-    <div className="space-y-6">
+    <div className="rsm-page-in space-y-6">
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Team</h1>
@@ -270,7 +270,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               <div className="flex items-center gap-3">
                 <button
                   onClick={openNew}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
                 >
                   <Plus size={14} /> Add Member
                 </button>
@@ -384,7 +384,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                   Batal
                 </button>
                 <button type="submit" disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
                 </button>
               </div>

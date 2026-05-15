@@ -87,8 +87,15 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
     show:   { opacity: 1, y: 0, transition: { duration: reduced ? 0 : 0.35, ease: 'easeOut' } },
   }
 
-  const hoverProps = reduced ? {} : {
-    whileHover: { y: -4, scale: 1.02, transition: { type: 'spring' as const, stiffness: 300, damping: 20 } },
+  const cardHover = reduced ? {} : {
+    whileHover: {
+      y: -6, scale: 1.03,
+      boxShadow: '0 12px 24px -8px rgb(0 0 0 / 0.12), 0 4px 8px -4px rgb(0 0 0 / 0.08)',
+      transition: { type: 'spring' as const, stiffness: 280, damping: 22 },
+    },
+  }
+  const iconHover = reduced ? {} : {
+    whileHover: { rotate: -8, scale: 1.08, transition: { type: 'spring' as const, stiffness: 300, damping: 18 } },
   }
 
   const cardCls = 'bg-white rounded-xl border border-gray-100 shadow-sm p-5 cursor-default'
@@ -97,7 +104,7 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
     <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-4" variants={container} initial="hidden" animate="show">
 
       {/* Card 1: Total Opportunities */}
-      <motion.div variants={item} {...hoverProps} className={cardCls}>
+      <motion.div variants={item} {...cardHover} className={cardCls}>
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Opportunities</p>
@@ -108,14 +115,14 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
               <AnimatedInt target={totalOpps} reduced={reduced} />{' opportunities'}
             </p>
           </div>
-          <div className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#EBF8FF' }}>
+          <motion.div {...iconHover} className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#EBF8FF' }}>
             <FileText size={20} style={{ color: '#009CDE' }} />
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 
       {/* Card 2: Win Rate */}
-      <motion.div variants={item} {...hoverProps} className={cardCls}>
+      <motion.div variants={item} {...cardHover} className={cardCls}>
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Win Rate</p>
@@ -124,14 +131,14 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
             </p>
             <p className="mt-0.5 text-xs text-gray-400">Win / (Win + Lose)</p>
           </div>
-          <div className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#FFFBEB' }}>
+          <motion.div {...iconHover} className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#FFFBEB' }}>
             <TrendingUp size={20} style={{ color: '#F59E0B' }} />
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 
       {/* Card 3: Ongoing Projects */}
-      <motion.div variants={item} {...hoverProps} className={cardCls}>
+      <motion.div variants={item} {...cardHover} className={cardCls}>
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ongoing Projects</p>
@@ -140,14 +147,14 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
             </p>
             <p className="mt-0.5 text-xs text-gray-400">Fieldwork &amp; Reporting</p>
           </div>
-          <div className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F0FDF4' }}>
+          <motion.div {...iconHover} className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F0FDF4' }}>
             <Briefcase size={20} style={{ color: '#43B02A' }} />
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 
       {/* Card 4: Confirmed Fee */}
-      <motion.div variants={item} {...hoverProps} className={cardCls}>
+      <motion.div variants={item} {...cardHover} className={cardCls}>
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Confirmed Fee</p>
@@ -155,9 +162,9 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
               <AnimatedCurrency target={confirmedFee} reduced={reduced} />
             </p>
           </div>
-          <div className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F5F3FF' }}>
+          <motion.div {...iconHover} className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F5F3FF' }}>
             <Wallet size={20} style={{ color: '#8B5CF6' }} />
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 

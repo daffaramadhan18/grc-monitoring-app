@@ -6,17 +6,169 @@
   --brand-blue:  #009CDE;
   --brand-green: #43B02A;
   --brand-gray:  #58595B;
+
+  /* Motion tokens */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --soft:   cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
   background-color: #F5F5F5;
   color: #2D2D2D;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ── Keyframes ──────────────────────────────────────────────── */
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+
+@keyframes rsm-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-8deg); }
+  75%      { transform: rotate(8deg); }
+}
+
+@keyframes rsm-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+@keyframes rsm-pop {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rsm-heartbeat {
+  0%, 28%, 70%, 100% { transform: scale(1); }
+  14% { transform: scale(1.18); }
+  42% { transform: scale(1.08); }
+}
+
+@keyframes rsm-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes rsm-grow {
+  from { width: 0; }
+}
+
+@keyframes rsm-press {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rsm-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+
+.rsm-nav-item {
+  position: relative;
+  transition: background 200ms var(--soft), color 200ms var(--soft), transform 200ms var(--spring) !important;
+}
+.rsm-nav-item::before {
+  content: '';
+  position: absolute;
+  left: -12px; top: 50%;
+  width: 3px; height: 0;
+  background: #009CDE;
+  border-radius: 0 3px 3px 0;
+  transform: translateY(-50%);
+  transition: height 250ms var(--spring);
+}
+.rsm-nav-item--active::before { height: 22px; }
+.rsm-nav-item:not(.rsm-nav-item--active):hover { transform: translateX(2px); }
+.rsm-nav-item:hover .rsm-nav-icon { animation: rsm-wiggle 500ms var(--spring); }
+
+.rsm-sidebar-logo { transition: none; }
+.rsm-sidebar-logo-mark { transition: text-shadow 250ms var(--soft); }
+.rsm-sidebar-logo:hover .rsm-sidebar-logo-mark {
+  text-shadow: 0 0 16px rgba(0, 156, 222, 0.6);
+}
+
+/* ── KPI cards ──────────────────────────────────────────────── */
+
+.rsm-kpi-card {
+  transition: transform 250ms var(--spring), box-shadow 250ms var(--soft);
+}
+.rsm-kpi-card:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 12px 24px -8px rgb(0 0 0 / 0.12), 0 4px 8px -4px rgb(0 0 0 / 0.08);
+}
+.rsm-kpi-card .rsm-kpi-icon {
+  transition: transform 350ms var(--spring);
+}
+.rsm-kpi-card:hover .rsm-kpi-icon { transform: rotate(-8deg) scale(1.08); }
+
+/* ── Table rows ─────────────────────────────────────────────── */
+
+.rsm-row-click { position: relative; }
+.rsm-row-click td:first-child { position: relative; }
+.rsm-row-click td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 0; height: 100%;
+  background: #009CDE;
+  transition: width 200ms var(--soft);
+}
+.rsm-row-click:hover td:first-child::before { width: 3px; }
+
+/* ── Capacity badge ─────────────────────────────────────────── */
+
+.rsm-badge-heartbeat {
+  animation: rsm-heartbeat 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+
+.rsm-btn-spring {
+  transition: background 150ms ease, color 150ms ease,
+              transform 180ms var(--spring), box-shadow 200ms var(--soft) !important;
+}
+.rsm-btn-spring:not(:disabled):hover { transform: translateY(-1px); }
+.rsm-btn-spring:not(:disabled):active { animation: rsm-press 200ms var(--soft); }
+.rsm-btn-spring:hover > svg { animation: rsm-wiggle 500ms var(--spring); }
+.rsm-btn-primary-glow:not(:disabled):hover {
+  box-shadow: 0 6px 14px -4px rgba(0, 156, 222, 0.45) !important;
+}
+
+/* ── MIC crown float ────────────────────────────────────────── */
+
+.rsm-crown-float {
+  animation: rsm-float 2.4s ease-in-out infinite;
+}
+
+/* ── Modal pop entry ────────────────────────────────────────── */
+
+.rsm-modal-pop {
+  animation: rsm-pop 350ms var(--spring);
+  transform-origin: top center;
+}
+
+/* ── Page enter ─────────────────────────────────────────────── */
+
+.rsm-page-in {
+  animation: rsm-page-in 250ms var(--soft);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

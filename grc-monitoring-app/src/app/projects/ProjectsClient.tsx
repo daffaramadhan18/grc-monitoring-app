@@ -324,7 +324,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
   const thSortCls = `${thCls} cursor-pointer hover:text-gray-700`
 
   return (
-    <div className="space-y-5">
+    <div className="rsm-page-in space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
         <div className="flex items-center gap-2">
@@ -338,7 +338,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
             <Upload size={16} /> Import
           </button>
           <button onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Project
           </button>
         </div>
@@ -474,7 +474,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                 const isSelected = selected.has(proj.id)
                 return (
                   <tr key={proj.id}
-                    className={`group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
+                    className={`rsm-row-click group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
                     onClick={() => router.push(`/projects/${proj.id}`)}>
                     <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected}
@@ -558,7 +558,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                   Tutup
                 </button>
                 <button onClick={handleImport} disabled={!importFile || importing}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>
@@ -672,7 +672,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                   Batal
                 </button>
                 <button type="submit" disabled={saving || !!dateError}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {saving ? 'Menyimpan...' : 'Simpan & Buka Detail'}
                 </button>
               </div>

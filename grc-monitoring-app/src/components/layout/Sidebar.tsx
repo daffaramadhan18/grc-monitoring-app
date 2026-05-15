@@ -51,9 +51,9 @@ export default function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+        <div className="rsm-sidebar-logo px-6 py-5 border-b border-white/10 flex items-center justify-between">
           <div>
-            <div className="text-white font-bold text-xl leading-none">RSM</div>
+            <div className="rsm-sidebar-logo-mark text-white font-bold text-xl leading-none">RSM</div>
             <div className="text-xs text-white/50 mt-1">CC3 · GRC Monitoring</div>
           </div>
           <button
@@ -67,22 +67,25 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                pathname.startsWith(href)
-                  ? "bg-[#009CDE] text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
-              )}
-            >
-              <Icon size={18} />
-              {label}
-            </Link>
-          ))}
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const active = pathname.startsWith(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "rsm-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium",
+                  active
+                    ? "rsm-nav-item--active bg-[#009CDE] text-white"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                <span className="rsm-nav-icon inline-flex"><Icon size={18} /></span>
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-6 py-4 border-t border-white/10 text-xs text-white/30">
