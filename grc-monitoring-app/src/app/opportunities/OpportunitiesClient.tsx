@@ -300,8 +300,9 @@ export default function OpportunitiesClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error(await res.text())
-      const saved: Opp = await res.json()
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error ?? res.statusText)
+      const saved: Opp = body
       setOpps((prev) => editing
         ? prev.map((o) => o.id === saved.id ? saved : o)
         : [saved, ...prev])
