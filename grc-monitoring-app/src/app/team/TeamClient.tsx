@@ -47,12 +47,20 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
   )
 }
 
-// ─── Capacity badge ───────────────────────────────────────────────────────────
+// ─── Capacity badge (based on load %) ────────────────────────────────────────
+// Project load  = (projects / 2) × 100%
+// Proposal load = (proposals / 2) × 100%
+
+function loadPct(count: number): number {
+  return Math.round((count / 2) * 100)
+}
 
 function capacityBadge(projects: number, proposals: number) {
-  if (projects > 2 || proposals > 2)
+  const pp = loadPct(projects)
+  const qp = loadPct(proposals)
+  if (pp > 100 || qp > 100)
     return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
-  if (projects === 2 && proposals === 2)
+  if (pp === 100 && qp === 100)
     return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     order: 1 }
   return   { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
@@ -238,14 +246,8 @@ export default function TeamClient({ members: initial, allocation }: Props) {
         <div>
           <h2 className="text-lg font-semibold text-gray-800">Resource Allocation Breakdown</h2>
           <p className="text-sm text-gray-400 mt-0.5">
-            Visual split between billable projects and business development (proposals)
+            Project load = (Fieldwork/Reporting ÷ 2) × 100% · Proposal load = (In progress ÷ 2) × 100%
           </p>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-5 text-xs text-gray-500">
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#009CDE] inline-block" />Active Projects</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#43B02A] inline-block" />Active Proposals</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
@@ -254,9 +256,9 @@ export default function TeamClient({ members: initial, allocation }: Props) {
               Belum ada data alokasi.
             </div>
           )}
-          {allocRows.map(({ member, projects, proposals, total, badge }) => {
-            const projPct    = total > 0 ? Math.round((projects  / total) * 100) : 0
-            const propPct    = total > 0 ? Math.round((proposals / total) * 100) : 0
+          {allocRows.map(({ member, projects, proposals, badge }) => {
+            const pp = loadPct(projects)
+            const qp = loadPct(proposals)
             return (
               <div key={member.id} className="px-5 py-4 flex items-center gap-4">
                 {/* Avatar */}
@@ -268,46 +270,34 @@ export default function TeamClient({ members: initial, allocation }: Props) {
                   <div className="text-xs text-gray-400">{member.level}</div>
                 </div>
 
-                {/* Counts */}
-                <div className="flex items-center gap-3 shrink-0 text-xs text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#009CDE] inline-block" />
-                    {projects} project{projects !== 1 ? 's' : ''}
-                  </span>
-                  <span className="text-gray-300">|</span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#43B02A] inline-block" />
-                    {proposals} proposal{proposals !== 1 ? 's' : ''}
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="flex-1 min-w-0">
-                  {total > 0 ? (
-                    <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100">
-                      {projects > 0 && (
-                        <div
-                          className="bg-[#009CDE] transition-all"
-                          style={{ width: `${projPct}%` }}
-                          title={`${projects} projects`}
-                        />
-                      )}
-                      {proposals > 0 && (
-                        <div
-                          className="bg-[#43B02A] transition-all"
-                          style={{ width: `${propPct}%` }}
-                          title={`${proposals} proposals`}
-                        />
-                      )}
+                {/* Load bars */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  {/* Project load */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 w-14 shrink-0">Projects</span>
+                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#009CDE] rounded-full transition-all"
+                        style={{ width: `${Math.min(pp, 100)}%` }}
+                      />
                     </div>
-                  ) : (
-                    <div className="h-2.5 rounded-full bg-gray-100" />
-                  )}
-                </div>
-
-                {/* Total count */}
-                <div className="text-sm font-semibold text-gray-700 w-6 text-right shrink-0">
-                  {total}
+                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pp > 100 ? 'text-red-500' : 'text-gray-600'}`}>
+                      {pp}%
+                    </span>
+                  </div>
+                  {/* Proposal load */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 w-14 shrink-0">Proposals</span>
+                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#43B02A] rounded-full transition-all"
+                        style={{ width: `${Math.min(qp, 100)}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${qp > 100 ? 'text-red-500' : 'text-gray-600'}`}>
+                      {qp}%
+                    </span>
+                  </div>
                 </div>
 
                 {/* Capacity badge */}

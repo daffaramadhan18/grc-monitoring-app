@@ -46,12 +46,12 @@ function AvatarBubble({ initial, isMic }: { initial: string; isMic: boolean }) {
   )
 }
 
-const GROUPS = ['In progress', 'Waiting for Result', 'Backlog'] as const
+const GROUPS = ['In progress', 'Waiting for Result', 'Submitted'] as const
 
 const GROUP_LABELS: Record<string, string> = {
   'In progress':        'In Progress',
   'Waiting for Result': 'Waiting for Result',
-  'Backlog':            'Backlog',
+  'Submitted':          'Submitted',
 }
 
 export default function ProposalPipeline({ opps }: Props) {

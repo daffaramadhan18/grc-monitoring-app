@@ -11,14 +11,14 @@ export default async function TeamPage() {
       select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
+    // Proposal load = In progress only
     prisma.opportunity.findMany({
-      where: { status: { in: ['Waiting for Result', 'Backlog', 'In progress'] } },
+      where: { status: 'In progress' },
       select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
   ])
 
-  // Compute allocation counts per member initial
   const alloc: Record<string, { projects: number; proposals: number }> = {}
   for (const m of members) alloc[m.initial] = { projects: 0, proposals: 0 }
 

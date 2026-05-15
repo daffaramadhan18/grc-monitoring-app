@@ -1,9 +1,17 @@
+import { Suspense } from 'react'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
 import SummaryCards from './SummaryCards'
 import ProposalPipeline from './ProposalPipeline'
 import TeamWorkload from './TeamWorkload'
 import OngoingProjects from './OngoingProjects'
+import DashboardFilters from './DashboardFilters'
+
+function monthRange(month: string | undefined) {
+  if (!month) return null
+  const [y, m] = month.split('-').map(Number)
+  return { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) }
+}
 
 async function getWorkload() {
   const members = await prisma.teamMember.findMany({ select: { id: true, initial: true, fullName: true, level: true } })
@@ -14,7 +22,7 @@ async function getWorkload() {
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
     prisma.opportunity.findMany({
-      where: { status: { in: ['Waiting for Result', 'Backlog', 'In progress'] } },
+      where: { status: 'In progress' },
       select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
                 tm4Initial: true, tm5Initial: true, tm6Initial: true },
     }),
@@ -33,65 +41,73 @@ async function getWorkload() {
     .sort((a, b) => (b.active_projects + b.active_proposals) - (a.active_projects + a.active_proposals))
 }
 
-export default async function DashboardPage() {
-  const [
-    oppsWinLose,
-    activeProposals,
-    ongoingProjectsCount,
-    confirmedFeeAgg,
-    pipeline,
-    workload,
-    ongoingProjects,
-  ] = await Promise.all([
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { month?: string }
+}) {
+  const range = monthRange(searchParams.month)
+  const oppDateFilter = range ? { expectedDate: { gte: range.gte, lt: range.lt } } : {}
+  const projDateFilter = range ? { startedDate:  { gte: range.gte, lt: range.lt } } : {}
+
+  const [allFilteredOpps, ongoingProjects, workload] = await Promise.all([
+    // All opportunities in month filter (for cards 1+2 and pipeline)
     prisma.opportunity.findMany({
-      where: { status: { in: ['Win', 'Lose', 'Withdraw', 'Cancelled'] } },
-      select: { status: true },
-    }),
-    prisma.opportunity.count({
-      where: { status: { in: ['Waiting for Result', 'In progress', 'Backlog'] } },
-    }),
-    prisma.project.count({
-      where: { status: { in: ['Fieldwork', 'Reporting'] } },
-    }),
-    prisma.project.aggregate({
-      where: { status: { in: ['Fieldwork', 'Reporting'] } },
-      _sum: { confirmedFee: true },
-    }),
-    prisma.opportunity.findMany({
-      where: { status: { in: ['Waiting for Result', 'In progress', 'Backlog'] } },
+      where: oppDateFilter,
       select: {
-        id: true, proposalName: true, status: true, phase: true, expectedDate: true,
+        id: true, proposalName: true, status: true, phase: true,
+        expectedDate: true, harga: true,
         client: { select: { initial: true, fullName: true } },
         micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
         tm4Initial: true, tm5Initial: true, tm6Initial: true,
       },
-      orderBy: [{ expectedDate: 'asc' }],
+      orderBy: { expectedDate: 'asc' },
     }),
-    getWorkload(),
+    // Ongoing projects (cards 3+4 and table)
     prisma.project.findMany({
-      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+      where: { status: { in: ['Fieldwork', 'Reporting'] }, ...projDateFilter },
       select: {
-        id: true, proposalName: true, status: true, endDate: true,
+        id: true, proposalName: true, status: true, endDate: true, confirmedFee: true,
         client: { select: { initial: true, fullName: true } },
         termins: { select: { status: true } },
       },
       orderBy: { endDate: 'asc' },
     }),
+    getWorkload(),
   ])
 
-  const wins  = oppsWinLose.filter((o) => o.status === 'Win').length
-  const total = oppsWinLose.length
-  const winRate     = total > 0 ? Math.round((wins / total) * 100) : 0
-  const confirmedFee = Number(confirmedFeeAgg._sum.confirmedFee ?? 0)
+  // Card 1: total opps + harga sum
+  const totalOpps  = allFilteredOpps.length
+  const hargaTotal = allFilteredOpps.reduce((s, o) => s + Number(o.harga ?? 0), 0)
+
+  // Card 2: win rate (Win / (Win + Lose))
+  const wins  = allFilteredOpps.filter((o) => o.status === 'Win').length
+  const loses = allFilteredOpps.filter((o) => o.status === 'Lose').length
+  const winRate = (wins + loses) > 0 ? wins / (wins + loses) * 100 : 0
+
+  // Card 3 + 4
+  const ongoingCount = ongoingProjects.length
+  const confirmedFee = ongoingProjects.reduce((s, p) => s + Number(p.confirmedFee ?? 0), 0)
+
+  // Pipeline: filter to relevant statuses
+  const pipeline = allFilteredOpps.filter((o) =>
+    ['Waiting for Result', 'In progress', 'Submitted'].includes(o.status)
+  )
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
+        <Suspense>
+          <DashboardFilters />
+        </Suspense>
+      </div>
 
       <SummaryCards
-        activeProposals={activeProposals}
-        ongoingProjects={ongoingProjectsCount}
+        totalOpps={totalOpps}
+        hargaTotal={hargaTotal}
         winRate={winRate}
+        ongoingProjects={ongoingCount}
         confirmedFee={confirmedFee}
       />
 

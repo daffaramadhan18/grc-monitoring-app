@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import QuarterlySection from './QuarterlySection'
+import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -189,12 +190,32 @@ export default function OpportunitiesClient({
   const [selected, setSelected]   = useState<Set<number>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
+  const now = new Date()
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const [filterMonth, setFilterMonth] = useState(defaultMonth)
+
   const [filters, setFilters] = useState({
     search: '',
     statuses: new Set<string>(),
     serviceTypeId: '',
     teamMember: '',
   })
+
+  // Opps visible in the table (month-filtered)
+  const monthFilteredOpps = useMemo(() => {
+    if (!filterMonth) return opps
+    const [y, m] = filterMonth.split('-').map(Number)
+    return opps.filter((o) => {
+      if (!o.expectedDate) return false
+      const d = new Date(o.expectedDate)
+      return d.getFullYear() === y && d.getMonth() + 1 === m
+    })
+  }, [opps, filterMonth])
+
+  // Year for quarterly section
+  const quarterYear = filterMonth
+    ? Number(filterMonth.split('-')[0])
+    : new Date().getFullYear()
 
   function toggleStatusFilter(s: string) {
     setFilters((f) => {
@@ -342,7 +363,7 @@ export default function OpportunitiesClient({
   }
 
   const sortedOpps = useMemo(() => {
-    let result = opps
+    let result = monthFilteredOpps
 
     if (filters.search)
       result = result.filter((o) =>
@@ -371,7 +392,7 @@ export default function OpportunitiesClient({
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [opps, sortField, sortDir, filters])
+  }, [monthFilteredOpps, sortField, sortDir, filters])
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
@@ -441,6 +462,7 @@ export default function OpportunitiesClient({
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Opportunities</h1>
         <div className="flex items-center gap-2">
+          <MonthFilter value={filterMonth} onChange={setFilterMonth} />
           <button onClick={handleExport}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Download size={16} /> Export
@@ -456,17 +478,17 @@ export default function OpportunitiesClient({
         </div>
       </div>
 
-      <QuarterlySection opps={opps} />
+      <QuarterlySection opps={opps} year={quarterYear} />
 
       {/* Summary pills */}
       <div className="flex flex-wrap gap-2">
         {(['Win','In progress','Waiting for Result','Backlog'] as const).map((s) => (
           <span key={s} className={`px-3 py-1 rounded-full text-xs font-medium ${OPP_STATUS_COLORS[s]}`}>
-            {s}: {opps.filter((o) => o.status === s).length}
+            {s}: {monthFilteredOpps.filter((o) => o.status === s).length}
           </span>
         ))}
         <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-          Total: {opps.length}
+          Total: {monthFilteredOpps.length}
         </span>
       </div>
 
@@ -535,7 +557,7 @@ export default function OpportunitiesClient({
       {/* Result count */}
       {activeFilterCount > 0 && (
         <p className="text-xs text-gray-400 px-1">
-          Showing {sortedOpps.length} of {opps.length} opportunities
+          Showing {sortedOpps.length} of {monthFilteredOpps.length} opportunities
         </p>
       )}
 

@@ -4,6 +4,7 @@ import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
+import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 
 interface Client     { id: number; initial: string; fullName: string }
@@ -132,6 +133,21 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
   const [selected, setSelected]     = useState<Set<number>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
+  // Month filter
+  const now = new Date()
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const [filterMonth, setFilterMonth] = useState(defaultMonth)
+
+  const monthFilteredProjects = useMemo(() => {
+    if (!filterMonth) return projects
+    const [y, m] = filterMonth.split('-').map(Number)
+    return projects.filter((p) => {
+      if (!p.startedDate) return false
+      const d = new Date(p.startedDate)
+      return d.getFullYear() === y && d.getMonth() + 1 === m
+    })
+  }, [projects, filterMonth])
+
   const [filters, setFilters] = useState({
     search: '',
     statuses: new Set<string>(),
@@ -229,7 +245,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
   }
 
   const sortedProjects = useMemo(() => {
-    let result = projects
+    let result = monthFilteredProjects
 
     if (filters.search)
       result = result.filter((p) =>
@@ -255,7 +271,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [projects, sortField, sortDir, filters])
+  }, [monthFilteredProjects, sortField, sortDir, filters])
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
@@ -310,6 +326,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
         <div className="flex items-center gap-2">
+          <MonthFilter value={filterMonth} onChange={setFilterMonth} />
           <button onClick={handleExport}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Download size={16} /> Export
@@ -329,7 +346,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       <div className="flex flex-wrap gap-2">
         {PROJ_STATUSES.map((s) => (
           <span key={s} className={`px-3 py-1 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[s]}`}>
-            {s}: {projects.filter((p) => p.status === s).length}
+            {s}: {monthFilteredProjects.filter((p) => p.status === s).length}
           </span>
         ))}
       </div>
@@ -390,7 +407,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
       {/* Result count */}
       {activeFilterCount > 0 && (
         <p className="text-xs text-gray-400 px-1">
-          Showing {sortedProjects.length} of {projects.length} projects
+          Showing {sortedProjects.length} of {monthFilteredProjects.length} projects
         </p>
       )}
 

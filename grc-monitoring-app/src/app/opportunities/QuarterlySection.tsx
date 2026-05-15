@@ -9,11 +9,15 @@ interface Opp {
   tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
 }
 
-interface Props { opps: Opp[] }
+interface Props {
+  opps: Opp[]
+  year?: number   // if provided, filter quarters to this year; defaults to current year
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const DEAD = new Set(['Win','Lose','Withdraw','Cancelled','Transfer to others'])
+// Only include active (non-dead) proposals in the quarterly estimation
+const ACTIVE = new Set(['Waiting for Result', 'In progress', 'Submitted'])
 
 const QUARTERS = [
   { label: 'Q1', months: [1,2,3],    range: 'Jan – Mar' },
@@ -42,22 +46,24 @@ function teamInitials(opp: Opp): string[] {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function QuarterlySection({ opps }: Props) {
-  // Only opportunities with an expectedDate
-  const withDate = opps.filter((o) => o.expectedDate)
+export default function QuarterlySection({ opps, year }: Props) {
+  const targetYear = year ?? new Date().getFullYear()
+
+  // Only active opportunities with an expectedDate in the target year
+  const eligible = opps.filter((o) => {
+    if (!o.expectedDate) return false
+    if (!ACTIVE.has(o.status)) return false
+    return new Date(o.expectedDate).getFullYear() === targetYear
+  })
 
   const quarters = QUARTERS.map((q) => {
-    // All opps in this quarter (for harga total + team)
-    const inQ = withDate.filter((o) => {
+    const inQ = eligible.filter((o) => {
       const m = new Date(o.expectedDate!).getMonth() + 1
       return q.months.includes(m)
     })
-    // Active proposals (for count label)
-    const activeInQ = inQ.filter((o) => !DEAD.has(o.status))
-
     const total = inQ.reduce((s, o) => s + (o.harga ?? 0), 0)
-    const uniqueTeam = [...new Set(inQ.flatMap(teamInitials))]
-    return { ...q, total, activeCount: activeInQ.length, team: uniqueTeam }
+    const uniqueTeam = Array.from(new Set(inQ.flatMap(teamInitials)))
+    return { ...q, total, activeCount: inQ.length, team: uniqueTeam }
   })
 
   const maxTotal = Math.max(...quarters.map((q) => q.total), 1)
@@ -67,7 +73,7 @@ export default function QuarterlySection({ opps }: Props) {
       <div>
         <h2 className="text-sm font-semibold text-gray-700">Quarterly Potential Revenue &amp; Team Projection</h2>
         <p className="text-xs text-gray-400 mt-0.5">
-          Harga cumulative per quarter (by Expected Date) · active proposal count excludes closed statuses
+          {targetYear} · Waiting for Result, In progress, Submitted · grouped by Expected Date
         </p>
       </div>
 
@@ -76,23 +82,20 @@ export default function QuarterlySection({ opps }: Props) {
           const pct = q.total > 0 ? Math.round((q.total / maxTotal) * 100) : 0
           return (
             <div key={q.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-              {/* Quarter header */}
               <div className="flex items-baseline justify-between">
                 <span className="text-base font-bold text-gray-800">{q.label}</span>
                 <span className="text-xs text-gray-400">{q.range}</span>
               </div>
 
-              {/* Count + value */}
               <div>
                 <div className="text-xs text-gray-400 mb-0.5">
-                  {q.activeCount} active proposal{q.activeCount !== 1 ? 's' : ''}
+                  {q.activeCount} proposal{q.activeCount !== 1 ? 's' : ''}
                 </div>
                 <div className="text-lg font-semibold text-gray-900 leading-tight">
                   {q.total > 0 ? formatIDRShort(q.total) : <span className="text-gray-300">—</span>}
                 </div>
               </div>
 
-              {/* Progress bar */}
               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#009CDE] rounded-full transition-all duration-500"
@@ -100,7 +103,6 @@ export default function QuarterlySection({ opps }: Props) {
                 />
               </div>
 
-              {/* Team badges */}
               <div>
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
                   Proposed Team Involved
