@@ -14,9 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id">
       <body className={`${inter.className} overflow-x-hidden`}>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-x-hidden">
           <Sidebar />
-          <main className="w-full md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-[72px] md:p-6">
+          <main className="w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-[72px] md:p-6">
             {children}
           </main>
         </div>
