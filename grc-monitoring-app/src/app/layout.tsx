@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import Sidebar from "@/components/layout/Sidebar"
 import BottomNav from "@/components/layout/BottomNav"
+import MobileTopbar from "@/components/layout/MobileTopbar"
 import SWRProvider from "@/components/SWRProvider"
 
 export const metadata: Metadata = {
@@ -29,10 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id">
       <body className="overflow-x-hidden">
+        <MobileTopbar />
         <SWRProvider>
           <div className="flex h-screen overflow-x-hidden">
             <Sidebar />
-            <main className="w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 md:p-6">
+            <main className="w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-14 md:pt-0 md:p-6">
               {children}
               {/* Mobile safe-area spacer: bottom nav (64px) + device inset */}
               <div

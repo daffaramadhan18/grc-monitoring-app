@@ -257,48 +257,42 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
           )}
           {allocRows.map(({ member, projects, proposals, badge }) => {
             const pct = capacityLoadPct(projects, proposals)
+            const barFill = pct > 100 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#43B02A'
             return (
               <button
                 key={member.id}
                 onClick={() => setDetailMember(member)}
                 className="w-full bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-left active:bg-gray-50 transition-colors"
               >
-                <div className="flex items-start gap-3">
+                <div className="rsm-mworkload-card">
                   {/* Avatar */}
                   <Avatar initial={member.initial} size="sm" />
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-2">
-                    {/* Name + badge row */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate">{member.fullName}</p>
-                        <p className="text-xs text-gray-400 truncate">{member.level}</p>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                    </div>
+                  {/* Name + level */}
+                  <div className="rsm-mworkload-text">
+                    <div className="name truncate">{member.fullName}</div>
+                    <div className="level truncate">{member.level}</div>
+                  </div>
 
-                    {/* Progress bar + percentage */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${barColor(pct)}`}
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
-                      <span className={`text-sm font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>
-                        {pct}%
-                      </span>
-                    </div>
+                  {/* Badge */}
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
+                    {badge.label}
+                  </span>
 
-                    {/* Count */}
-                    <p className="text-xs text-gray-400 whitespace-nowrap">
-                      {projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}
-                    </p>
+                  {/* Capacity bar spanning full width */}
+                  <div className="rsm-mworkload-bar-wrap">
+                    <div className="rsm-mworkload-bar">
+                      <div
+                        className="rsm-mworkload-bar-fill"
+                        style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: barFill }}
+                      />
+                    </div>
+                    <span className="rsm-mworkload-pct">{pct}%</span>
                   </div>
                 </div>
+                <p className="text-xs text-gray-400 mt-2 whitespace-nowrap">
+                  {projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}
+                </p>
               </button>
             )
           })}

@@ -2,7 +2,8 @@
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
+import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search, Filter } from 'lucide-react'
+import MobileOppCard from './MobileOppCard'
 import useSWR, { mutate } from 'swr'
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
@@ -170,6 +171,7 @@ export default function OpportunitiesClient({
 
   const [filterMonth, setFilterMonth] = useState('')
   const [flashedRow, setFlashedRow]   = useState<number | null>(null)
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
 
   const [filters, setFilters] = useState({
     search: '',
@@ -477,6 +479,8 @@ export default function OpportunitiesClient({
         </p>
       )}
 
+      {/* ── Desktop Table (hidden on mobile) ─────────────────────────────── */}
+      <div className="hidden md:block">
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
         {selected.size > 0 && (
@@ -675,6 +679,113 @@ export default function OpportunitiesClient({
             </tbody>
           </table>
         </div>
+      </div>
+      </div>{/* end hidden md:block desktop table */}
+
+      {/* ── Mobile view (< 768px) ────────────────────────────────────────── */}
+      <div className="md:hidden">
+        {/* Mobile filter toggle */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-400">
+            {sortedOpps.length} of {opps.length} opportunities
+          </p>
+          <button
+            onClick={() => setMobileFilterOpen(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: mobileFilterOpen || activeFilterCount > 0 ? '#EBF8FF' : 'transparent',
+              color: mobileFilterOpen || activeFilterCount > 0 ? '#009CDE' : '#6B7280',
+            }}
+          >
+            <Filter size={16} />
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#009CDE] text-white text-[10px] font-bold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Collapsible filter panel */}
+        {mobileFilterOpen && (
+          <div className="rsm-mfilter-panel">
+            <div className="rsm-mfilter-row">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  className="w-full pl-8 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009CDE]"
+                  placeholder="Search…"
+                  value={filters.search}
+                  onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+                />
+              </div>
+              <select
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009CDE] bg-white"
+                value={filters.serviceTypeId}
+                onChange={e => setFilters(f => ({ ...f, serviceTypeId: e.target.value }))}
+              >
+                <option value="">All Service Types</option>
+                {serviceTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009CDE] bg-white"
+                value={filters.teamMember}
+                onChange={e => setFilters(f => ({ ...f, teamMember: e.target.value }))}
+              >
+                <option value="">All Team Members</option>
+                {teamMembers.map(m => <option key={m.initial} value={m.initial}>{m.initial} · {m.fullName}</option>)}
+              </select>
+              <div className="flex flex-wrap gap-2">
+                {OPP_STATUSES.map(s => {
+                  const on = filters.statuses.has(s)
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleStatusFilter(s)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? 'border-transparent' : 'border-gray-200 bg-white text-gray-600'}`}
+                      style={on ? { backgroundColor: undefined } : {}}
+                    >
+                      {s}
+                    </button>
+                  )
+                })}
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => setFilters({ search: '', statuses: new Set(), serviceTypeId: '', teamMember: '' })}
+                  className="flex items-center gap-1 text-sm text-gray-500"
+                >
+                  <X size={14} /> Clear ({activeFilterCount})
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Card list */}
+        {sortedOpps.length === 0 ? (
+          <div className="rsm-mcard">
+            <p className="text-sm text-gray-400 text-center">
+              {opps.length === 0 ? 'Belum ada opportunity. Tekan + untuk mulai.' : 'Tidak ada opportunity yang cocok.'}
+            </p>
+          </div>
+        ) : (
+          <div className="rsm-mlist">
+            {sortedOpps.map(opp => (
+              <MobileOppCard key={opp.id} opp={opp as any} onTap={() => openEdit(opp)} />
+            ))}
+          </div>
+        )}
+
+        {/* FAB */}
+        <button
+          className="rsm-fab md:hidden"
+          onClick={() => { haptic(); openNew() }}
+          aria-label="Add Opportunity"
+        >
+          <Plus size={26} />
+        </button>
       </div>
 
       {/* ── Import Modal ─────────────────────────────────────────────────── */}

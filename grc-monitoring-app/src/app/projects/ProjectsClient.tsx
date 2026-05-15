@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search, Loader2, Check } from 'lucide-react'
+import MobileProjCard from './MobileProjCard'
 import useSWR from 'swr'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
@@ -484,6 +485,8 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
         </p>
       )}
 
+      {/* ── Desktop Table (hidden on mobile) ─────────────────────────────── */}
+      <div className="hidden md:block">
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
         {/* Floating bulk action bar */}
@@ -613,6 +616,31 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
             </tbody>
           </table>
         </div>
+      </div>
+      </div>{/* end hidden md:block desktop table */}
+
+      {/* ── Mobile view ─────────────────────────────────────────────────── */}
+      <div className="md:hidden">
+        {sortedProjects.length === 0 ? (
+          <div className="rsm-mcard">
+            <p className="text-sm text-gray-400 text-center">Belum ada project.</p>
+          </div>
+        ) : (
+          <div className="rsm-mlist">
+            {sortedProjects.map(proj => (
+              <MobileProjCard key={proj.id} project={proj} onTap={p => router.push(`/projects/${p.id}`)} />
+            ))}
+          </div>
+        )}
+
+        {/* FAB */}
+        <button
+          className="rsm-fab md:hidden"
+          onClick={() => { haptic(); setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+          aria-label="Add Project"
+        >
+          <Plus size={26} />
+        </button>
       </div>
 
       {/* ── Import Modal ─────────────────────────────────────────────────── */}
