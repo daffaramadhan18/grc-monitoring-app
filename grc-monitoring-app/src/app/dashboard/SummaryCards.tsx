@@ -154,7 +154,6 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
             <p className="mt-1.5 text-2xl font-bold text-gray-900 tabular-nums">
               <AnimatedCurrency target={confirmedFee} reduced={reduced} />
             </p>
-            <p className="mt-0.5 text-xs text-gray-400">Active projects only</p>
           </div>
           <div className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F5F3FF' }}>
             <Wallet size={20} style={{ color: '#8B5CF6' }} />

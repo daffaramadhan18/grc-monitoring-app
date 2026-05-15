@@ -105,7 +105,9 @@ export default async function DashboardPage({
 
   // Card 3 + 4
   const ongoingCount = ongoingProjects.length
-  const confirmedFee = ongoingProjects.reduce((s, p) => s + Number(p.confirmedFee ?? 0), 0)
+  const confirmedFee = allFilteredOpps
+    .filter((o) => o.status === 'Win')
+    .reduce((s, o) => s + Number(o.harga ?? 0), 0)
 
   // Pipeline: filter to relevant statuses
   const pipeline = allFilteredOpps.filter((o) =>
