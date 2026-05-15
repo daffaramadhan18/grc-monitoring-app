@@ -22,7 +22,7 @@ export default function Sidebar() {
       <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-[#2D2D2D] flex items-center gap-3 px-4 shadow-md">
         <button
           onClick={() => setOpen(true)}
-          className="text-white/70 hover:text-white transition-colors p-1"
+          className="text-white/70 hover:text-white transition-colors p-3 -ml-3"
           aria-label="Open menu"
         >
           <Menu size={22} />
@@ -57,7 +57,7 @@ export default function Sidebar() {
             <div className="text-xs text-white/50 mt-1">CC3 · GRC Monitoring</div>
           </div>
           <button
-            className="md:hidden text-white/40 hover:text-white transition-colors p-1"
+            className="md:hidden text-white/40 hover:text-white transition-colors p-2.5 -mr-2"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
           >
