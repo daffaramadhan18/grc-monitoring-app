@@ -236,9 +236,9 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               >
                 <Avatar initial={member.initial} size="sm" />
 
-                <div className="w-44 shrink-0">
-                  <div className="font-medium text-sm text-gray-900">{member.fullName}</div>
-                  <div className="text-xs text-gray-400">{member.level}</div>
+                <div className="min-w-0 w-32 sm:w-44 shrink-0">
+                  <div className="font-medium text-sm text-gray-900 truncate">{member.fullName}</div>
+                  <div className="text-xs text-gray-400 truncate">{member.level}</div>
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-1">
@@ -248,7 +248,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     </div>
                     <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
-                  <p className="text-[10px] text-gray-400">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}</p>
+                  <p className="text-[10px] text-gray-400 whitespace-nowrap">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}</p>
                 </div>
 
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>

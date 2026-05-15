@@ -494,7 +494,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
           </div>
         )}
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="text-sm" style={{ tableLayout: 'fixed', width: `${widths.reduce((a, b) => a + b, 0)}px` }}>
+          <table className="text-sm" style={{ tableLayout: 'fixed', width: `${Math.max(widths.reduce((a, b) => a + b, 0), 900)}px` }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -515,14 +515,14 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                   Client <SortIcon field="client" current={sortField} dir={sortDir} />
                   <ResizeHandle col={2} />
                 </th>
-                <th className={thBase} style={{ width: widths[3] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[3] }}>
                   Owner<ResizeHandle col={3} />
                 </th>
                 <th className={thSortCls} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
                   Status <SortIcon field="status" current={sortField} dir={sortDir} />
                   <ResizeHandle col={4} />
                 </th>
-                <th className={thBase} style={{ width: widths[5] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[5] }}>
                   MIC<ResizeHandle col={5} />
                 </th>
                 <th className={thBase} style={{ width: widths[6] }}>
@@ -536,7 +536,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                   Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
                   <ResizeHandle col={8} />
                 </th>
-                <th className={`${thBase} text-center`} style={{ width: widths[9] }}>
+                <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[9] }}>
                   Termins<ResizeHandle col={9} />
                 </th>
               </tr>
@@ -564,13 +564,13 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{proj.proposalName}</td>
                     <td className="px-4 py-3 text-gray-600" title={proj.clientName ?? ''}>{proj.clientInitial ?? proj.clientName ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{proj.projectOwner ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{proj.projectOwner ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {proj.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{proj.micInitial ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{proj.micInitial ?? '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {team.map((t) => (
@@ -583,7 +583,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                       {formatDate(proj.startedDate)} – {formatDate(proj.endDate)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-700">{formatRupiah(proj.confirmedFee)}</td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-600">
+                    <td className="px-4 py-3 text-center text-sm text-gray-600 hidden sm:table-cell">
                       {proj.termins.length > 0 ? `${paidCount}/${proj.termins.length} paid` : '—'}
                     </td>
                   </tr>

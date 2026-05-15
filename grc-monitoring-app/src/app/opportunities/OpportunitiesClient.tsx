@@ -501,7 +501,7 @@ export default function OpportunitiesClient({
         )}
 
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: widths.reduce((a, b) => a + b, 0) }}>
+          <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: Math.max(widths.reduce((a, b) => a + b, 0), 900) }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -529,7 +529,7 @@ export default function OpportunitiesClient({
                   Service Type<ResizeHandle col={3} />
                 </th>
                 {/* Sub-service */}
-                <th className={thBase} style={{ width: widths[4] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[4] }}>
                   Sub-service<ResizeHandle col={4} />
                 </th>
                 {/* Proposal Name */}
@@ -538,11 +538,11 @@ export default function OpportunitiesClient({
                   <ResizeHandle col={5} />
                 </th>
                 {/* Phase */}
-                <th className={thBase} style={{ width: widths[6] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[6] }}>
                   Phase<ResizeHandle col={6} />
                 </th>
                 {/* Submitted Date */}
-                <th className={thBase} style={{ width: widths[7] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[7] }}>
                   Submitted Date<ResizeHandle col={7} />
                 </th>
                 {/* Expected Date */}
@@ -568,7 +568,7 @@ export default function OpportunitiesClient({
                   Notes<ResizeHandle col={12} />
                 </th>
                 {/* %RR */}
-                <th className={thBase} style={{ width: widths[13] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[13] }}>
                   %RR<ResizeHandle col={13} />
                 </th>
                 {/* Harga */}
@@ -617,10 +617,10 @@ export default function OpportunitiesClient({
                       {opp.clientName ?? '—'}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600 truncate">{opp.serviceType?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.subService?.name ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-600 truncate hidden sm:table-cell">{opp.subService?.name ?? '—'}</td>
                     <td className="px-3 py-2.5 font-medium text-gray-900 truncate">{opp.proposalName}</td>
-                    <td className="px-3 py-2.5 text-gray-500 truncate">{opp.phase ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.submittedDate)}</td>
+                    <td className="px-3 py-2.5 text-gray-500 truncate hidden sm:table-cell">{opp.phase ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap hidden sm:table-cell">{formatDate(opp.submittedDate)}</td>
                     <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.expectedDate)}</td>
                     <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -630,7 +630,7 @@ export default function OpportunitiesClient({
                     <td className="px-3 py-2.5 text-gray-500 tabular-nums">{opp.probability != null ? `${opp.probability}%` : '—'}</td>
                     <td className="px-3 py-2.5"><RiskBadge level={opp.riskLevel} /></td>
                     <td className="px-3 py-2.5 text-gray-400 truncate text-xs">{opp.notes ?? ''}</td>
-                    <td className="px-3 py-2.5 text-gray-600 text-right">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-right hidden sm:table-cell">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
                     <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.harga)}</td>
                     <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.revenueCf)}</td>
                     <td className="px-3 py-2.5">
@@ -715,15 +715,15 @@ export default function OpportunitiesClient({
 
       {/* ── Toast ────────────────────────────────────────────────────────── */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[60] flex flex-col items-stretch sm:items-center gap-2">
           <div className="flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-xl shadow-xl">
-            <span>{toast}</span>
-            <button onClick={() => setToast(null)} className="text-white/50 hover:text-white">
+            <span className="flex-1">{toast}</span>
+            <button onClick={() => setToast(null)} className="text-white/50 hover:text-white shrink-0">
               <X size={14} />
             </button>
           </div>
           {importSkipped.length > 0 && (
-            <div className="bg-white border border-amber-200 rounded-xl shadow-xl p-4 text-sm w-80 max-h-48 overflow-y-auto">
+            <div className="bg-white border border-amber-200 rounded-xl shadow-xl p-4 text-sm w-full sm:w-80 max-h-48 overflow-y-auto">
               <p className="font-medium text-amber-700 mb-1">{importSkipped.length} row(s) skipped:</p>
               <ul className="list-disc list-inside text-gray-600 text-xs space-y-0.5">
                 {importSkipped.map((s) => (

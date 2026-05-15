@@ -77,7 +77,7 @@ export default function QuarterlySection({ opps, year }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {quarters.map((q) => {
           const pct = q.total > 0 ? Math.round((q.total / maxTotal) * 100) : 0
           return (
