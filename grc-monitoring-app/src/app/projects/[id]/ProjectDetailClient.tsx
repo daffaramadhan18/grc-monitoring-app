@@ -249,7 +249,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
         {/* Project Info */}
         <Section title="Informasi Project">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Proposal Name">
+            <Field label="Engagement Name">
               <input className={inputCls} value={form.proposalName}
                 onChange={(e) => setField('proposalName', e.target.value)} />
             </Field>
