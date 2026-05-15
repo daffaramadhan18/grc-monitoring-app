@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search, Loader2, Check } from 'lucide-react'
 import useSWR from 'swr'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
@@ -174,7 +176,8 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
   const { data: projects = initial, mutate: revalidate } = useSWR<Project[]>('/api/projects', fetcher, { fallbackData: initial })
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm]           = useState(emptyForm())
-  const [saving, setSaving]       = useState(false)
+  type SaveState = 'idle' | 'saving' | 'success' | 'error'
+  const [saveState, setSaveState] = useState<SaveState>('idle')
   const [dateError, setDateError] = useState('')
   const [importOpen, setImport]   = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -240,7 +243,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     e.preventDefault()
     if (!form.engagementName || !form.clientName) return
     if (dateError) return
-    setSaving(true)
+    setSaveState('saving')
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -248,12 +251,14 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       })
       if (!res.ok) throw new Error(await res.text())
       const saved = await res.json()
+      setSaveState('success')
+      await new Promise(r => setTimeout(r, 600))
       setModalOpen(false)
       router.push(`/projects/${saved.id}`)
     } catch (err: any) {
+      setSaveState('error')
+      setTimeout(() => setSaveState('idle'), 2000)
       alert('Error: ' + err.message)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -496,7 +501,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
           </div>
         )}
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="text-sm" style={{ tableLayout: 'fixed', width: `${Math.max(widths.reduce((a, b) => a + b, 0), 900)}px` }}>
+          <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -650,117 +655,153 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       )}
 
       {/* ── Add Project Modal ─────────────────────────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-800">New Project</h2>
-              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {modalOpen && (
+            <>
+              <motion.div
+                key="proj-modal-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                onClick={() => setModalOpen(false)}
+              />
+              <motion.div
+                key="proj-modal-panel"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 40 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4 pointer-events-none"
+              >
+                <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl pointer-events-auto">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-base font-semibold text-gray-800">New Project</h2>
+                    <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                      <X size={18} />
+                    </button>
+                  </div>
 
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              <Field label="Engagement Name" required>
-                <input className={inputCls} value={form.engagementName}
-                  onChange={(e) => set('engagementName', e.target.value)} required autoFocus />
-              </Field>
+                  <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+                    <Field label="Engagement Name" required>
+                      <input className={inputCls} value={form.engagementName}
+                        onChange={(e) => set('engagementName', e.target.value)} required autoFocus />
+                    </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Client Initial">
-                  <input className={inputCls} value={form.clientInitial ?? ''}
-                    onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
-                    placeholder="e.g. BRI" maxLength={6} />
-                </Field>
-                <Field label="Client Name">
-                  <input className={inputCls} value={form.clientName ?? ''}
-                    onChange={(e) => set('clientName', e.target.value)}
-                    placeholder="Nama lengkap client" />
-                </Field>
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Client Initial">
+                        <input className={inputCls} value={form.clientInitial ?? ''}
+                          onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
+                          placeholder="e.g. BRI" maxLength={6} />
+                      </Field>
+                      <Field label="Client Name">
+                        <input className={inputCls} value={form.clientName ?? ''}
+                          onChange={(e) => set('clientName', e.target.value)}
+                          placeholder="Nama lengkap client" />
+                      </Field>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Project Owner">
-                  <select className={selectCls} value={form.projectOwner}
-                    onChange={(e) => set('projectOwner', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    <option value="ITGRC-S">ITGRC-S</option>
-                    <option value="Non ITGRC-S">Non ITGRC-S</option>
-                  </select>
-                </Field>
-                <Field label="Status">
-                  <select className={selectCls} value={form.status}
-                    onChange={(e) => set('status', e.target.value)}>
-                    {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Project Owner">
+                        <select className={selectCls} value={form.projectOwner}
+                          onChange={(e) => set('projectOwner', e.target.value)}>
+                          <option value="">— (opsional)</option>
+                          <option value="ITGRC-S">ITGRC-S</option>
+                          <option value="Non ITGRC-S">Non ITGRC-S</option>
+                        </select>
+                      </Field>
+                      <Field label="Status">
+                        <select className={selectCls} value={form.status}
+                          onChange={(e) => set('status', e.target.value)}>
+                          {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      </Field>
+                    </div>
 
-              <Field label="Confirmed Fee (IDR)">
-                <CurrencyInput value={form.confirmedFee} onChange={(v) => set('confirmedFee', v)} />
-              </Field>
+                    <Field label="Confirmed Fee (IDR)">
+                      <CurrencyInput value={form.confirmedFee} onChange={(v) => set('confirmedFee', v)} />
+                    </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Start Date">
-                  <input type="date" className={inputCls} value={form.startedDate}
-                    onChange={(e) => set('startedDate', e.target.value)} />
-                </Field>
-                <Field label="End Date">
-                  <input type="date" className={inputCls} value={form.endDate}
-                    min={form.startedDate || undefined}
-                    onChange={(e) => set('endDate', e.target.value)} />
-                </Field>
-              </div>
-              {dateError && <p className="text-xs text-red-500 -mt-2">{dateError}</p>}
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Start Date">
+                        <input type="date" className={inputCls} value={form.startedDate}
+                          onChange={(e) => set('startedDate', e.target.value)} />
+                      </Field>
+                      <Field label="End Date">
+                        <input type="date" className={inputCls} value={form.endDate}
+                          min={form.startedDate || undefined}
+                          onChange={(e) => set('endDate', e.target.value)} />
+                      </Field>
+                    </div>
+                    {dateError && <p className="text-xs text-red-500 -mt-2">{dateError}</p>}
 
-              <div className="grid grid-cols-2 gap-4">
-                <FileUploadField label="SPK (PDF)" filename={form.spkFilename}
-                  uploading={false} onUpload={(path, name) => setFile('spk', path, name)} />
-                <FileUploadField label="PKS (PDF)" filename={form.pksFilename}
-                  uploading={false} onUpload={(path, name) => setFile('pks', path, name)} />
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FileUploadField label="SPK (PDF)" filename={form.spkFilename}
+                        uploading={false} onUpload={(path, name) => setFile('spk', path, name)} />
+                      <FileUploadField label="PKS (PDF)" filename={form.pksFilename}
+                        uploading={false} onUpload={(path, name) => setFile('pks', path, name)} />
+                    </div>
 
-              <div className="grid grid-cols-4 gap-4">
-                <Field label="MIC">
-                  <select className={selectCls} value={form.micInitial}
-                    onChange={(e) => set('micInitial', e.target.value)}>
-                    {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                  </select>
-                </Field>
-                {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+1}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                    </select>
-                  </Field>
-                ))}
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+4}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                    </select>
-                  </Field>
-                ))}
-              </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      <Field label="MIC">
+                        <select className={selectCls} value={form.micInitial}
+                          onChange={(e) => set('micInitial', e.target.value)}>
+                          {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                        </select>
+                      </Field>
+                      {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
+                        <Field key={k} label={`TM${i+1}`}>
+                          <select className={selectCls} value={form[k]}
+                            onChange={(e) => set(k, e.target.value)}>
+                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                          </select>
+                        </Field>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
+                        <Field key={k} label={`TM${i+4}`}>
+                          <select className={selectCls} value={form[k]}
+                            onChange={(e) => set(k, e.target.value)}>
+                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                          </select>
+                        </Field>
+                      ))}
+                    </div>
 
-              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button type="button" onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Batal
-                </button>
-                <button type="submit" disabled={saving || !!dateError}
-                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
-                  {saving ? 'Menyimpan...' : 'Simpan & Buka Detail'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+                    <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                      <button type="button" onClick={() => setModalOpen(false)}
+                        className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        Batal
+                      </button>
+                      <motion.button
+                        type="submit"
+                        disabled={saveState === 'saving' || saveState === 'success' || !!dateError}
+                        animate={saveState === 'error' ? { x: [-8, 8, -8, 8, 0] } : { x: 0 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ duration: 0.4 }}
+                        className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-colors
+                          ${saveState === 'success' ? 'bg-green-500 text-white' :
+                            saveState === 'error' ? 'bg-red-500 text-white' :
+                            'bg-[#009CDE] hover:bg-[#007BB5] text-white disabled:opacity-60'}`}
+                      >
+                        {saveState === 'saving' && <Loader2 size={14} className="animate-spin" />}
+                        {saveState === 'success' && <Check size={14} />}
+                        {saveState === 'saving' ? 'Menyimpan...' :
+                         saveState === 'success' ? 'Tersimpan' :
+                         saveState === 'error' ? 'Gagal' :
+                         'Simpan & Buka Detail'}
+                      </motion.button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
 import useSWR, { mutate } from 'swr'
 import MonthFilter from '@/components/MonthFilter'
@@ -168,6 +169,7 @@ export default function OpportunitiesClient({
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const [filterMonth, setFilterMonth] = useState('')
+  const [flashedRow, setFlashedRow]   = useState<number | null>(null)
 
   const [filters, setFilters] = useState({
     search: '',
@@ -495,7 +497,7 @@ export default function OpportunitiesClient({
         )}
 
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: Math.max(widths.reduce((a, b) => a + b, 0), 900) }}>
+          <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -593,9 +595,14 @@ export default function OpportunitiesClient({
               {sortedOpps.map((opp) => {
                 const isSelected = selected.has(opp.id)
                 return (
-                  <tr
+                  <motion.tr
                     key={opp.id}
-                    className={`rsm-row-click group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
+                    className={`rsm-row-click group cursor-pointer relative ${isSelected ? 'bg-blue-50' : ''}`}
+                    animate={flashedRow === opp.id
+                      ? { backgroundColor: 'rgba(0,156,222,0.18)' }
+                      : { backgroundColor: 'rgba(255,255,255,0)' }
+                    }
+                    transition={{ duration: flashedRow === opp.id ? 0.05 : 0.6 }}
                     onClick={() => openEdit(opp)}
                   >
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -647,7 +654,7 @@ export default function OpportunitiesClient({
                         <Trash2 size={14} />
                       </button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
             </tbody>
@@ -700,7 +707,11 @@ export default function OpportunitiesClient({
         opp={editing as OppFull | null}
         serviceTypes={serviceTypes}
         teamMembers={teamMembers}
-        onSaved={() => revalidate()}
+        onSaved={(saved) => {
+          setFlashedRow(saved.id)
+          revalidate()
+          setTimeout(() => setFlashedRow(null), 700)
+        }}
       />
 
       {/* ── Toast ────────────────────────────────────────────────────────── */}
