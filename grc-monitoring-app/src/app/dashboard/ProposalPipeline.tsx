@@ -1,8 +1,9 @@
 'use client'
 
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { Crown } from 'lucide-react'
-import { OPP_STATUS_COLORS, formatDate } from '@/lib/utils'
+import { OPP_STATUS_COLORS, formatDate, formatRupiah } from '@/lib/utils'
 
 interface PipelineOpp {
   id: number
@@ -10,6 +11,7 @@ interface PipelineOpp {
   status: string
   phase: string | null
   expectedDate: string | null
+  harga: number | null
   clientName: string | null
   clientInitial: string | null
   micInitial: string | null
@@ -57,6 +59,7 @@ const GROUP_LABELS: Record<string, string> = {
 
 export default function ProposalPipeline({ opps }: Props) {
   const reduced = useReducedMotion() ?? false
+  const router  = useRouter()
 
   const container: Variants = {
     hidden: {},
@@ -97,7 +100,12 @@ export default function ProposalPipeline({ opps }: Props) {
                                  opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].filter(Boolean) as string[]
                     const isOverdue = opp.expectedDate && opp.expectedDate < today
                     return (
-                      <motion.div key={opp.id} variants={row} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50/60 transition-colors">
+                      <motion.div
+                        key={opp.id}
+                        variants={row}
+                        className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => router.push('/opportunities')}
+                      >
                         {/* Client badge */}
                         <span
                           className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-xs shrink-0"
@@ -107,15 +115,18 @@ export default function ProposalPipeline({ opps }: Props) {
                           {(opp.clientInitial ?? opp.clientName ?? '?').slice(0, 2)}
                         </span>
 
-                        {/* Name + phase */}
+                        {/* Name + client */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{opp.proposalName}</p>
-                          {opp.phase && (
-                            <span className="inline-block mt-0.5 px-1.5 py-px rounded text-[10px] font-medium bg-slate-100 text-slate-600">
-                              {opp.phase}
-                            </span>
+                          {opp.clientName && (
+                            <p className="text-xs text-gray-400 truncate mt-0.5">{opp.clientName}</p>
                           )}
                         </div>
+
+                        {/* Harga */}
+                        <span className="text-xs text-gray-600 whitespace-nowrap shrink-0 tabular-nums">
+                          {opp.harga ? formatRupiah(opp.harga) : '—'}
+                        </span>
 
                         {/* Team avatars */}
                         <div className="flex items-center gap-0.5 shrink-0">
