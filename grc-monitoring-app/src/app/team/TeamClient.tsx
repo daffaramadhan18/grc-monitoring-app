@@ -57,13 +57,21 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
 
 // ─── Capacity ─────────────────────────────────────────────────────────────────
 
-function loadPct(count: number) { return Math.round((count / 2) * 100) }
+function totalLoadPct(projects: number, proposals: number) {
+  return Math.round(((projects + proposals) / 4) * 100)
+}
+
+function barColor(pct: number) {
+  if (pct > 100) return 'bg-red-500'
+  if (pct >= 75)  return 'bg-amber-400'
+  return 'bg-[#43B02A]'
+}
 
 function capacityBadge(projects: number, proposals: number) {
-  const pp = loadPct(projects), qp = loadPct(proposals)
-  if (pp > 100 || qp > 100) return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
-  if (pp === 100 && qp === 100) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700', order: 1 }
-  return { label: 'Available', cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
+  const pct = totalLoadPct(projects, proposals)
+  if (pct > 100)  return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
+  if (pct === 100) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     order: 1 }
+  return              { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -208,7 +216,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
         <div>
           <h2 className="text-base font-semibold text-gray-800">Resource Allocation Breakdown</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Project load = (Fieldwork/Reporting ÷ 2) × 100% · Proposal load = (In progress ÷ 2) × 100%
+            Load = (active projects + active proposals) / 4 × 100% · max capacity = 4 engagements
           </p>
         </div>
 
@@ -219,8 +227,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             </div>
           )}
           {allocRows.map(({ member, projects, proposals, badge }) => {
-            const pp = loadPct(projects)
-            const qp = loadPct(proposals)
+            const pct = totalLoadPct(projects, proposals)
             return (
               <button
                 key={member.id}
@@ -234,21 +241,14 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                   <div className="text-xs text-gray-400">{member.level}</div>
                 </div>
 
-                <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400 w-14 shrink-0">Projects</span>
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#009CDE] rounded-full transition-all" style={{ width: `${Math.min(pp, 100)}%` }} />
+                      <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                     </div>
-                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pp > 100 ? 'text-red-500' : 'text-gray-600'}`}>{pp}%</span>
+                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400 w-14 shrink-0">Proposals</span>
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#43B02A] rounded-full transition-all" style={{ width: `${Math.min(qp, 100)}%` }} />
-                    </div>
-                    <span className={`text-xs font-semibold w-10 text-right shrink-0 ${qp > 100 ? 'text-red-500' : 'text-gray-600'}`}>{qp}%</span>
-                  </div>
+                  <p className="text-[10px] text-gray-400">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}</p>
                 </div>
 
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
@@ -416,25 +416,26 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               </button>
             </div>
 
-            {/* Load bars */}
-            <div className="px-5 py-4 border-b border-gray-100 space-y-2 shrink-0">
-              {[
-                { label: 'Project load',  count: detailAlloc.projects,  color: 'bg-[#009CDE]' },
-                { label: 'Proposal load', count: detailAlloc.proposals, color: 'bg-[#43B02A]' },
-              ].map(({ label, count, color }) => {
-                const pct = loadPct(count)
+            {/* Load bar */}
+            <div className="px-5 py-4 border-b border-gray-100 shrink-0 space-y-1">
+              {(() => {
+                const pct = totalLoadPct(detailAlloc.projects, detailAlloc.proposals)
                 return (
-                  <div key={label} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${color} rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </div>
+                      <span className={`text-xs font-semibold w-9 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>
+                        {pct}%
+                      </span>
                     </div>
-                    <span className={`text-xs font-semibold w-9 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>
-                      {pct}%
-                    </span>
-                  </div>
+                    <p className="text-[10px] text-gray-400">
+                      {detailAlloc.projects} project{detailAlloc.projects !== 1 ? 's' : ''} · {detailAlloc.proposals} proposal{detailAlloc.proposals !== 1 ? 's' : ''}
+                    </p>
+                  </>
                 )
-              })}
+              })()}
             </div>
 
             {/* Scrollable content */}
