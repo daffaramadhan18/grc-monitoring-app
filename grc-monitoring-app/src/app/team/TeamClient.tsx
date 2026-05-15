@@ -438,6 +438,16 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               })()}
             </div>
 
+            {/* View Details button */}
+            <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+              <button
+                onClick={() => router.push(`/team/${detailMember.id}`)}
+                className="w-full px-4 py-2 text-sm font-medium text-[#009CDE] border border-[#009CDE] rounded-lg hover:bg-[#009CDE]/5 transition-colors"
+              >
+                View Details
+              </button>
+            </div>
+
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
