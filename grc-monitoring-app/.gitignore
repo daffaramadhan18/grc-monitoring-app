@@ -18,3 +18,9 @@ npm-debug.log*
 /scripts/data/*.xlsx
 /scripts/data/*.xls
 *.tsbuildinfo
+
+# next-pwa generated files
+public/sw.js
+public/workbox-*.js
+public/sw.js.map
+public/workbox-*.js.map

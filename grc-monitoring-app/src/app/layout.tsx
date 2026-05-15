@@ -8,6 +8,13 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "RSM CC3 — GRC Monitoring",
   description: "IT GRC & Cybersecurity Division — Internal Monitoring App",
+  manifest: "/manifest.json",
+  themeColor: "#009CDE",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RSM GRC",
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
