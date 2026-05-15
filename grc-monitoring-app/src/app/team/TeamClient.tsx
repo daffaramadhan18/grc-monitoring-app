@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/fetcher'
+import { capacityBadge, capacityLoadPct } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,21 +60,10 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
 
 // ─── Capacity ─────────────────────────────────────────────────────────────────
 
-function totalLoadPct(projects: number, proposals: number) {
-  return Math.round(((projects + proposals) / 2) * 100)
-}
-
 function barColor(pct: number) {
   if (pct > 100) return 'bg-red-500'
   if (pct >= 75)  return 'bg-amber-400'
   return 'bg-[#43B02A]'
-}
-
-function capacityBadge(projects: number, proposals: number) {
-  const pct = totalLoadPct(projects, proposals)
-  if (pct > 100)  return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
-  if (pct === 100) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     order: 1 }
-  return              { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -228,7 +218,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             </div>
           )}
           {allocRows.map(({ member, projects, proposals, badge }) => {
-            const pct = totalLoadPct(projects, proposals)
+            const pct = capacityLoadPct(projects, proposals)
             return (
               <button
                 key={member.id}
@@ -266,7 +256,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             <p className="py-8 text-center text-gray-400 text-sm">Belum ada data alokasi.</p>
           )}
           {allocRows.map(({ member, projects, proposals, badge }) => {
-            const pct = totalLoadPct(projects, proposals)
+            const pct = capacityLoadPct(projects, proposals)
             return (
               <button
                 key={member.id}
@@ -475,7 +465,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             {/* Load bar */}
             <div className="px-5 py-4 border-b border-gray-100 shrink-0 space-y-1">
               {(() => {
-                const pct = totalLoadPct(detailAlloc.projects, detailAlloc.proposals)
+                const pct = capacityLoadPct(detailAlloc.projects, detailAlloc.proposals)
                 return (
                   <>
                     <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { capacityBadge } from '@/lib/utils'
 
 interface WorkloadRow {
   id: number
@@ -21,13 +22,6 @@ function avatarColor(initial: string) {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
-function capacityBadge(projects: number, proposals: number) {
-  if (projects > 2 || proposals > 2)
-    return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         overloaded: true,  order: 0 }
-  if (projects === 2 && proposals === 2)
-    return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     overloaded: false, order: 1 }
-  return   { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', overloaded: false, order: 2 }
-}
 
 export default function TeamWorkload({ workload }: Props) {
   const reduced = useReducedMotion() ?? false
