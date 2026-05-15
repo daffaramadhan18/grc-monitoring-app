@@ -131,6 +131,8 @@ export default async function DashboardPage({
         winRate={winRate}
         ongoingProjects={ongoingCount}
         confirmedFee={confirmedFee}
+        oppsList={serialize(allFilteredOpps) as any}
+        projectsList={serialize(ongoingProjects) as any}
       />
 
       <QuarterlySection opps={serialize(quarterlyOpps) as any} year={quarterYear} />
