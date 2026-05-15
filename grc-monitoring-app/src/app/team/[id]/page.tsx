@@ -17,7 +17,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   const [proposals, projects] = await Promise.all([
     prisma.opportunity.findMany({
       where: {
-        status: { in: ['In progress', 'Waiting for Result', 'Submitted'] },
+        status: 'In progress',
         OR: orFilter,
       },
       include: { serviceType: true },
