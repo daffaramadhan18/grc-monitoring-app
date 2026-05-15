@@ -51,7 +51,9 @@ export default async function DashboardPage({
   const oppDateFilter = range ? { expectedDate: { gte: range.gte, lt: range.lt } } : {}
   const projDateFilter = range ? { startedDate:  { gte: range.gte, lt: range.lt } } : {}
 
-  const [allFilteredOpps, ongoingProjects, workload] = await Promise.all([
+  const quarterYear = searchParams.month ? Number(searchParams.month.split('-')[0]) : new Date().getFullYear()
+
+  const [allFilteredOpps, ongoingProjects, workload, quarterlyOpps] = await Promise.all([
     // All opportunities in month filter (for cards 1+2 and pipeline)
     prisma.opportunity.findMany({
       where: oppDateFilter,
@@ -75,6 +77,21 @@ export default async function DashboardPage({
       orderBy: { endDate: 'asc' },
     }),
     getWorkload(),
+    // Quarterly section: active opps for the entire selected year (not month-scoped)
+    prisma.opportunity.findMany({
+      where: {
+        status: { in: ['Waiting for Result', 'In progress', 'Submitted'] },
+        expectedDate: {
+          gte: new Date(quarterYear, 0, 1),
+          lt:  new Date(quarterYear + 1, 0, 1),
+        },
+      },
+      select: {
+        status: true, harga: true, expectedDate: true,
+        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
+        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+      },
+    }),
   ])
 
   // Card 1: total opps + harga sum
@@ -112,10 +129,7 @@ export default async function DashboardPage({
         confirmedFee={confirmedFee}
       />
 
-      <QuarterlySection
-        opps={serialize(allFilteredOpps) as any}
-        year={searchParams.month ? Number(searchParams.month.split('-')[0]) : new Date().getFullYear()}
-      />
+      <QuarterlySection opps={serialize(quarterlyOpps) as any} year={quarterYear} />
 
       <div className="grid grid-cols-5 gap-6">
         <div className="col-span-3">

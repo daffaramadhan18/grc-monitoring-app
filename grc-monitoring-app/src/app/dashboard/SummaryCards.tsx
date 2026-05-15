@@ -102,10 +102,10 @@ export default function SummaryCards({ totalOpps, hargaTotal, winRate, ongoingPr
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Opportunities</p>
             <p className="mt-1.5 text-2xl font-bold text-gray-900 tabular-nums">
-              <AnimatedInt target={totalOpps} reduced={reduced} />
+              <AnimatedCurrency target={hargaTotal} reduced={reduced} />
             </p>
             <p className="mt-0.5 text-xs text-gray-400 tabular-nums">
-              <AnimatedCurrency target={hargaTotal} reduced={reduced} />
+              <AnimatedInt target={totalOpps} reduced={reduced} />{' opportunities'}
             </p>
           </div>
           <div className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#EBF8FF' }}>
