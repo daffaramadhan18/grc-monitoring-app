@@ -144,9 +144,11 @@ export default function ProposalPipeline({ opps, serviceTypes, teamMembers }: Pr
                         ) : null}
 
                         {/* Expected date */}
-                        <span className={`text-xs whitespace-nowrap shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                          {formatDate(opp.expectedDate)}
-                        </span>
+                        {opp.expectedDate && (
+                          <span className={`text-xs whitespace-nowrap shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                            {formatDate(opp.expectedDate)}
+                          </span>
+                        )}
                       </motion.div>
                     )
                   })}
