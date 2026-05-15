@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
+import useSWR, { mutate } from 'swr'
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
 import EditOpportunityModal, { type OppFull } from '@/components/EditOpportunityModal'
 import { haptic } from '@/lib/haptic'
+import { fetcher } from '@/lib/fetcher'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,8 +151,7 @@ const DEFAULT_WIDTHS = [
 export default function OpportunitiesClient({
   opportunities: initial, serviceTypes, teamMembers,
 }: Props) {
-  const router = useRouter()
-  const [opps, setOpps]           = useState<Opp[]>(initial)
+  const { data: opps = initial, mutate: revalidate } = useSWR<Opp[]>('/api/opportunities', fetcher, { fallbackData: initial })
   const [modalOpen, setModal]     = useState(false)
   const [editing, setEditing]     = useState<Opp | null>(null)
   const [deleting, setDel]        = useState<number | null>(null)
@@ -219,9 +219,8 @@ export default function OpportunitiesClient({
     try {
       const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
-      setOpps((prev) => prev.filter((o) => o.id !== id))
       setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -236,9 +235,8 @@ export default function OpportunitiesClient({
       await Promise.all(Array.from(selected).map((id) =>
         fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
       ))
-      setOpps((prev) => prev.filter((o) => !selected.has(o.id)))
       setSelected(new Set())
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -339,12 +337,7 @@ export default function OpportunitiesClient({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
 
-      // Refresh table data from API without full page reload
-      const refreshRes = await fetch('/api/opportunities')
-      if (refreshRes.ok) {
-        const fresh = await refreshRes.json()
-        setOpps(fresh)
-      }
+      revalidate()
 
       // Close modal and show toast
       setImport(false)
@@ -707,11 +700,7 @@ export default function OpportunitiesClient({
         opp={editing as OppFull | null}
         serviceTypes={serviceTypes}
         teamMembers={teamMembers}
-        onSaved={(saved) => {
-          setOpps((prev) => editing
-            ? prev.map((o) => o.id === saved.id ? (saved as Opp) : o)
-            : [saved as Opp, ...prev])
-        }}
+        onSaved={() => revalidate()}
       />
 
       {/* ── Toast ────────────────────────────────────────────────────────── */}

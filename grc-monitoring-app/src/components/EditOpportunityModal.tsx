@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { OPP_STATUSES, toInputDate } from '@/lib/utils'
@@ -92,7 +91,6 @@ const selectCls = inputCls
 export default function EditOpportunityModal({
   open, onClose, opp, serviceTypes, teamMembers, onSaved,
 }: Props) {
-  const router = useRouter()
   const [form, setForm]     = useState(emptyForm())
   const [saving, setSaving] = useState(false)
 
@@ -157,7 +155,6 @@ export default function EditOpportunityModal({
       if (!res.ok) throw new Error(body.error ?? res.statusText)
       onSaved(body as OppFull)
       onClose()
-      router.refresh()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {

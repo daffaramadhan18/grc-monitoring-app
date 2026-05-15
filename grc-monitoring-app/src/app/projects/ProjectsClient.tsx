@@ -3,10 +3,12 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+import useSWR from 'swr'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
 import { haptic } from '@/lib/haptic'
+import { fetcher } from '@/lib/fetcher'
 
 interface TeamMember { id: number; initial: string; fullName: string; level: string }
 interface Termin     { id: number; terminNumber: number; fee: number | null; status: string | null }
@@ -169,7 +171,7 @@ function SortIcon({ field, current, dir }: { field: SortField; current: SortFiel
 
 export default function ProjectsClient({ projects: initial, teamMembers }: Props) {
   const router = useRouter()
-  const [projects, setProjects]   = useState<Project[]>(initial)
+  const { data: projects = initial, mutate: revalidate } = useSWR<Project[]>('/api/projects', fetcher, { fallbackData: initial })
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm]           = useState(emptyForm())
   const [saving, setSaving]       = useState(false)
@@ -262,9 +264,8 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       await Promise.all(Array.from(selected).map((id) =>
         fetch(`/api/projects/${id}`, { method: 'DELETE' })
       ))
-      setProjects((prev) => prev.filter((p) => !selected.has(p.id)))
       setSelected(new Set())
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -365,7 +366,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
       setImportResult(data)
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,7 +109,7 @@ const PROJ_STATUS_CLS: Record<string, string> = {
 
 export default function TeamClient({ members: initial, allocation, details }: Props) {
   const router = useRouter()
-  const [members, setMembers]   = useState<Member[]>(initial)
+  const { data: members = initial, mutate: revalidate } = useSWR<Member[]>('/api/team', fetcher, { fallbackData: initial })
 
   // Manage Team drawer
   const [manageOpen, setManageOpen] = useState(false)
@@ -152,13 +154,8 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? res.statusText)
-      if (editing) {
-        setMembers((prev) => prev.map((m) => m.id === data.id ? data : m))
-      } else {
-        setMembers((prev) => [...prev, data].sort((a, b) => a.fullName.localeCompare(b.fullName)))
-      }
       setCrudOpen(false)
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -175,8 +172,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
         const data = await res.json()
         throw new Error(data.error ?? res.statusText)
       }
-      setMembers((prev) => prev.filter((m) => m.id !== member.id))
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert(err.message)
     } finally {
