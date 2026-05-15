@@ -561,36 +561,50 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                 const isSelected = selected.has(proj.id)
                 return (
                   <tr key={proj.id}
-                    className={`rsm-row-click group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
+                    className={`rsm-row-click group cursor-pointer transition-colors h-14 ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
                     onClick={() => router.push(`/projects/${proj.id}`)}>
-                    <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 align-middle overflow-hidden w-10" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected}
                         onChange={() => toggleSelect(proj.id)}
                         className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{proj.proposalName}</td>
-                    <td className="px-4 py-3 text-gray-600" title={proj.clientName ?? ''}>{proj.clientInitial ?? proj.clientName ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{proj.projectOwner ?? '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900">{proj.proposalName}</td>
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600" title={proj.clientName ?? ''}>{proj.clientInitial ?? proj.clientName ?? '—'}</td>
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs hidden sm:table-cell">{proj.projectOwner ?? '—'}</td>
+                    <td className="px-4 align-middle overflow-hidden whitespace-nowrap">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {proj.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{proj.micInitial ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {team.map((t) => (
-                          <span key={t} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-700">{t}</span>
-                        ))}
-                        {team.length === 0 && <span className="text-gray-300">—</span>}
-                      </div>
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell">{proj.micInitial ?? '—'}</td>
+                    <td className="px-4 align-middle overflow-hidden whitespace-nowrap">
+                      {(() => {
+                        const shown = team.slice(0, 4)
+                        const extra = team.length - shown.length
+                        if (team.length === 0) return <span className="text-gray-300">—</span>
+                        return (
+                          <div className="flex items-center whitespace-nowrap overflow-hidden">
+                            {shown.map((t, i) => (
+                              <span key={t} className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-semibold shrink-0${i > 0 ? ' -ml-2' : ''}`}
+                                style={{ backgroundColor: ['#009CDE','#43B02A','#58595B','#F59E0B','#8B5CF6','#EC4899'][t.split('').reduce((a,c) => a + c.charCodeAt(0), 0) % 6] }}>
+                                {t.slice(0, 2)}
+                              </span>
+                            ))}
+                            {extra > 0 && (
+                              <span className="-ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold shrink-0">
+                                +{extra}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs">
                       {formatDate(proj.startedDate)} – {formatDate(proj.endDate)}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700">{formatRupiah(proj.confirmedFee)}</td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-600 hidden sm:table-cell">
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-right text-gray-700">{formatRupiah(proj.confirmedFee)}</td>
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-center text-sm text-gray-600 hidden sm:table-cell">
                       {proj.termins.length > 0 ? `${paidCount}/${proj.termins.length} paid` : '—'}
                     </td>
                   </tr>

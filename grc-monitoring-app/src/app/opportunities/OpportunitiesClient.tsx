@@ -597,7 +597,7 @@ export default function OpportunitiesClient({
                 return (
                   <motion.tr
                     key={opp.id}
-                    className={`rsm-row-click group cursor-pointer relative ${isSelected ? 'bg-blue-50' : ''}`}
+                    className={`rsm-row-click group cursor-pointer relative h-14 ${isSelected ? 'bg-blue-50' : ''}`}
                     animate={flashedRow === opp.id
                       ? { backgroundColor: 'rgba(0,156,222,0.18)' }
                       : { backgroundColor: 'rgba(255,255,255,0)' }
@@ -605,47 +605,62 @@ export default function OpportunitiesClient({
                     transition={{ duration: flashedRow === opp.id ? 0.05 : 0.6 }}
                     onClick={() => openEdit(opp)}
                   >
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 align-middle overflow-hidden" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected}
                         onChange={() => toggleSelect(opp.id)}
                         className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                       />
                     </td>
-                    <td className="px-3 py-2.5 text-gray-600 font-mono text-xs truncate">
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs">
                       {opp.clientInitial ?? '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-700 truncate" title={opp.clientName ?? ''}>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700" title={opp.clientName ?? ''}>
                       {opp.clientName ?? '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.serviceType?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-600 truncate hidden sm:table-cell">{opp.subService?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 font-medium text-gray-900 truncate">{opp.proposalName}</td>
-                    <td className="px-3 py-2.5 text-gray-500 truncate hidden sm:table-cell">{opp.phase ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap hidden sm:table-cell">{formatDate(opp.submittedDate)}</td>
-                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.expectedDate)}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600">{opp.serviceType?.name ?? '—'}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell">{opp.subService?.name ?? '—'}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900">{opp.proposalName}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 hidden sm:table-cell">{opp.phase ?? '—'}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 hidden sm:table-cell">{formatDate(opp.submittedDate)}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500">{formatDate(opp.expectedDate)}</td>
+                    <td className="px-3 align-middle overflow-hidden whitespace-nowrap">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {opp.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-gray-500 tabular-nums">{opp.probability != null ? `${opp.probability}%` : '—'}</td>
-                    <td className="px-3 py-2.5"><RiskBadge level={opp.riskLevel} /></td>
-                    <td className="px-3 py-2.5 text-gray-400 truncate text-xs">{opp.notes ?? ''}</td>
-                    <td className="px-3 py-2.5 text-gray-600 text-right hidden sm:table-cell">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.harga)}</td>
-                    <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.revenueCf)}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-0.5 flex-wrap">
-                        {opp.micInitial && <AvatarBubble initial={opp.micInitial} isMic />}
-                        {[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial]
-                          .filter(Boolean)
-                          .map((t) => <AvatarBubble key={t} initial={t!} isMic={false} />)}
-                        {!opp.micInitial && ![opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].some(Boolean) && (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
-                      </div>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 tabular-nums">{opp.probability != null ? `${opp.probability}%` : '—'}</td>
+                    <td className="px-3 align-middle overflow-hidden whitespace-nowrap"><RiskBadge level={opp.riskLevel} /></td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-400 text-xs">{opp.notes ?? ''}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 text-right hidden sm:table-cell">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 text-right">{formatRupiah(opp.harga)}</td>
+                    <td className="px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 text-right">{formatRupiah(opp.revenueCf)}</td>
+                    <td className="px-3 align-middle overflow-hidden whitespace-nowrap">
+                      {(() => {
+                        const all = [
+                          opp.micInitial ? { initial: opp.micInitial, isMic: true } : null,
+                          ...[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial]
+                            .filter(Boolean).map((t) => ({ initial: t!, isMic: false })),
+                        ].filter(Boolean) as { initial: string; isMic: boolean }[]
+                        const shown = all.slice(0, 4)
+                        const extra = all.length - shown.length
+                        if (all.length === 0) return <span className="text-gray-300 text-xs">—</span>
+                        return (
+                          <div className="flex items-center whitespace-nowrap overflow-hidden">
+                            {shown.map((a, i) => (
+                              <span key={a.initial + i} className={i > 0 ? '-ml-2' : ''}>
+                                <AvatarBubble initial={a.initial} isMic={a.isMic} />
+                              </span>
+                            ))}
+                            {extra > 0 && (
+                              <span className="-ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold shrink-0">
+                                +{extra}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 align-middle overflow-hidden" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => { haptic(); handleDelete(opp.id) }}
                         disabled={deleting === opp.id}
