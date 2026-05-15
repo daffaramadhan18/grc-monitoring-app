@@ -293,6 +293,26 @@ body {
   100% { transform: translateY(0) scale(1); }
 }
 
+/* ── Bulk Edit Mode ─────────────────────────────────────────── */
+
+.rsm-edit-cell input,
+.rsm-edit-cell select {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #009CDE;
+  width: 100%;
+  padding: 2px 4px;
+  font-size: inherit;
+  font-family: inherit;
+}
+.rsm-edit-cell input:focus,
+.rsm-edit-cell select:focus {
+  outline: none;
+  background: #f0f9ff;
+  border-radius: 4px;
+  border-bottom-color: #007BB5;
+}
+
 /* ── Reduced motion ─────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

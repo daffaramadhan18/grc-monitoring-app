@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/fetcher'
@@ -217,7 +218,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               Belum ada data alokasi.
             </div>
           )}
-          {allocRows.map(({ member, projects, proposals, badge }) => {
+          {allocRows.map(({ member, projects, proposals, badge }, index) => {
             const pct = capacityLoadPct(projects, proposals)
             return (
               <button
@@ -235,7 +236,12 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      <motion.div
+                        className={`h-full rounded-full ${barColor(pct)}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(pct, 100)}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.08 }}
+                      />
                     </div>
                     <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
@@ -255,7 +261,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
           {allocRows.length === 0 && (
             <p className="py-8 text-center text-gray-400 text-sm">Belum ada data alokasi.</p>
           )}
-          {allocRows.map(({ member, projects, proposals, badge }) => {
+          {allocRows.map(({ member, projects, proposals, badge }, index) => {
             const pct = capacityLoadPct(projects, proposals)
             const barFill = pct > 100 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#43B02A'
             return (
@@ -282,9 +288,12 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                   {/* Capacity bar spanning full width */}
                   <div className="rsm-mworkload-bar-wrap">
                     <div className="rsm-mworkload-bar">
-                      <div
+                      <motion.div
                         className="rsm-mworkload-bar-fill"
-                        style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: barFill }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(pct, 100)}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.08 }}
+                        style={{ backgroundColor: barFill }}
                       />
                     </div>
                     <span className="rsm-mworkload-pct">{pct}%</span>
