@@ -181,7 +181,8 @@ export default function OpportunitiesClient({
   const [importOpen, setImport]   = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{ imported: number; skipped: { row: number; reason: string }[] } | null>(null)
+  const [importSkipped, setImportSkipped] = useState<{ row: number; reason: string }[]>([])
+  const [toast, setToast] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
 
   const [sortField, setSortField] = useState<SortField>('proposalName')
@@ -415,15 +416,29 @@ export default function OpportunitiesClient({
   async function handleImport() {
     if (!importFile) { alert('Please select a file'); return }
     setImporting(true)
-    setImportResult(null)
     try {
       const fd = new FormData()
       fd.append('file', importFile)
       const res = await fetch('/api/opportunities/import', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
-      setImportResult(data)
-      router.refresh()
+
+      // Refresh table data from API without full page reload
+      const refreshRes = await fetch('/api/opportunities')
+      if (refreshRes.ok) {
+        const fresh = await refreshRes.json()
+        setOpps(fresh)
+      }
+
+      // Close modal and show toast
+      setImport(false)
+      setImportFile(null)
+      setImportSkipped(data.skipped ?? [])
+      const msg = data.skipped?.length
+        ? `${data.imported} rows imported · ${data.skipped.length} skipped`
+        : `${data.imported} rows imported successfully`
+      setToast(msg)
+      setTimeout(() => setToast(null), 4000)
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -459,7 +474,7 @@ export default function OpportunitiesClient({
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Download size={16} /> Export
           </button>
-          <button onClick={() => { setImport(true); setImportFile(null); setImportResult(null) }}
+          <button onClick={() => { setImport(true); setImportFile(null); setImportSkipped([]) }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
@@ -740,24 +755,9 @@ export default function OpportunitiesClient({
                 <label className="block text-xs font-medium text-gray-600 mb-1">Select .xlsx file</label>
                 <input ref={importFileRef} type="file" accept=".xlsx"
                   className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#009CDE]/10 file:text-[#009CDE] hover:file:bg-[#009CDE]/20"
-                  onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null) }}
+                  onChange={(e) => { setImportFile(e.target.files?.[0] ?? null) }}
                 />
               </div>
-              {importResult && (
-                <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
-                  <p className="font-medium text-[#2d7a1a]">{importResult.imported} row(s) imported successfully.</p>
-                  {importResult.skipped.length > 0 && (
-                    <div>
-                      <p className="font-medium text-amber-700 mt-2">{importResult.skipped.length} row(s) skipped:</p>
-                      <ul className="list-disc list-inside text-gray-600 text-xs mt-1 space-y-0.5">
-                        {importResult.skipped.map((s) => (
-                          <li key={s.row}>Row {s.row}: {s.reason}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button type="button" onClick={() => setImport(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -943,6 +943,28 @@ export default function OpportunitiesClient({
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2">
+          <div className="flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-xl shadow-xl">
+            <span>{toast}</span>
+            <button onClick={() => setToast(null)} className="text-white/50 hover:text-white">
+              <X size={14} />
+            </button>
+          </div>
+          {importSkipped.length > 0 && (
+            <div className="bg-white border border-amber-200 rounded-xl shadow-xl p-4 text-sm w-80 max-h-48 overflow-y-auto">
+              <p className="font-medium text-amber-700 mb-1">{importSkipped.length} row(s) skipped:</p>
+              <ul className="list-disc list-inside text-gray-600 text-xs space-y-0.5">
+                {importSkipped.map((s) => (
+                  <li key={s.row}>Row {s.row}: {s.reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
