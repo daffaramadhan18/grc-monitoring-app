@@ -1,7 +1,8 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Sidebar from "@/components/layout/Sidebar"
+import BottomNav from "@/components/layout/BottomNav"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -9,12 +10,21 @@ export const metadata: Metadata = {
   title: "RSM CC3 — GRC Monitoring",
   description: "IT GRC & Cybersecurity Division — Internal Monitoring App",
   manifest: "/manifest.json",
-  themeColor: "#009CDE",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "RSM GRC",
   },
+  other: {
+    "apple-touch-icon": "/icon-192.png",
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#009CDE",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,10 +33,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} overflow-x-hidden`}>
         <div className="flex h-screen overflow-x-hidden">
           <Sidebar />
-          <main className="w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-[72px] md:p-6">
+          <main className="w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 md:p-6">
             {children}
+            {/* Mobile safe-area spacer: bottom nav (64px) + device inset */}
+            <div
+              className="md:hidden"
+              style={{ height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+              aria-hidden
+            />
           </main>
         </div>
+        <BottomNav />
       </body>
     </html>
   )

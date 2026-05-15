@@ -6,6 +6,7 @@ import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, Ch
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
+import { haptic } from '@/lib/haptic'
 
 interface TeamMember { id: number; initial: string; fullName: string; level: string }
 interface Termin     { id: number; terminNumber: number; fee: number | null; status: string | null }
@@ -401,7 +402,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
-          <button onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+          <button onClick={() => { haptic(); setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
             className="inline-flex items-center gap-2 px-4 py-2 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Project
           </button>
@@ -483,7 +484,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
         {selected.size > 0 && (
           <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
             <span className="font-medium">{selected.size} item dipilih</span>
-            <button onClick={handleBulkDelete} disabled={bulkDeleting}
+            <button onClick={() => { haptic(); handleBulkDelete() }} disabled={bulkDeleting}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 transition-colors">
               <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus'}
             </button>

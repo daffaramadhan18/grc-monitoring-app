@@ -12,11 +12,18 @@
   --soft:   cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+html, body {
+  overscroll-behavior-y: none;
+}
+
 body {
   background-color: #F5F5F5;
   color: #2D2D2D;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 /* ── Keyframes ──────────────────────────────────────────────── */

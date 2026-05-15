@@ -6,6 +6,7 @@ import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDo
 import MonthFilter from '@/components/MonthFilter'
 import { formatRupiah, formatDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
 import EditOpportunityModal, { type OppFull } from '@/components/EditOpportunityModal'
+import { haptic } from '@/lib/haptic'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -393,7 +394,7 @@ export default function OpportunitiesClient({
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
-          <button onClick={openNew}
+          <button onClick={() => { haptic(); openNew() }}
             className="inline-flex items-center gap-2 px-4 py-2 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Opportunity
           </button>
@@ -487,7 +488,7 @@ export default function OpportunitiesClient({
           <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
             <span className="font-medium">{selected.size} item dipilih</span>
             <button
-              onClick={handleBulkDelete}
+              onClick={() => { haptic(); handleBulkDelete() }}
               disabled={bulkDeleting}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 transition-colors"
             >
@@ -646,7 +647,7 @@ export default function OpportunitiesClient({
                     </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => handleDelete(opp.id)}
+                        onClick={() => { haptic(); handleDelete(opp.id) }}
                         disabled={deleting === opp.id}
                         className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                       >
