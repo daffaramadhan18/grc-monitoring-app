@@ -258,7 +258,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     if (!window.confirm(`Hapus ${selected.size} project yang dipilih?`)) return
     setBulkDeleting(true)
     try {
-      await Promise.all([...selected].map((id) =>
+      await Promise.all(Array.from(selected).map((id) =>
         fetch(`/api/projects/${id}`, { method: 'DELETE' })
       ))
       setProjects((prev) => prev.filter((p) => !selected.has(p.id)))

@@ -232,7 +232,7 @@ export default function OpportunitiesClient({
     if (!window.confirm(`Hapus ${selected.size} opportunity yang dipilih?`)) return
     setBulkDeleting(true)
     try {
-      await Promise.all([...selected].map((id) =>
+      await Promise.all(Array.from(selected).map((id) =>
         fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
       ))
       setOpps((prev) => prev.filter((o) => !selected.has(o.id)))
