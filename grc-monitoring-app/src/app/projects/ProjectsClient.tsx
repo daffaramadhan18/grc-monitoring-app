@@ -247,7 +247,9 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
 
     if (filters.search)
       result = result.filter((p) =>
-        p.proposalName.toLowerCase().includes(filters.search.toLowerCase()))
+        p.proposalName.toLowerCase().includes(filters.search.toLowerCase()) ||
+        p.client.fullName.toLowerCase().includes(filters.search.toLowerCase()) ||
+        (p.client.initial ?? '').toLowerCase().includes(filters.search.toLowerCase()))
 
     if (filters.statuses.size > 0)
       result = result.filter((p) => filters.statuses.has(p.status))
@@ -357,7 +359,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               className="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]"
-              placeholder="Search engagement name..."
+              placeholder="Search..."
               value={filters.search}
               onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
             />

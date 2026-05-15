@@ -378,7 +378,9 @@ export default function OpportunitiesClient({
 
     if (filters.search)
       result = result.filter((o) =>
-        o.proposalName.toLowerCase().includes(filters.search.toLowerCase()))
+        o.proposalName.toLowerCase().includes(filters.search.toLowerCase()) ||
+        o.client.fullName.toLowerCase().includes(filters.search.toLowerCase()) ||
+        (o.clientInitial ?? '').toLowerCase().includes(filters.search.toLowerCase()))
 
     if (filters.statuses.size > 0)
       result = result.filter((o) => filters.statuses.has(o.status))
@@ -523,7 +525,7 @@ export default function OpportunitiesClient({
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               className="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]"
-              placeholder="Search proposal name..."
+              placeholder="Search..."
               value={filters.search}
               onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
             />
