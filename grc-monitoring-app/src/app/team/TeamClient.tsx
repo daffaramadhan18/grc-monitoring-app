@@ -58,7 +58,7 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
 // ─── Capacity ─────────────────────────────────────────────────────────────────
 
 function totalLoadPct(projects: number, proposals: number) {
-  return Math.round(((projects + proposals) / 4) * 100)
+  return Math.round(((projects + proposals) / 2) * 100)
 }
 
 function barColor(pct: number) {
@@ -216,7 +216,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
         <div>
           <h2 className="text-base font-semibold text-gray-800">Resource Allocation Breakdown</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Load = (active projects + active proposals) / 4 × 100% · max capacity = 4 engagements
+          Load = (active projects + active proposals) / 2 × 100% · max capacity = 2 engagements
           </p>
         </div>
 
