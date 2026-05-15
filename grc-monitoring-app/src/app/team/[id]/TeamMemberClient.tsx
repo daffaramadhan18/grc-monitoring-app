@@ -120,7 +120,7 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
               {proposals.map((o) => (
                 <tr key={o.id} className="hover:bg-gray-50/60 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{o.proposalName}</td>
-                  <td className="px-4 py-3 text-gray-600">{o.client?.fullName ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{o.clientName ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{o.serviceType?.name ?? '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${OPP_STATUS_COLORS[o.status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -172,7 +172,7 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
                     className="hover:bg-gray-50/60 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">{p.proposalName}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.client?.fullName ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.clientName ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${PROJ_STATUS_COLORS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {p.status}
