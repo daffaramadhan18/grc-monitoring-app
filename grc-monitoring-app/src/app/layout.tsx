@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import Sidebar from "@/components/layout/Sidebar"
 import BottomNav from "@/components/layout/BottomNav"
 import SWRProvider from "@/components/SWRProvider"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "RSM CC3 — GRC Monitoring",
@@ -31,7 +28,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body className={`${inter.className} overflow-x-hidden`}>
+      <body className="overflow-x-hidden">
         <SWRProvider>
           <div className="flex h-screen overflow-x-hidden">
             <Sidebar />
