@@ -189,9 +189,7 @@ export default function OpportunitiesClient({
   const [selected, setSelected]   = useState<Set<number>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
-  const now = new Date()
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const [filterMonth, setFilterMonth] = useState(defaultMonth)
+  const [filterMonth, setFilterMonth] = useState('')
 
   const [filters, setFilters] = useState({
     search: '',

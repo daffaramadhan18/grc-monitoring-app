@@ -134,9 +134,7 @@ export default function ProjectsClient({ projects: initial, clients, teamMembers
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
   // Month filter
-  const now = new Date()
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const [filterMonth, setFilterMonth] = useState(defaultMonth)
+  const [filterMonth, setFilterMonth] = useState('')
 
   const monthFilteredProjects = useMemo(() => {
     if (!filterMonth) return projects
