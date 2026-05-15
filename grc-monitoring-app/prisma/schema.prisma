@@ -49,7 +49,8 @@ model Opportunity {
   clientInitial String?
   phase         String?
   status        String
-  probability   String?
+  probability   Float?
+  riskLevel     String?
   harga         BigInt?
   revenueCf     BigInt?
   rrPercentage  Float?

@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
 
     // Column order matches template/export:
     // 0: Client Initial, 1: Client Name, 2: Service Type, 3: Sub-service, 4: Proposal Name,
-    // 5: Phase, 6: Submitted Date, 7: Status, 8: Probability, 9: Notes, 10: %RR,
-    // 11: Harga, 12: Revenue CF, 13: MIC, 14-19: TM1-TM6, 20: Expected Date
+    // 5: Phase, 6: Submitted Date, 7: Status, 8: Probability (%), 9: Notes, 10: %RR,
+    // 11: Harga, 12: Revenue CF, 13: MIC, 14-19: TM1-TM6, 20: Expected Date, 21: Risk Level
     const clientInitial   = String(row[0] ?? '').trim() || null
     // row[1] is clientName (already parsed above)
     const serviceTypeName = String(row[2] ?? '').trim()
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     const phase           = String(row[5] ?? '').trim() || null
     const submittedDate   = parseDateDMY(row[6])
     const status          = String(row[7] ?? '').trim() || 'In progress'
-    const probability     = String(row[8] ?? '').trim() || null
+    const probability     = parseNumber(row[8])
     const notes           = String(row[9] ?? '').trim() || null
     const rrPercentage    = parseNumber(row[10])
     const harga           = parseNumber(row[11])
@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
     const tm5Initial      = String(row[18] ?? '').trim() || null
     const tm6Initial      = String(row[19] ?? '').trim() || null
     const expectedDate    = parseDateDMY(row[20])
+    const riskLevel       = String(row[21] ?? '').trim() || null
 
     // Resolve service type (optional)
     const stMatch = serviceTypeName
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
           phase,
           status,
           probability,
+          riskLevel,
           harga:         harga     != null ? BigInt(Math.round(harga))     : null,
           revenueCf:     revenueCf != null ? BigInt(Math.round(revenueCf)) : null,
           rrPercentage,

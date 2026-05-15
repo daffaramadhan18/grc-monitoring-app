@@ -18,7 +18,7 @@ interface Opp {
   clientInitial: string | null
   serviceTypeId: number | null; serviceType: ServiceType | null
   subServiceId: number | null; subService: SubService | null
-  phase: string | null; status: string; probability: string | null
+  phase: string | null; status: string; probability: number | null; riskLevel: string | null
   harga: number | null; revenueCf: number | null; rrPercentage: number | null
   expectedDate: string | null; submittedDate: string | null; notes: string | null
   micInitial: string | null
@@ -49,7 +49,7 @@ const SUB_SERVICES: Record<string, string[]> = {
 
 const emptyForm = () => ({
   proposalName: '', clientName: '', clientInitial: '', serviceTypeId: '', subServiceId: '',
-  phase: '', status: 'In progress', probability: '',
+  phase: '', status: 'In progress', probability: '', riskLevel: '',
   harga: '', revenueCf: '', rrPercentage: '',
   expectedDate: '', submittedDate: '', notes: '',
   micInitial: '',
@@ -80,6 +80,21 @@ function AvatarBubble({ initial, isMic }: { initial: string; isMic: boolean }) {
           <Crown size={7} className="text-white" />
         </span>
       )}
+    </span>
+  )
+}
+
+const RISK_COLORS: Record<string, string> = {
+  Low:    'bg-green-100 text-green-700',
+  Medium: 'bg-amber-100 text-amber-700',
+  High:   'bg-red-100 text-red-700',
+}
+
+function RiskBadge({ level }: { level: string | null }) {
+  if (!level) return <span className="text-gray-300">—</span>
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${RISK_COLORS[level] ?? 'bg-gray-100 text-gray-600'}`}>
+      {level}
     </span>
   )
 }
@@ -147,7 +162,7 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 // Column order: Client Initial, Client Name, Service Type, Sub-service, Proposal Name,
-//               Phase, Submitted Date, Status, Probability, Notes, %RR,
+//               Phase, Submitted Date, Status, Probability, Risk Level, Notes, %RR,
 //               Harga, Revenue CF, Team (MIC+TM1-TM6), delete
 const DEFAULT_WIDTHS = [
   40,  // checkbox
@@ -159,7 +174,8 @@ const DEFAULT_WIDTHS = [
   90,  // Phase
   110, // Submitted Date
   130, // Status
-  90,  // Probability
+  80,  // Probability
+  100, // Risk Level
   140, // Notes
   70,  // %RR
   130, // Harga
@@ -253,7 +269,8 @@ export default function OpportunitiesClient({
       subServiceId:  opp.subService?.name ?? '',
       phase:         opp.phase          ?? '',
       status:        opp.status,
-      probability:   opp.probability   ?? '',
+      probability:   opp.probability   != null ? String(opp.probability) : '',
+      riskLevel:     opp.riskLevel     ?? '',
       harga:         opp.harga         != null ? String(opp.harga)        : '',
       revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)    : '',
       rrPercentage:  opp.rrPercentage  != null ? String(opp.rrPercentage) : '',
@@ -639,35 +656,39 @@ export default function OpportunitiesClient({
                 <th className={thBase} style={{ width: widths[9] }}>
                   Prob.<ResizeHandle col={9} />
                 </th>
-                {/* Notes */}
+                {/* Risk Level */}
                 <th className={thBase} style={{ width: widths[10] }}>
-                  Notes<ResizeHandle col={10} />
+                  Risk<ResizeHandle col={10} />
+                </th>
+                {/* Notes */}
+                <th className={thBase} style={{ width: widths[11] }}>
+                  Notes<ResizeHandle col={11} />
                 </th>
                 {/* %RR */}
-                <th className={thBase} style={{ width: widths[11] }}>
-                  %RR<ResizeHandle col={11} />
+                <th className={thBase} style={{ width: widths[12] }}>
+                  %RR<ResizeHandle col={12} />
                 </th>
                 {/* Harga */}
-                <th className={thSort} style={{ width: widths[12] }} onClick={() => handleSort('harga')}>
+                <th className={thSort} style={{ width: widths[13] }} onClick={() => handleSort('harga')}>
                   Harga<SortIcon field="harga" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={12} />
+                  <ResizeHandle col={13} />
                 </th>
                 {/* Revenue CF */}
-                <th className={thBase} style={{ width: widths[13] }}>
-                  Revenue CF<ResizeHandle col={13} />
+                <th className={thBase} style={{ width: widths[14] }}>
+                  Revenue CF<ResizeHandle col={14} />
                 </th>
                 {/* Team (MIC + TM1–TM6) */}
-                <th className={thBase} style={{ width: widths[14] }}>
-                  Team<ResizeHandle col={14} />
+                <th className={thBase} style={{ width: widths[15] }}>
+                  Team<ResizeHandle col={15} />
                 </th>
                 {/* Delete */}
-                <th className={thBase} style={{ width: widths[15] }} />
+                <th className={thBase} style={{ width: widths[16] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={17} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
@@ -702,7 +723,8 @@ export default function OpportunitiesClient({
                         {opp.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-gray-500 truncate">{opp.probability ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-500 tabular-nums">{opp.probability != null ? `${opp.probability}%` : '—'}</td>
+                    <td className="px-3 py-2.5"><RiskBadge level={opp.riskLevel} /></td>
                     <td className="px-3 py-2.5 text-gray-400 truncate text-xs">{opp.notes ?? ''}</td>
                     <td className="px-3 py-2.5 text-gray-600 text-right">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
                     <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.harga)}</td>
@@ -853,12 +875,25 @@ export default function OpportunitiesClient({
                     {OPP_STATUSES.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 </Field>
-                <Field label="Probability">
-                  <select className={selectCls} value={form.probability}
-                    onChange={(e) => set('probability', e.target.value)}>
+                <Field label="Risk Level">
+                  <select className={selectCls} value={form.riskLevel}
+                    onChange={(e) => set('riskLevel', e.target.value)}>
                     <option value="">— (opsional)</option>
-                    {['High','Medium','Low'].map((p) => <option key={p}>{p}</option>)}
+                    {['Low','Medium','High'].map((r) => <option key={r}>{r}</option>)}
                   </select>
+                </Field>
+              </div>
+
+              {/* Probability */}
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="Probability (%)">
+                  <div className="relative">
+                    <input type="number" min={0} max={100} step={1} className={inputCls}
+                      value={form.probability}
+                      onChange={(e) => set('probability', e.target.value)}
+                      placeholder="e.g. 75" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
+                  </div>
                 </Field>
               </div>
 

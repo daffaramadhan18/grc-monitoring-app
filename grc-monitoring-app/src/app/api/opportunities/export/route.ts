@@ -25,10 +25,10 @@ export async function GET() {
 
   const headers = [
     'Client Initial', 'Client Name', 'Service Type', 'Sub-service', 'Proposal Name',
-    'Phase', 'Submitted Date', 'Status', 'Probability', 'Notes', '%RR',
+    'Phase', 'Submitted Date', 'Status', 'Probability (%)', 'Notes', '%RR',
     'Harga', 'Revenue CF',
     'MIC', 'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6',
-    'Expected Date',
+    'Expected Date', 'Risk Level',
   ]
 
   const dataRows = opps.map((o) => [
@@ -53,6 +53,7 @@ export async function GET() {
     o.tm5Initial ?? '',
     o.tm6Initial ?? '',
     fmtDate(o.expectedDate),
+    o.riskLevel ?? '',
   ])
 
   const wb = XLSX.utils.book_new()
