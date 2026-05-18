@@ -6,17 +6,330 @@
   --brand-blue:  #009CDE;
   --brand-green: #43B02A;
   --brand-gray:  #58595B;
+
+  /* Motion tokens */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --soft:   cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body {
+  overscroll-behavior-y: none;
+}
+
+* {
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #F5F5F5;
   color: #2D2D2D;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
+
+/* ── Keyframes ──────────────────────────────────────────────── */
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+
+@keyframes rsm-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-8deg); }
+  75%      { transform: rotate(8deg); }
+}
+
+@keyframes rsm-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+@keyframes rsm-pop {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rsm-heartbeat {
+  0%, 28%, 70%, 100% { transform: scale(1); }
+  14% { transform: scale(1.18); }
+  42% { transform: scale(1.08); }
+}
+
+@keyframes rsm-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes rsm-grow {
+  from { width: 0; }
+}
+
+@keyframes rsm-press {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rsm-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+
+.rsm-nav-item {
+  position: relative;
+  transition: background 200ms var(--soft), color 200ms var(--soft), transform 200ms var(--spring) !important;
+}
+.rsm-nav-item::before {
+  content: '';
+  position: absolute;
+  left: -12px; top: 50%;
+  width: 3px; height: 0;
+  background: #009CDE;
+  border-radius: 0 3px 3px 0;
+  transform: translateY(-50%);
+  transition: height 250ms var(--spring);
+}
+.rsm-nav-item--active::before { height: 22px; }
+.rsm-nav-item:not(.rsm-nav-item--active):hover { transform: translateX(2px); }
+.rsm-nav-item:hover .rsm-nav-icon { animation: rsm-wiggle 500ms var(--spring); }
+
+.rsm-sidebar-logo { transition: none; }
+.rsm-sidebar-logo-mark { transition: text-shadow 250ms var(--soft); }
+.rsm-sidebar-logo:hover .rsm-sidebar-logo-mark {
+  text-shadow: 0 0 16px rgba(0, 156, 222, 0.6);
+}
+
+/* ── KPI cards ──────────────────────────────────────────────── */
+
+.rsm-kpi-card {
+  transition: transform 250ms var(--spring), box-shadow 250ms var(--soft);
+}
+.rsm-kpi-card:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 12px 24px -8px rgb(0 0 0 / 0.12), 0 4px 8px -4px rgb(0 0 0 / 0.08);
+}
+.rsm-kpi-card .rsm-kpi-icon {
+  transition: transform 350ms var(--spring);
+}
+.rsm-kpi-card:hover .rsm-kpi-icon { transform: rotate(-8deg) scale(1.08); }
+
+/* ── Table rows ─────────────────────────────────────────────── */
+
+.rsm-row-click { position: relative; }
+.rsm-row-click td:first-child { position: relative; }
+.rsm-row-click td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 0; height: 100%;
+  background: #009CDE;
+  transition: width 200ms var(--soft);
+}
+.rsm-row-click:hover td:first-child::before { width: 3px; }
+
+/* ── Capacity badge ─────────────────────────────────────────── */
+
+.rsm-badge-heartbeat {
+  animation: rsm-heartbeat 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+
+.rsm-btn-spring {
+  transition: background 150ms ease, color 150ms ease,
+              transform 180ms var(--spring), box-shadow 200ms var(--soft) !important;
+}
+.rsm-btn-spring:not(:disabled):hover { transform: translateY(-1px); }
+.rsm-btn-spring:not(:disabled):active { animation: rsm-press 200ms var(--soft); }
+.rsm-btn-spring:hover > svg { animation: rsm-wiggle 500ms var(--spring); }
+.rsm-btn-primary-glow:not(:disabled):hover {
+  box-shadow: 0 6px 14px -4px rgba(0, 156, 222, 0.45) !important;
+}
+
+/* ── MIC crown float ────────────────────────────────────────── */
+
+.rsm-crown-float {
+  animation: rsm-float 2.4s ease-in-out infinite;
+}
+
+/* ── Modal pop entry ────────────────────────────────────────── */
+
+.rsm-modal-pop {
+  animation: rsm-pop 350ms var(--spring);
+  transform-origin: top center;
+}
+
+/* ── Page enter ─────────────────────────────────────────────── */
+
+.rsm-page-in {
+  animation: rsm-page-in 250ms var(--soft);
+}
+
+/* ── Mobile UI ──────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Top app bar */
+  .rsm-mtopbar {
+    flex-shrink: 0; height: 56px; background: #2D2D2D; color: white;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); z-index: 30;
+  }
+  .rsm-mtopbar-mark { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; }
+  .rsm-mtopbar-sub { font-size: 11px; color: rgba(255,255,255,0.55); margin-left: 8px; }
+
+  /* Bottom nav sliding indicator */
+  .rsm-mbottomnav-indicator {
+    position: absolute; top: 0; height: 3px; background: #009CDE;
+    border-radius: 0 0 3px 3px;
+    transition: left 320ms cubic-bezier(0.34, 1.56, 0.64, 1), width 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* FAB */
+  .rsm-fab {
+    position: fixed; right: 20px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 20px);
+    width: 56px; height: 56px; border-radius: 9999px;
+    background: #009CDE; color: white; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px -6px rgba(0,156,222,0.45), 0 4px 8px rgba(0,0,0,0.12);
+    cursor: pointer; z-index: 35; -webkit-tap-highlight-color: transparent;
+    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .rsm-fab::before {
+    content: ''; position: absolute; inset: 0; border-radius: 9999px;
+    border: 2px solid rgba(0,156,222,0.5);
+    animation: rsm-fab-ping 2.2s cubic-bezier(0.4,0,0.6,1) infinite;
+    pointer-events: none;
+  }
+
+  /* Mobile card list */
+  .rsm-mlist { display: flex; flex-direction: column; gap: 10px; }
+  .rsm-mcard {
+    background: white; border: 1px solid #F3F4F6; border-radius: 12px;
+    padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    display: flex; flex-direction: column; gap: 10px;
+    -webkit-tap-highlight-color: transparent; cursor: pointer;
+    transition: transform 180ms ease, box-shadow 180ms ease;
+  }
+  .rsm-mcard:active { background: #F9FAFB; transform: scale(0.985); box-shadow: 0 1px 1px rgba(0,0,0,0.03); }
+  .rsm-mcard-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .rsm-mcard-name { font-size: 15px; font-weight: 600; color: #111827; line-height: 1.3; flex: 1; }
+  .rsm-mcard-client { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #6B7280; }
+  .rsm-mcard-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+  .rsm-mcard-row-meta { color: #9CA3AF; font-size: 12px; }
+  .rsm-mcard-harga { font-weight: 600; color: #111827; font-variant-numeric: tabular-nums; }
+  .rsm-mcard-team { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid #F3F4F6; }
+
+  /* Project progress bar */
+  .rsm-mproj-progress { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #6B7280; font-variant-numeric: tabular-nums; }
+  .rsm-mproj-progress-bar { flex: 1; height: 4px; background: #F3F4F6; border-radius: 9999px; overflow: hidden; }
+  .rsm-mproj-progress-fill { height: 100%; background: linear-gradient(90deg, #43B02A, #5BC845); border-radius: 9999px; transition: width 500ms cubic-bezier(0.22,1,0.36,1); }
+
+  /* Workload card with capacity bar */
+  .rsm-mworkload-card { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+  .rsm-mworkload-text > .name { font-size: 14px; font-weight: 600; color: #111827; }
+  .rsm-mworkload-text > .level { font-size: 11px; color: #9CA3AF; margin-top: 1px; }
+  .rsm-mworkload-bar-wrap { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+  .rsm-mworkload-bar { flex: 1; height: 6px; background: #F3F4F6; border-radius: 9999px; overflow: hidden; }
+  .rsm-mworkload-bar-fill { height: 100%; border-radius: 9999px; transition: width 700ms cubic-bezier(0.22,1,0.36,1); }
+  .rsm-mworkload-pct { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: #374151; width: 36px; text-align: right; }
+
+  /* Quarterly chart scroll */
+  .rsm-mchart-scroll {
+    display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px;
+    margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+    scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  .rsm-mchart-scroll::-webkit-scrollbar { display: none; }
+  .rsm-mchart-q {
+    flex: 0 0 140px; scroll-snap-align: start; padding: 14px;
+    background: white; border: 1px solid #F3F4F6; border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .rsm-mchart-q-label { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.05em; }
+  .rsm-mchart-q-value { font-size: 18px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; margin-top: 6px; }
+  .rsm-mchart-q-count { font-size: 11px; color: #6B7280; margin-top: 2px; }
+  .rsm-mchart-q-bar { margin-top: 10px; height: 4px; background: #F3F4F6; border-radius: 9999px; overflow: hidden; }
+  .rsm-mchart-q-bar > div { height: 100%; background: #009CDE; border-radius: 9999px; transition: width 600ms cubic-bezier(0.22,1,0.36,1); }
+
+  /* Section heading */
+  .rsm-msection-head { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 0 10px; }
+  .rsm-msection-head h2 { font-size: 14px; font-weight: 600; color: #374151; }
+
+  /* Filter panel */
+  .rsm-mfilter-panel {
+    background: white; border-bottom: 1px solid #F3F4F6;
+    padding: 14px 16px; margin: -16px -16px 16px;
+    animation: rsm-mfilter-down 250ms cubic-bezier(0.22,1,0.36,1); transform-origin: top;
+  }
+  .rsm-mfilter-row { display: flex; flex-direction: column; gap: 12px; }
+
+  /* PWA safe-area top padding */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .rsm-mtopbar {
+      padding-top: calc(env(safe-area-inset-top) + 8px);
+      height: calc(56px + env(safe-area-inset-top));
+    }
+    main.rsm-main {
+      padding-top: calc(56px + env(safe-area-inset-top)) !important;
+    }
+  }
+}
+
+/* ── Mobile keyframes (outside media query so they work globally) */
+@keyframes rsm-fab-ping {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes rsm-mfilter-down {
+  from { opacity: 0; transform: translateY(-12px) scaleY(0.9); }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes rsm-tab-pop {
+  0%   { transform: translateY(0) scale(1); }
+  40%  { transform: translateY(-4px) scale(1.18); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* ── Bulk Edit Mode ─────────────────────────────────────────── */
+
+.rsm-edit-cell input,
+.rsm-edit-cell select {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #009CDE;
+  width: 100%;
+  padding: 2px 4px;
+  font-size: inherit;
+  font-family: inherit;
+}
+.rsm-edit-cell input:focus,
+.rsm-edit-cell select:focus {
+  outline: none;
+  background: #f0f9ff;
+  border-radius: 4px;
+  border-bottom-color: #007BB5;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

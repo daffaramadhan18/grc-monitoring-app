@@ -1,11 +1,17 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+import { Plus, X, UploadCloud, FileText, Download, Upload, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Search, Loader2, Check, Pencil } from 'lucide-react'
+import MobileProjCard from './MobileProjCard'
+import useSWR from 'swr'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import MonthFilter from '@/components/MonthFilter'
-import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS } from '@/lib/utils'
+import { formatRupiah, formatDate, PROJ_STATUSES, PROJ_STATUS_COLORS, toInputDate } from '@/lib/utils'
+import { haptic } from '@/lib/haptic'
+import { fetcher } from '@/lib/fetcher'
 
 interface TeamMember { id: number; initial: string; fullName: string; level: string }
 interface Termin     { id: number; terminNumber: number; fee: number | null; status: string | null }
@@ -102,6 +108,58 @@ function FileUploadField({
   )
 }
 
+// ─── Resizable columns ───────────────────────────────────────────────────────
+
+const MIN_COL_WIDTH = 80
+
+function useResizableColumns(count: number, defaultWidths: number[]) {
+  const [widths, setWidths] = useState<number[]>(defaultWidths)
+  const dragging = useRef<{ col: number; startX: number; startW: number } | null>(null)
+
+  const onMouseDown = useCallback((col: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = { col, startX: e.clientX, startW: widths[col] }
+  }, [widths])
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging.current) return
+      const { col, startX, startW } = dragging.current
+      const delta = e.clientX - startX
+      setWidths((prev) => {
+        const next = [...prev]
+        next[col] = Math.max(MIN_COL_WIDTH, startW + delta)
+        return next
+      })
+    }
+    function onMouseUp() { dragging.current = null }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  return { widths, onMouseDown }
+}
+
+// Column order: checkbox, Engagement Name, Client, Owner, Status, MIC, Team, Period, Confirmed Fee, Termins
+const DEFAULT_WIDTHS = [
+  40,  // checkbox
+  200, // Engagement Name
+  140, // Client
+  110, // Owner
+  120, // Status
+  80,  // MIC
+  160, // Team
+  180, // Period
+  140, // Confirmed Fee
+  100, // Termins
+]
+
+// ─── Sort ────────────────────────────────────────────────────────────────────
+
 type SortField = 'proposalName' | 'client' | 'status' | 'confirmedFee' | 'startedDate'
 type SortDir   = 'asc' | 'desc'
 
@@ -116,16 +174,105 @@ function SortIcon({ field, current, dir }: { field: SortField; current: SortFiel
 
 export default function ProjectsClient({ projects: initial, teamMembers }: Props) {
   const router = useRouter()
-  const [projects, setProjects]   = useState<Project[]>(initial)
+  const { data: projects = initial, mutate: revalidate } = useSWR<Project[]>('/api/projects', fetcher, { fallbackData: initial })
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm]           = useState(emptyForm())
-  const [saving, setSaving]       = useState(false)
+  type SaveState = 'idle' | 'saving' | 'success' | 'error'
+  const [saveState, setSaveState] = useState<SaveState>('idle')
   const [dateError, setDateError] = useState('')
   const [importOpen, setImport]   = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ imported: number; skipped: { row: number; reason: string }[] } | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
+
+  // ─── Bulk Edit Mode ─────────────────────────────────────────────────────
+  const [editMode, setEditMode] = useState(false)
+  const [editData, setEditData] = useState<Map<number, Partial<Project>>>(new Map())
+  const [flashGreenRows, setFlashGreenRows] = useState<Set<number>>(new Set())
+  type BatchSaveState = 'idle' | 'saving' | 'saved'
+  const [batchSaveState, setBatchSaveState] = useState<BatchSaveState>('idle')
+  const [batchToast, setBatchToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!editMode || editData.size === 0) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [editMode, editData.size])
+
+  useEffect(() => {
+    if (!editMode) return
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (editData.size > 0) handleBatchSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editMode, editData])
+
+  function enterEditMode() {
+    setEditData(new Map())
+    setEditMode(true)
+  }
+
+  function cancelEditMode() {
+    setEditData(new Map())
+    setEditMode(false)
+  }
+
+  function cellValue(proj: Project, field: keyof Project): any {
+    const changed = editData.get(proj.id)
+    if (changed && field in changed) return changed[field as keyof Partial<Project>]
+    return proj[field]
+  }
+
+  function updateCell(id: number, field: keyof Project, value: any) {
+    setEditData((prev) => {
+      const next = new Map(prev)
+      const existing = next.get(id) ?? {}
+      next.set(id, { ...existing, [field]: value })
+      return next
+    })
+  }
+
+  async function handleBatchSave() {
+    if (editData.size === 0) return
+    setBatchSaveState('saving')
+    try {
+      const updates = Array.from(editData.entries()).map(([id, data]) => ({ id, ...data }))
+      const res = await fetch('/api/projects/batch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText)
+      }
+      const { updated } = await res.json()
+
+      const modifiedIds = new Set(editData.keys())
+      setFlashGreenRows(modifiedIds)
+      setTimeout(() => setFlashGreenRows(new Set()), 600)
+
+      setBatchSaveState('saved')
+      setBatchToast(`✓ ${updated} projects berhasil diupdate`)
+      setTimeout(() => setBatchToast(null), 4000)
+      setTimeout(() => setBatchSaveState('idle'), 1500)
+
+      setEditData(new Map())
+      setEditMode(false)
+      revalidate()
+    } catch (err: any) {
+      setBatchSaveState('idle')
+      setBatchToast(`✗ Gagal menyimpan — ${err.message}`)
+      setTimeout(() => setBatchToast(null), 5000)
+    }
+  }
+  // ─── End Bulk Edit Mode ──────────────────────────────────────────────────
 
   // Sort state
   const [sortField, setSortField] = useState<SortField>('proposalName')
@@ -185,7 +332,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     e.preventDefault()
     if (!form.engagementName || !form.clientName) return
     if (dateError) return
-    setSaving(true)
+    setSaveState('saving')
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -193,12 +340,14 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       })
       if (!res.ok) throw new Error(await res.text())
       const saved = await res.json()
+      setSaveState('success')
+      await new Promise(r => setTimeout(r, 600))
       setModalOpen(false)
       router.push(`/projects/${saved.id}`)
     } catch (err: any) {
+      setSaveState('error')
+      setTimeout(() => setSaveState('idle'), 2000)
       alert('Error: ' + err.message)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -206,12 +355,11 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     if (!window.confirm(`Hapus ${selected.size} project yang dipilih?`)) return
     setBulkDeleting(true)
     try {
-      await Promise.all([...selected].map((id) =>
+      await Promise.all(Array.from(selected).map((id) =>
         fetch(`/api/projects/${id}`, { method: 'DELETE' })
       ))
-      setProjects((prev) => prev.filter((p) => !selected.has(p.id)))
       setSelected(new Set())
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -312,7 +460,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
       setImportResult(data)
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -320,11 +468,23 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     }
   }
 
-  const thCls     = 'px-4 py-3 text-gray-500 font-medium select-none'
-  const thSortCls = `${thCls} cursor-pointer hover:text-gray-700`
+  const { widths, onMouseDown } = useResizableColumns(DEFAULT_WIDTHS.length, DEFAULT_WIDTHS)
+
+  function ResizeHandle({ col }: { col: number }) {
+    return (
+      <span
+        onMouseDown={(e) => onMouseDown(col, e)}
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#009CDE]/30 select-none z-10"
+        style={{ touchAction: 'none' }}
+      />
+    )
+  }
+
+  const thBase     = 'relative px-4 py-3 text-gray-500 font-medium text-left whitespace-nowrap overflow-hidden'
+  const thSortCls  = `${thBase} cursor-pointer hover:text-gray-700 select-none`
 
   return (
-    <div className="space-y-5">
+    <div className="rsm-page-in space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
         <div className="flex items-center gap-2">
@@ -337,8 +497,20 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
-          <button onClick={() => { setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
+          {/* Edit Mode toggle */}
+          <button
+            onClick={() => editMode ? cancelEditMode() : enterEditMode()}
+            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              editMode
+                ? 'bg-[#009CDE] text-white border-[#009CDE] hover:bg-[#007BB5]'
+                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Pencil size={16} />
+            {editMode ? '✓ Editing' : 'Edit Mode'}
+          </button>
+          <button onClick={() => { haptic(); setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+            className="inline-flex items-center gap-2 px-4 py-2 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Project
           </button>
         </div>
@@ -413,13 +585,15 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
         </p>
       )}
 
+      {/* ── Desktop Table (hidden on mobile) ─────────────────────────────── */}
+      <div className="hidden md:block">
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
         {/* Floating bulk action bar */}
         {selected.size > 0 && (
           <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
             <span className="font-medium">{selected.size} item dipilih</span>
-            <button onClick={handleBulkDelete} disabled={bulkDeleting}
+            <button onClick={() => { haptic(); handleBulkDelete() }} disabled={bulkDeleting}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 transition-colors">
               <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus'}
             </button>
@@ -430,35 +604,51 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
           </div>
         )}
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
+            <colgroup>
+              {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
+            </colgroup>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-4 py-3 w-10">
+                <th className={thBase} style={{ width: widths[0] }}>
                   <input type="checkbox"
                     checked={sortedProjects.length > 0 && selected.size === sortedProjects.length}
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
-                <th className={`text-left ${thSortCls} min-w-[180px]`} onClick={() => handleSort('proposalName')}>
+                <th className={thSortCls} style={{ width: widths[1] }} onClick={() => handleSort('proposalName')}>
                   Engagement Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={1} />
                 </th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('client')}>
+                <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
                   Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={2} />
                 </th>
-                <th className={`text-left ${thCls}`}>Owner</th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('status')}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[3] }}>
+                  Owner<ResizeHandle col={3} />
+                </th>
+                <th className={thSortCls} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
                   Status <SortIcon field="status" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={4} />
                 </th>
-                <th className={`text-left ${thCls}`}>MIC</th>
-                <th className={`text-left ${thCls}`}>Team</th>
-                <th className={`text-left ${thSortCls}`} onClick={() => handleSort('startedDate')}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[5] }}>
+                  MIC<ResizeHandle col={5} />
+                </th>
+                <th className={thBase} style={{ width: widths[6] }}>
+                  Team<ResizeHandle col={6} />
+                </th>
+                <th className={thSortCls} style={{ width: widths[7] }} onClick={() => handleSort('startedDate')}>
                   Period <SortIcon field="startedDate" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={7} />
                 </th>
-                <th className={`text-right ${thSortCls}`} onClick={() => handleSort('confirmedFee')}>
+                <th className={`${thSortCls} text-right`} style={{ width: widths[8] }} onClick={() => handleSort('confirmedFee')}>
                   Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={8} />
                 </th>
-                <th className={`text-center ${thCls}`}>Termins</th>
+                <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[9] }}>
+                  Termins<ResizeHandle col={9} />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -467,51 +657,181 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                   <td colSpan={10} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
                 </tr>
               )}
-              {sortedProjects.map((proj) => {
+              {sortedProjects.map((proj, index) => {
                 const team = [proj.tm1Initial, proj.tm2Initial, proj.tm3Initial,
                               proj.tm4Initial, proj.tm5Initial, proj.tm6Initial].filter(Boolean) as string[]
                 const paidCount = proj.termins.filter((t) => t.status === 'Paid').length
                 const isSelected = selected.has(proj.id)
+                const isModified = editData.has(proj.id)
+                const isFlashGreen = flashGreenRows.has(proj.id)
+                const tdEdit = editMode ? 'rsm-edit-cell' : ''
                 return (
-                  <tr key={proj.id}
-                    className={`group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
-                    onClick={() => router.push(`/projects/${proj.id}`)}>
-                    <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={isSelected}
-                        onChange={() => toggleSelect(proj.id)}
-                        className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                      />
+                  <motion.tr key={proj.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      backgroundColor: isFlashGreen
+                        ? '#dcfce7'
+                        : isModified && editMode
+                        ? '#fefce8'
+                        : isSelected
+                        ? 'rgba(0,156,222,0.08)'
+                        : 'rgba(255,255,255,0)',
+                    }}
+                    transition={
+                      isFlashGreen
+                        ? { duration: 0.05 }
+                        : { delay: index * 0.04, duration: 0.25, ease: 'easeOut' }
+                    }
+                    className={`rsm-row-click group h-14 ${editMode ? '' : 'cursor-pointer'} ${isModified && editMode ? 'border-l-2 border-l-blue-400' : ''}`}
+                    onClick={() => !editMode && router.push(`/projects/${proj.id}`)}>
+                    <td className="px-4 align-middle overflow-hidden w-10" onClick={(e) => e.stopPropagation()}>
+                      {!editMode && (
+                        <input type="checkbox" checked={isSelected}
+                          onChange={() => toggleSelect(proj.id)}
+                          className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        />
+                      )}
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{proj.proposalName}</td>
-                    <td className="px-4 py-3 text-gray-600" title={proj.clientName ?? ''}>{proj.clientInitial ?? proj.clientName ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{proj.projectOwner ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {proj.status}
-                      </span>
+                    {/* Engagement Name */}
+                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(proj, 'proposalName') ?? '')}
+                            onChange={(e) => updateCell(proj.id, 'proposalName', e.target.value)} />
+                        : proj.proposalName}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{proj.micInitial ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {team.map((t) => (
-                          <span key={t} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-700">{t}</span>
-                        ))}
-                        {team.length === 0 && <span className="text-gray-300">—</span>}
-                      </div>
+                    {/* Client */}
+                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 ${tdEdit}`}
+                      title={proj.clientName ?? ''}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(proj, 'clientInitial') ?? '')}
+                            onChange={(e) => updateCell(proj.id, 'clientInitial', e.target.value)} />
+                        : (proj.clientInitial ?? proj.clientName ?? '—')}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                      {formatDate(proj.startedDate)} – {formatDate(proj.endDate)}
+                    {/* Owner */}
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs hidden sm:table-cell">
+                      {proj.projectOwner ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700">{formatRupiah(proj.confirmedFee)}</td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-600">
+                    {/* Status */}
+                    <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(proj, 'status') ?? proj.status)}
+                            onChange={(e) => updateCell(proj.id, 'status', e.target.value)}>
+                            {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                          </select>
+                        : <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {proj.status}
+                          </span>}
+                    </td>
+                    {/* MIC */}
+                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(proj, 'micInitial') ?? '')}
+                            onChange={(e) => updateCell(proj.id, 'micInitial', e.target.value || null)}>
+                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                          </select>
+                        : (proj.micInitial ?? '—')}
+                    </td>
+                    {/* Team */}
+                    <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${editMode ? 'rsm-edit-cell' : ''}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? (
+                          <div className="flex gap-1 flex-wrap">
+                            {(['tm1Initial', 'tm2Initial', 'tm3Initial'] as const).map((k) => (
+                              <select key={k} style={{ minWidth: 50 }}
+                                value={String(cellValue(proj, k) ?? '')}
+                                onChange={(e) => updateCell(proj.id, k, e.target.value || null)}>
+                                {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                              </select>
+                            ))}
+                          </div>
+                        )
+                        : (() => {
+                          const shown = team.slice(0, 4)
+                          const extra = team.length - shown.length
+                          if (team.length === 0) return <span className="text-gray-300">—</span>
+                          return (
+                            <div className="flex items-center whitespace-nowrap overflow-hidden">
+                              {shown.map((t, i) => (
+                                <span key={t} className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-semibold shrink-0${i > 0 ? ' -ml-2' : ''}`}
+                                  style={{ backgroundColor: ['#009CDE','#43B02A','#58595B','#F59E0B','#8B5CF6','#EC4899'][t.split('').reduce((a,c) => a + c.charCodeAt(0), 0) % 6] }}>
+                                  {t.slice(0, 2)}
+                                </span>
+                              ))}
+                              {extra > 0 && (
+                                <span className="-ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold shrink-0">
+                                  +{extra}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
+                    </td>
+                    {/* Period */}
+                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs ${editMode ? 'rsm-edit-cell' : ''}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? (
+                          <div className="flex gap-1">
+                            <input type="date" style={{ minWidth: 110 }}
+                              value={String(cellValue(proj, 'startedDate') ? toInputDate(String(cellValue(proj, 'startedDate'))) : '')}
+                              onChange={(e) => updateCell(proj.id, 'startedDate', e.target.value || null)} />
+                            <input type="date" style={{ minWidth: 110 }}
+                              value={String(cellValue(proj, 'endDate') ? toInputDate(String(cellValue(proj, 'endDate'))) : '')}
+                              onChange={(e) => updateCell(proj.id, 'endDate', e.target.value || null)} />
+                          </div>
+                        )
+                        : `${formatDate(proj.startedDate)} – ${formatDate(proj.endDate)}`}
+                    </td>
+                    {/* Confirmed Fee */}
+                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-right text-gray-700 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="number" style={{ textAlign: 'right' }}
+                            value={cellValue(proj, 'confirmedFee') ?? ''}
+                            onChange={(e) => updateCell(proj.id, 'confirmedFee', e.target.value ? Number(e.target.value) : null)} />
+                        : formatRupiah(proj.confirmedFee)}
+                    </td>
+                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-center text-sm text-gray-600 hidden sm:table-cell">
                       {proj.termins.length > 0 ? `${paidCount}/${proj.termins.length} paid` : '—'}
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
             </tbody>
           </table>
         </div>
+      </div>
+      </div>{/* end hidden md:block desktop table */}
+
+      {/* ── Mobile view ─────────────────────────────────────────────────── */}
+      <div className="md:hidden">
+        {sortedProjects.length === 0 ? (
+          <div className="rsm-mcard">
+            <p className="text-sm text-gray-400 text-center">Belum ada project.</p>
+          </div>
+        ) : (
+          <div className="rsm-mlist">
+            {sortedProjects.map(proj => (
+              <MobileProjCard key={proj.id} project={proj} onTap={p => router.push(`/projects/${p.id}`)} />
+            ))}
+          </div>
+        )}
+
+        {/* FAB */}
+        <button
+          className="rsm-fab md:hidden"
+          onClick={() => { haptic(); setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+          aria-label="Add Project"
+        >
+          <Plus size={26} />
+        </button>
       </div>
 
       {/* ── Import Modal ─────────────────────────────────────────────────── */}
@@ -558,7 +878,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                   Tutup
                 </button>
                 <button onClick={handleImport} disabled={!importFile || importing}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>
@@ -567,118 +887,209 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
         </div>
       )}
 
-      {/* ── Add Project Modal ─────────────────────────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-800">New Project</h2>
-              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
+      {/* ── Bulk Edit bottom save bar ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {editMode && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 md:left-60 z-40 flex items-center gap-3 px-5 py-3 bg-white border-t border-gray-200 shadow-lg"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+          >
+            <span className="text-sm text-gray-700 font-medium flex-1">
+              {editData.size} baris diubah
+            </span>
+            <button
+              onClick={cancelEditMode}
+              className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <motion.button
+              onClick={handleBatchSave}
+              disabled={editData.size === 0 || batchSaveState === 'saving'}
+              animate={batchSaveState === 'saved' ? { backgroundColor: '#22c55e' } : { backgroundColor: '#009CDE' }}
+              transition={{ duration: 0.3 }}
+              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition-colors"
+            >
+              {batchSaveState === 'saving' && <Loader2 size={14} className="animate-spin" />}
+              {batchSaveState === 'saved' && <Check size={14} />}
+              {batchSaveState === 'saving' ? 'Saving...' : batchSaveState === 'saved' ? '✓ Saved' : 'Save All'}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Batch Toast ───────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {batchToast && (
+          <motion.div
+            initial={{ opacity: 0, x: 60 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 60 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[60]"
+          >
+            <div className="flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-xl shadow-xl">
+              <span className="flex-1">{batchToast}</span>
+              <button onClick={() => setBatchToast(null)} className="text-white/50 hover:text-white shrink-0">
+                <X size={14} />
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              <Field label="Engagement Name" required>
-                <input className={inputCls} value={form.engagementName}
-                  onChange={(e) => set('engagementName', e.target.value)} required autoFocus />
-              </Field>
+      {/* ── Add Project Modal ─────────────────────────────────────────────── */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {modalOpen && (
+            <>
+              <motion.div
+                key="proj-modal-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                onClick={() => setModalOpen(false)}
+              />
+              <motion.div
+                key="proj-modal-panel"
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4 pointer-events-none"
+              >
+                <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl pointer-events-auto">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-base font-semibold text-gray-800">New Project</h2>
+                    <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                      <X size={18} />
+                    </button>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Client Initial">
-                  <input className={inputCls} value={form.clientInitial ?? ''}
-                    onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
-                    placeholder="e.g. BRI" maxLength={6} />
-                </Field>
-                <Field label="Client Name">
-                  <input className={inputCls} value={form.clientName ?? ''}
-                    onChange={(e) => set('clientName', e.target.value)}
-                    placeholder="Nama lengkap client" />
-                </Field>
-              </div>
+                  <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+                    <Field label="Engagement Name" required>
+                      <input className={inputCls} value={form.engagementName}
+                        onChange={(e) => set('engagementName', e.target.value)} required autoFocus />
+                    </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Project Owner">
-                  <select className={selectCls} value={form.projectOwner}
-                    onChange={(e) => set('projectOwner', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    <option value="ITGRC-S">ITGRC-S</option>
-                    <option value="Non ITGRC-S">Non ITGRC-S</option>
-                  </select>
-                </Field>
-                <Field label="Status">
-                  <select className={selectCls} value={form.status}
-                    onChange={(e) => set('status', e.target.value)}>
-                    {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Client Initial">
+                        <input className={inputCls} value={form.clientInitial ?? ''}
+                          onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
+                          placeholder="e.g. BRI" maxLength={6} />
+                      </Field>
+                      <Field label="Client Name">
+                        <input className={inputCls} value={form.clientName ?? ''}
+                          onChange={(e) => set('clientName', e.target.value)}
+                          placeholder="Nama lengkap client" />
+                      </Field>
+                    </div>
 
-              <Field label="Confirmed Fee (IDR)">
-                <CurrencyInput value={form.confirmedFee} onChange={(v) => set('confirmedFee', v)} />
-              </Field>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Project Owner">
+                        <select className={selectCls} value={form.projectOwner}
+                          onChange={(e) => set('projectOwner', e.target.value)}>
+                          <option value="">— (opsional)</option>
+                          <option value="ITGRC-S">ITGRC-S</option>
+                          <option value="Non ITGRC-S">Non ITGRC-S</option>
+                        </select>
+                      </Field>
+                      <Field label="Status">
+                        <select className={selectCls} value={form.status}
+                          onChange={(e) => set('status', e.target.value)}>
+                          {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      </Field>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Start Date">
-                  <input type="date" className={inputCls} value={form.startedDate}
-                    onChange={(e) => set('startedDate', e.target.value)} />
-                </Field>
-                <Field label="End Date">
-                  <input type="date" className={inputCls} value={form.endDate}
-                    min={form.startedDate || undefined}
-                    onChange={(e) => set('endDate', e.target.value)} />
-                </Field>
-              </div>
-              {dateError && <p className="text-xs text-red-500 -mt-2">{dateError}</p>}
+                    <Field label="Confirmed Fee (IDR)">
+                      <CurrencyInput value={form.confirmedFee} onChange={(v) => set('confirmedFee', v)} />
+                    </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FileUploadField label="SPK (PDF)" filename={form.spkFilename}
-                  uploading={false} onUpload={(path, name) => setFile('spk', path, name)} />
-                <FileUploadField label="PKS (PDF)" filename={form.pksFilename}
-                  uploading={false} onUpload={(path, name) => setFile('pks', path, name)} />
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Start Date">
+                        <input type="date" className={inputCls} value={form.startedDate}
+                          onChange={(e) => set('startedDate', e.target.value)} />
+                      </Field>
+                      <Field label="End Date">
+                        <input type="date" className={inputCls} value={form.endDate}
+                          min={form.startedDate || undefined}
+                          onChange={(e) => set('endDate', e.target.value)} />
+                      </Field>
+                    </div>
+                    {dateError && <p className="text-xs text-red-500 -mt-2">{dateError}</p>}
 
-              <div className="grid grid-cols-4 gap-4">
-                <Field label="MIC">
-                  <select className={selectCls} value={form.micInitial}
-                    onChange={(e) => set('micInitial', e.target.value)}>
-                    {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                  </select>
-                </Field>
-                {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+1}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                    </select>
-                  </Field>
-                ))}
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+4}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                    </select>
-                  </Field>
-                ))}
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FileUploadField label="SPK (PDF)" filename={form.spkFilename}
+                        uploading={false} onUpload={(path, name) => setFile('spk', path, name)} />
+                      <FileUploadField label="PKS (PDF)" filename={form.pksFilename}
+                        uploading={false} onUpload={(path, name) => setFile('pks', path, name)} />
+                    </div>
 
-              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button type="button" onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Batal
-                </button>
-                <button type="submit" disabled={saving || !!dateError}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
-                  {saving ? 'Menyimpan...' : 'Simpan & Buka Detail'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      <Field label="MIC">
+                        <select className={selectCls} value={form.micInitial}
+                          onChange={(e) => set('micInitial', e.target.value)}>
+                          {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                        </select>
+                      </Field>
+                      {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
+                        <Field key={k} label={`TM${i+1}`}>
+                          <select className={selectCls} value={form[k]}
+                            onChange={(e) => set(k, e.target.value)}>
+                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                          </select>
+                        </Field>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
+                        <Field key={k} label={`TM${i+4}`}>
+                          <select className={selectCls} value={form[k]}
+                            onChange={(e) => set(k, e.target.value)}>
+                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                          </select>
+                        </Field>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                      <button type="button" onClick={() => setModalOpen(false)}
+                        className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        Batal
+                      </button>
+                      <motion.button
+                        type="submit"
+                        disabled={saveState === 'saving' || saveState === 'success' || !!dateError}
+                        animate={saveState === 'error' ? { x: [-8, 8, -8, 8, 0] } : { x: 0 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ duration: 0.4 }}
+                        className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-colors
+                          ${saveState === 'success' ? 'bg-green-500 text-white' :
+                            saveState === 'error' ? 'bg-red-500 text-white' :
+                            'bg-[#009CDE] hover:bg-[#007BB5] text-white disabled:opacity-60'}`}
+                      >
+                        {saveState === 'saving' && <Loader2 size={14} className="animate-spin" />}
+                        {saveState === 'success' && <Check size={14} />}
+                        {saveState === 'saving' ? 'Menyimpan...' :
+                         saveState === 'success' ? 'Tersimpan' :
+                         saveState === 'error' ? 'Gagal' :
+                         'Simpan & Buka Detail'}
+                      </motion.button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   )

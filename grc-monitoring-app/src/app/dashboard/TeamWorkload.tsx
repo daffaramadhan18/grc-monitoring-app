@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { capacityBadge } from '@/lib/utils'
 
 interface WorkloadRow {
   id: number
@@ -21,13 +22,6 @@ function avatarColor(initial: string) {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
-function capacityBadge(projects: number, proposals: number) {
-  if (projects > 2 || proposals > 2)
-    return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         overloaded: true }
-  if (projects === 2 && proposals === 2)
-    return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     overloaded: false }
-  return   { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', overloaded: false }
-}
 
 export default function TeamWorkload({ workload }: Props) {
   const reduced = useReducedMotion() ?? false
@@ -46,14 +40,29 @@ export default function TeamWorkload({ workload }: Props) {
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-full">
       <div className="px-5 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-700">Team Workload</h2>
-        <p className="text-xs text-gray-400 mt-0.5">{workload.length} member{workload.length !== 1 ? 's' : ''} active</p>
+        <div className="flex items-center gap-3 mt-1">
+          <p className="text-xs text-gray-400">{workload.length} member{workload.length !== 1 ? 's' : ''} active</p>
+          <span className="flex items-center gap-1 text-xs text-gray-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#009CDE] inline-block" /> proposals
+          </span>
+          <span className="flex items-center gap-1 text-xs text-gray-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#43B02A] inline-block" /> projects
+          </span>
+        </div>
       </div>
 
       {workload.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-gray-400">Belum ada beban kerja aktif</p>
       ) : (
         <motion.div variants={container} initial="hidden" animate="show" className="divide-y divide-gray-50">
-          {workload.map((row) => {
+          {[...workload]
+            .sort((a, b) => {
+              const ba = capacityBadge(a.active_projects, a.active_proposals)
+              const bb = capacityBadge(b.active_projects, b.active_proposals)
+              if (ba.order !== bb.order) return ba.order - bb.order
+              return (b.active_projects + b.active_proposals) - (a.active_projects + a.active_proposals)
+            })
+            .map((row) => {
             const badge = capacityBadge(row.active_projects, row.active_proposals)
             return (
               <motion.div
@@ -78,24 +87,20 @@ export default function TeamWorkload({ workload }: Props) {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#009CDE] inline-block" />
-                      {row.active_projects}p
+                      {row.active_proposals}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#43B02A] inline-block" />
-                      {row.active_proposals}p
+                      {row.active_projects}
                     </span>
                   </div>
                 </div>
 
                 {/* Capacity badge */}
                 {badge.overloaded && !reduced ? (
-                  <motion.span
-                    className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}
-                    animate={{ scale: [1, 1.15, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-                  >
+                  <span className={`rsm-badge-heartbeat px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
                     {badge.label}
-                  </motion.span>
+                  </span>
                 ) : (
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
                     {badge.label}
@@ -106,6 +111,7 @@ export default function TeamWorkload({ workload }: Props) {
           })}
         </motion.div>
       )}
+
     </div>
   )
 }
