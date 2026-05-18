@@ -77,7 +77,25 @@ export default function QuarterlySection({ opps, year }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      {/* Mobile: horizontal scroll */}
+      <div className="rsm-mchart-scroll md:hidden">
+        {quarters.map((q) => {
+          const pct = q.total > 0 ? Math.round((q.total / maxTotal) * 100) : 0
+          return (
+            <div key={q.label} className="rsm-mchart-q">
+              <div className="rsm-mchart-q-label">{q.label} · {q.range}</div>
+              <div className="rsm-mchart-q-value">{q.total > 0 ? formatIDRShort(q.total) : '—'}</div>
+              <div className="rsm-mchart-q-count">{q.activeCount} proposal{q.activeCount !== 1 ? 's' : ''}</div>
+              <div className="rsm-mchart-q-bar">
+                <div style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop: grid */}
+      <div className="hidden md:grid grid-cols-4 gap-3">
         {quarters.map((q) => {
           const pct = q.total > 0 ? Math.round((q.total / maxTotal) * 100) : 0
           return (

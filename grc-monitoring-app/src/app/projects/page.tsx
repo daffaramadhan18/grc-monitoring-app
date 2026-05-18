@@ -13,7 +13,8 @@ export default async function ProjectsPage() {
 
   return (
     <ProjectsClient
-      projects={serialize(projects)}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      projects={serialize(projects) as any}
       teamMembers={serialize(teamMembers)}
     />
   )

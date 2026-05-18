@@ -53,7 +53,7 @@ export default async function DashboardPage({
 
   const quarterYear = searchParams.month ? Number(searchParams.month.split('-')[0]) : new Date().getFullYear()
 
-  const [allFilteredOpps, ongoingProjects, workload, quarterlyOpps] = await Promise.all([
+  const [allFilteredOpps, ongoingProjects, workload, serviceTypes, teamMembers, quarterlyOpps] = await Promise.all([
     // All opportunities in month filter (for cards 1+2 and pipeline)
     prisma.opportunity.findMany({
       where: oppDateFilter,
@@ -77,6 +77,8 @@ export default async function DashboardPage({
       orderBy: { endDate: 'asc' },
     }),
     getWorkload(),
+    prisma.serviceType.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.teamMember.findMany({ select: { id: true, initial: true, fullName: true, level: true }, orderBy: { initial: 'asc' } }),
     // Quarterly section: active opps for the entire selected year (not month-scoped)
     prisma.opportunity.findMany({
       where: {
@@ -129,15 +131,17 @@ export default async function DashboardPage({
         winRate={winRate}
         ongoingProjects={ongoingCount}
         confirmedFee={confirmedFee}
+        oppsList={serialize(allFilteredOpps) as any}
+        projectsList={serialize(ongoingProjects) as any}
       />
 
       <QuarterlySection opps={serialize(quarterlyOpps) as any} year={quarterYear} />
 
-      <div className="grid grid-cols-5 gap-6">
-        <div className="col-span-3">
-          <ProposalPipeline opps={serialize(pipeline) as any} />
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="md:col-span-3">
+          <ProposalPipeline opps={serialize(pipeline) as any} serviceTypes={serviceTypes} teamMembers={teamMembers} />
         </div>
-        <div className="col-span-2">
+        <div className="md:col-span-2">
           <TeamWorkload workload={workload} />
         </div>
       </div>

@@ -79,3 +79,14 @@ export const TERMIN_STATUS_COLORS: Record<string, string> = {
   'Invoice Sent':             'bg-[#009CDE]/15 text-[#006fa0]',
   Paid:                       'bg-[#43B02A]/15 text-[#2d7a1a]',
 }
+
+export function capacityLoadPct(projects: number, proposals: number): number {
+  return Math.round(((projects + proposals) / 2) * 100)
+}
+
+export function capacityBadge(projects: number, proposals: number) {
+  const pct = capacityLoadPct(projects, proposals)
+  if (pct > 100)  return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         overloaded: true,  order: 0 }
+  if (pct === 100) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     overloaded: false, order: 1 }
+  return              { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', overloaded: false, order: 2 }
+}

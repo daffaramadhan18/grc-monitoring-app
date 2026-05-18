@@ -78,25 +78,6 @@ async function main() {
     }
   }
   console.log("Seeded service types and sub-services")
-
-  // ─── Clients ────────────────────────────────────────────────────────────────
-  // TODO: Replace with actual clients from Excel "Data Validation" sheet, col K-L
-  const clients = [
-    { initial: "BTN",  fullName: "Bank Tabungan Negara" },
-    { initial: "BRI",  fullName: "Bank Rakyat Indonesia" },
-    { initial: "BNI",  fullName: "Bank Negara Indonesia" },
-    { initial: "BRIS", fullName: "BRI Syariah" },
-    { initial: "PLN",  fullName: "PLN Persero" },
-  ]
-
-  for (const c of clients) {
-    await prisma.client.upsert({
-      where: { initial: c.initial },
-      update: c,
-      create: c,
-    })
-  }
-  console.log(`Seeded ${clients.length} clients (placeholder — update from Excel)`)
 }
 
 main()

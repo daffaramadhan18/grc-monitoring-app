@@ -1,0 +1,13 @@
+{
+  "name": "RSM CC3 GRC Monitoring",
+  "short_name": "RSM GRC",
+  "description": "Internal monitoring tool for RSM CC3 team",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#009CDE",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

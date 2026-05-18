@@ -1,10 +1,17 @@
-export default function NewOpportunityPage() {
+import { prisma } from '@/lib/prisma'
+import { serialize } from '@/lib/serialize'
+import OpportunityNewPage from './OpportunityNewPage'
+
+export default async function Page() {
+  const [serviceTypes, teamMembers] = await Promise.all([
+    prisma.serviceType.findMany({ include: { subServices: true }, orderBy: { name: 'asc' } }),
+    prisma.teamMember.findMany({ orderBy: { initial: 'asc' } }),
+  ])
+
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold text-gray-800 mb-6">New Opportunity</h1>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-        <p className="text-sm text-gray-400">Form coming soon.</p>
-      </div>
-    </div>
+    <OpportunityNewPage
+      serviceTypes={serialize(serviceTypes) as any}
+      teamMembers={serialize(teamMembers) as any}
+    />
   )
 }

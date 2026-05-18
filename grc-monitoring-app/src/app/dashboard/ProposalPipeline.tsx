@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
-import { Crown } from 'lucide-react'
-import { OPP_STATUS_COLORS, formatDate } from '@/lib/utils'
+import { OPP_STATUS_COLORS, formatDate, formatRupiah } from '@/lib/utils'
+import EditOpportunityModal, { type OppFull } from '@/components/EditOpportunityModal'
 
 interface PipelineOpp {
   id: number
@@ -10,6 +11,7 @@ interface PipelineOpp {
   status: string
   phase: string | null
   expectedDate: string | null
+  harga: number | null
   clientName: string | null
   clientInitial: string | null
   micInitial: string | null
@@ -21,30 +23,13 @@ interface PipelineOpp {
   tm6Initial: string | null
 }
 
-interface Props { opps: PipelineOpp[] }
+interface ServiceType { id: number; name: string }
+interface TeamMember  { id: number; initial: string; fullName: string; level: string }
 
-const AVATAR_COLORS = ['#009CDE', '#43B02A', '#58595B', '#F59E0B', '#8B5CF6', '#EC4899']
-
-function avatarColor(initial: string) {
-  const hash = initial.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
-}
-
-function AvatarBubble({ initial, isMic }: { initial: string; isMic: boolean }) {
-  return (
-    <span
-      className="relative inline-flex items-center justify-center w-6 h-6 rounded-full text-white font-semibold text-[9px] shrink-0"
-      style={{ backgroundColor: isMic ? '#2D2D2D' : avatarColor(initial) }}
-      title={isMic ? `MIC: ${initial}` : initial}
-    >
-      {initial.slice(0, 2)}
-      {isMic && (
-        <span className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-px flex items-center justify-center">
-          <Crown size={6} className="text-white" />
-        </span>
-      )}
-    </span>
-  )
+interface Props {
+  opps: PipelineOpp[]
+  serviceTypes: ServiceType[]
+  teamMembers: TeamMember[]
 }
 
 const GROUPS = ['In progress', 'Waiting for Result', 'Submitted'] as const
@@ -55,8 +40,13 @@ const GROUP_LABELS: Record<string, string> = {
   'Submitted':          'Submitted',
 }
 
-export default function ProposalPipeline({ opps }: Props) {
+export default function ProposalPipeline({ opps, serviceTypes, teamMembers }: Props) {
   const reduced = useReducedMotion() ?? false
+
+  const [localOpps, setLocalOpps] = useState<PipelineOpp[]>(opps)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingOpp, setEditingOpp] = useState<OppFull | null>(null)
+  const [loadingId, setLoadingId] = useState<number | null>(null)
 
   const container: Variants = {
     hidden: {},
@@ -69,19 +59,55 @@ export default function ProposalPipeline({ opps }: Props) {
 
   const today = new Date().toISOString().slice(0, 10)
 
+  async function handleRowClick(id: number) {
+    setLoadingId(id)
+    try {
+      const res = await fetch(`/api/opportunities/${id}`)
+      if (!res.ok) throw new Error('Failed to load')
+      const data: OppFull = await res.json()
+      setEditingOpp(data)
+      setModalOpen(true)
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  function handleSaved(saved: OppFull) {
+    // Update local pipeline row if it still matches active statuses
+    const activeStatuses = ['In progress', 'Waiting for Result', 'Submitted']
+    if (activeStatuses.includes(saved.status)) {
+      setLocalOpps((prev) => prev.map((o) =>
+        o.id === saved.id
+          ? { ...o, proposalName: saved.proposalName, status: saved.status,
+              phase: saved.phase, expectedDate: saved.expectedDate, harga: saved.harga,
+              clientName: saved.clientName, clientInitial: saved.clientInitial,
+              micInitial: saved.micInitial, tm1Initial: saved.tm1Initial,
+              tm2Initial: saved.tm2Initial, tm3Initial: saved.tm3Initial,
+              tm4Initial: saved.tm4Initial, tm5Initial: saved.tm5Initial,
+              tm6Initial: saved.tm6Initial }
+          : o
+      ))
+    } else {
+      // Opp moved out of active statuses — remove from pipeline
+      setLocalOpps((prev) => prev.filter((o) => o.id !== saved.id))
+    }
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-700">Active Proposal Pipeline</h2>
-        <p className="text-xs text-gray-400 mt-0.5">{opps.length} proposal{opps.length !== 1 ? 's' : ''} active</p>
+        <p className="text-xs text-gray-400 mt-0.5">{localOpps.length} proposal{localOpps.length !== 1 ? 's' : ''} active</p>
       </div>
 
-      {opps.length === 0 ? (
+      {localOpps.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-gray-400">Tidak ada proposal aktif</p>
       ) : (
         <div className="divide-y divide-gray-50">
           {GROUPS.map((status) => {
-            const group = opps.filter((o) => o.status === status)
+            const group = localOpps.filter((o) => o.status === status)
             if (group.length === 0) return null
             return (
               <div key={status}>
@@ -93,40 +119,36 @@ export default function ProposalPipeline({ opps }: Props) {
                 </div>
                 <motion.div variants={container} initial="hidden" animate="show" className="divide-y divide-gray-50">
                   {group.map((opp) => {
-                    const tms = [opp.tm1Initial, opp.tm2Initial, opp.tm3Initial,
-                                 opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].filter(Boolean) as string[]
                     const isOverdue = opp.expectedDate && opp.expectedDate < today
+                    const isLoading = loadingId === opp.id
                     return (
-                      <motion.div key={opp.id} variants={row} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50/60 transition-colors">
-                        {/* Client badge */}
-                        <span
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-xs shrink-0"
-                          style={{ backgroundColor: avatarColor(opp.clientInitial ?? opp.clientName ?? '?') }}
-                          title={opp.clientName ?? ''}
-                        >
-                          {(opp.clientInitial ?? opp.clientName ?? '?').slice(0, 2)}
-                        </span>
-
-                        {/* Name + phase */}
+                      <motion.div
+                        key={opp.id}
+                        variants={row}
+                        className={`px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer ${isLoading ? 'opacity-60' : ''}`}
+                        onClick={() => !isLoading && handleRowClick(opp.id)}
+                      >
+                        {/* Name + client */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{opp.proposalName}</p>
-                          {opp.phase && (
-                            <span className="inline-block mt-0.5 px-1.5 py-px rounded text-[10px] font-medium bg-slate-100 text-slate-600">
-                              {opp.phase}
-                            </span>
+                          {opp.clientName && (
+                            <p className="text-xs text-gray-400 truncate mt-0.5">{opp.clientName}</p>
                           )}
                         </div>
 
-                        {/* Team avatars */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {opp.micInitial && <AvatarBubble initial={opp.micInitial} isMic />}
-                          {tms.map((t) => <AvatarBubble key={t} initial={t} isMic={false} />)}
-                        </div>
+                        {/* Harga */}
+                        {opp.harga ? (
+                          <span className="text-xs text-gray-600 whitespace-nowrap shrink-0 tabular-nums">
+                            {formatRupiah(opp.harga)}
+                          </span>
+                        ) : null}
 
                         {/* Expected date */}
-                        <span className={`text-xs whitespace-nowrap shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                          {formatDate(opp.expectedDate)}
-                        </span>
+                        {opp.expectedDate && (
+                          <span className={`text-xs whitespace-nowrap shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                            {formatDate(opp.expectedDate)}
+                          </span>
+                        )}
                       </motion.div>
                     )
                   })}
@@ -136,6 +158,15 @@ export default function ProposalPipeline({ opps }: Props) {
           })}
         </div>
       )}
+
+      <EditOpportunityModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        opp={editingOpp}
+        serviceTypes={serviceTypes}
+        teamMembers={teamMembers}
+        onSaved={handleSaved}
+      />
     </div>
   )
 }

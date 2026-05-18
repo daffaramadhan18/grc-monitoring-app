@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
+import { capacityBadge, capacityLoadPct } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,21 +61,10 @@ function Avatar({ initial, size = 'md' }: { initial: string; size?: 'sm' | 'md' 
 
 // ─── Capacity ─────────────────────────────────────────────────────────────────
 
-function totalLoadPct(projects: number, proposals: number) {
-  return Math.round(((projects + proposals) / 2) * 100)
-}
-
 function barColor(pct: number) {
   if (pct > 100) return 'bg-red-500'
   if (pct >= 75)  return 'bg-amber-400'
   return 'bg-[#43B02A]'
-}
-
-function capacityBadge(projects: number, proposals: number) {
-  const pct = totalLoadPct(projects, proposals)
-  if (pct > 100)  return { label: 'Overloaded',  cls: 'bg-red-100 text-red-700',         order: 0 }
-  if (pct === 100) return { label: 'At Capacity', cls: 'bg-amber-100 text-amber-700',     order: 1 }
-  return              { label: 'Available',   cls: 'bg-[#43B02A]/15 text-[#2d7a1a]', order: 2 }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -107,7 +100,7 @@ const PROJ_STATUS_CLS: Record<string, string> = {
 
 export default function TeamClient({ members: initial, allocation, details }: Props) {
   const router = useRouter()
-  const [members, setMembers]   = useState<Member[]>(initial)
+  const { data: members = initial, mutate: revalidate } = useSWR<Member[]>('/api/team', fetcher, { fallbackData: initial })
 
   // Manage Team drawer
   const [manageOpen, setManageOpen] = useState(false)
@@ -152,13 +145,8 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? res.statusText)
-      if (editing) {
-        setMembers((prev) => prev.map((m) => m.id === data.id ? data : m))
-      } else {
-        setMembers((prev) => [...prev, data].sort((a, b) => a.fullName.localeCompare(b.fullName)))
-      }
       setCrudOpen(false)
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -175,8 +163,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
         const data = await res.json()
         throw new Error(data.error ?? res.statusText)
       }
-      setMembers((prev) => prev.filter((m) => m.id !== member.id))
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -199,7 +186,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   const detailBadge   = detailAlloc  ? capacityBadge(detailAlloc.projects, detailAlloc.proposals) : null
 
   return (
-    <div className="space-y-6">
+    <div className="rsm-page-in space-y-6">
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Team</h1>
@@ -213,21 +200,26 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
 
       {/* ── Resource Allocation Breakdown ────────────────────────────────── */}
       <div className="space-y-3">
-        <div>
+
+        {/* Desktop header */}
+        <div className="hidden md:block">
           <h2 className="text-base font-semibold text-gray-800">Resource Allocation Breakdown</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-          Load = (active projects + active proposals) / 2 × 100% · max capacity = 2 engagements
+            Load = (active projects + active proposals) / 2 × 100% · max capacity = 2 engagements
           </p>
         </div>
+        {/* Mobile header */}
+        <h2 className="md:hidden text-base font-semibold text-gray-800">Team Workload</h2>
 
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+        {/* Desktop list */}
+        <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
           {allocRows.length === 0 && (
             <div className="px-6 py-10 text-center text-gray-400 text-sm">
               Belum ada data alokasi.
             </div>
           )}
-          {allocRows.map(({ member, projects, proposals, badge }) => {
-            const pct = totalLoadPct(projects, proposals)
+          {allocRows.map(({ member, projects, proposals, badge }, index) => {
+            const pct = capacityLoadPct(projects, proposals)
             return (
               <button
                 key={member.id}
@@ -236,19 +228,24 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               >
                 <Avatar initial={member.initial} size="sm" />
 
-                <div className="w-44 shrink-0">
-                  <div className="font-medium text-sm text-gray-900">{member.fullName}</div>
-                  <div className="text-xs text-gray-400">{member.level}</div>
+                <div className="min-w-0 w-44 shrink-0">
+                  <div className="font-medium text-sm text-gray-900 truncate">{member.fullName}</div>
+                  <div className="text-xs text-gray-400 truncate">{member.level}</div>
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      <motion.div
+                        className={`h-full rounded-full ${barColor(pct)}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(pct, 100)}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.08 }}
+                      />
                     </div>
                     <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
-                  <p className="text-[10px] text-gray-400">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}</p>
+                  <p className="text-[10px] text-gray-400 whitespace-nowrap">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}</p>
                 </div>
 
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
@@ -258,6 +255,58 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             )
           })}
         </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden px-0 space-y-2">
+          {allocRows.length === 0 && (
+            <p className="py-8 text-center text-gray-400 text-sm">Belum ada data alokasi.</p>
+          )}
+          {allocRows.map(({ member, projects, proposals, badge }, index) => {
+            const pct = capacityLoadPct(projects, proposals)
+            const barFill = pct > 100 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#43B02A'
+            return (
+              <button
+                key={member.id}
+                onClick={() => setDetailMember(member)}
+                className="w-full bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-left active:bg-gray-50 transition-colors"
+              >
+                <div className="rsm-mworkload-card">
+                  {/* Avatar */}
+                  <Avatar initial={member.initial} size="sm" />
+
+                  {/* Name + level */}
+                  <div className="rsm-mworkload-text">
+                    <div className="name truncate">{member.fullName}</div>
+                    <div className="level truncate">{member.level}</div>
+                  </div>
+
+                  {/* Badge */}
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
+                    {badge.label}
+                  </span>
+
+                  {/* Capacity bar spanning full width */}
+                  <div className="rsm-mworkload-bar-wrap">
+                    <div className="rsm-mworkload-bar">
+                      <motion.div
+                        className="rsm-mworkload-bar-fill"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(pct, 100)}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.08 }}
+                        style={{ backgroundColor: barFill }}
+                      />
+                    </div>
+                    <span className="rsm-mworkload-pct">{pct}%</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 whitespace-nowrap">
+                  {projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+
       </div>
 
       {/* ── Manage Team drawer ────────────────────────────────────────────── */}
@@ -270,7 +319,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               <div className="flex items-center gap-3">
                 <button
                   onClick={openNew}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors"
                 >
                   <Plus size={14} /> Add Member
                 </button>
@@ -384,7 +433,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                   Batal
                 </button>
                 <button type="submit" disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
                 </button>
               </div>
@@ -419,7 +468,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             {/* Load bar */}
             <div className="px-5 py-4 border-b border-gray-100 shrink-0 space-y-1">
               {(() => {
-                const pct = totalLoadPct(detailAlloc.projects, detailAlloc.proposals)
+                const pct = capacityLoadPct(detailAlloc.projects, detailAlloc.proposals)
                 return (
                   <>
                     <div className="flex items-center gap-3">
@@ -436,6 +485,16 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                   </>
                 )
               })()}
+            </div>
+
+            {/* View Details button */}
+            <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+              <button
+                onClick={() => router.push(`/team/${detailMember.id}`)}
+                className="w-full px-4 py-2 text-sm font-medium text-[#009CDE] border border-[#009CDE] rounded-lg hover:bg-[#009CDE]/5 transition-colors"
+              >
+                View Details
+              </button>
             </div>
 
             {/* Scrollable content */}

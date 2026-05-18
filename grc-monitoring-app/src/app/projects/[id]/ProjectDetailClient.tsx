@@ -278,15 +278,17 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
               </select>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Start Date">
-              <input type="date" className={inputCls} value={form.startedDate}
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">Start Date</label>
+              <input type="date" className={`${inputCls} min-h-[44px]`} value={form.startedDate}
                 onChange={(e) => setField('startedDate', e.target.value)} />
-            </Field>
-            <Field label="End Date">
-              <input type="date" className={inputCls} value={form.endDate}
+            </div>
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">End Date</label>
+              <input type="date" className={`${inputCls} min-h-[44px]`} value={form.endDate}
                 onChange={(e) => setField('endDate', e.target.value)} />
-            </Field>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="SPK">
@@ -406,7 +408,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
       {/* Single save button */}
       <div className="flex justify-end">
         <button type="submit" disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+          className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
           <Save size={14} /> {saving ? 'Menyimpan...' : 'Simpan Semua'}
         </button>
       </div>

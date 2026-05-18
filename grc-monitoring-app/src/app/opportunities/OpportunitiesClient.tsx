@@ -2,10 +2,15 @@
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search } from 'lucide-react'
-import CurrencyInput from '@/components/ui/CurrencyInput'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search, Filter, Pencil, Loader2, Check } from 'lucide-react'
+import MobileOppCard from './MobileOppCard'
+import useSWR, { mutate } from 'swr'
 import MonthFilter from '@/components/MonthFilter'
-import { formatRupiah, formatDate, toInputDate, OPP_STATUSES, OPP_STATUS_COLORS } from '@/lib/utils'
+import { formatRupiah, formatDate, OPP_STATUSES, OPP_STATUS_COLORS, toInputDate } from '@/lib/utils'
+import EditOpportunityModal, { type OppFull } from '@/components/EditOpportunityModal'
+import { haptic } from '@/lib/haptic'
+import { fetcher } from '@/lib/fetcher'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,31 +37,6 @@ interface Props {
   teamMembers: TeamMember[]
 }
 
-// ─── Sub-service map ──────────────────────────────────────────────────────────
-
-const SUB_SERVICES: Record<string, string[]> = {
-  'IT GRC': [
-    'IT Audit & Compliance', 'LPS-SCV', 'Managed Service',
-    'IT Maturity', 'OT Audit', 'MRTI', 'IT Governance', 'ISO',
-  ],
-  'Cybersecurity': [
-    'VAPT', 'Red Teaming', 'Cyber Maturity Assessment', 'Managed Service',
-  ],
-  'Privacy': [],
-}
-
-// ─── Empty form ───────────────────────────────────────────────────────────────
-
-const emptyForm = () => ({
-  proposalName: '', clientName: '', clientInitial: '', serviceTypeId: '', subServiceId: '',
-  phase: '', status: 'In progress', probability: '', riskLevel: '',
-  harga: '', revenueCf: '', rrPercentage: '',
-  expectedDate: '', submittedDate: '', notes: '',
-  micInitial: '',
-  tm1Initial: '', tm2Initial: '', tm3Initial: '',
-  tm4Initial: '', tm5Initial: '', tm6Initial: '',
-})
-
 // ─── Small components ─────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
@@ -76,7 +56,7 @@ function AvatarBubble({ initial, isMic }: { initial: string; isMic: boolean }) {
     >
       {initial.slice(0, 2)}
       {isMic && (
-        <span className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 flex items-center justify-center">
+        <span className="rsm-crown-float absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 flex items-center justify-center">
           <Crown size={7} className="text-white" />
         </span>
       )}
@@ -98,20 +78,6 @@ function RiskBadge({ level }: { level: string | null }) {
     </span>
   )
 }
-
-function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
-const selectCls = inputCls
 
 type SortField = 'proposalName' | 'client' | 'status' | 'harga' | 'expectedDate'
 type SortDir   = 'asc' | 'desc'
@@ -162,7 +128,7 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 // Column order: Client Initial, Client Name, Service Type, Sub-service, Proposal Name,
-//               Phase, Submitted Date, Status, Probability, Risk Level, Notes, %RR,
+//               Phase, Submitted Date, Expected Date, Status, Probability, Risk Level, Notes, %RR,
 //               Harga, Revenue CF, Team (MIC+TM1-TM6), delete
 const DEFAULT_WIDTHS = [
   40,  // checkbox
@@ -173,6 +139,7 @@ const DEFAULT_WIDTHS = [
   180, // Proposal Name
   90,  // Phase
   110, // Submitted Date
+  110, // Expected Date
   130, // Status
   80,  // Probability
   100, // Risk Level
@@ -184,15 +151,17 @@ const DEFAULT_WIDTHS = [
   44,  // delete
 ]
 
+const OPP_PHASES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed']
+const RISK_LEVELS = ['Low', 'Medium', 'High']
+const PROBABILITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
 export default function OpportunitiesClient({
   opportunities: initial, serviceTypes, teamMembers,
 }: Props) {
   const router = useRouter()
-  const [opps, setOpps]           = useState<Opp[]>(initial)
+  const { data: opps = initial, mutate: revalidate } = useSWR<Opp[]>('/api/opportunities', fetcher, { fallbackData: initial })
   const [modalOpen, setModal]     = useState(false)
   const [editing, setEditing]     = useState<Opp | null>(null)
-  const [form, setForm]           = useState(emptyForm())
-  const [saving, setSaving]       = useState(false)
   const [deleting, setDel]        = useState<number | null>(null)
   const [importOpen, setImport]   = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -207,6 +176,9 @@ export default function OpportunitiesClient({
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const [filterMonth, setFilterMonth] = useState('')
+  const [flashedRow, setFlashedRow]   = useState<number | null>(null)
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Opp | null>(null)
 
   const [filters, setFilters] = useState({
     search: '',
@@ -214,6 +186,99 @@ export default function OpportunitiesClient({
     serviceTypeId: '',
     teamMember: '',
   })
+
+  // ─── Bulk Edit Mode ───────────────────────────────────────────────────────
+  const [editMode, setEditMode] = useState(false)
+  const [editData, setEditData] = useState<Map<number, Partial<Opp>>>(new Map())
+  const [preEditSnapshot, setPreEditSnapshot] = useState<Opp[]>([])
+  const [flashGreenRows, setFlashGreenRows] = useState<Set<number>>(new Set())
+  type BatchSaveState = 'idle' | 'saving' | 'saved'
+  const [batchSaveState, setBatchSaveState] = useState<BatchSaveState>('idle')
+
+  // Navigation guard
+  useEffect(() => {
+    if (!editMode || editData.size === 0) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [editMode, editData.size])
+
+  // Cmd/Ctrl+S to save
+  useEffect(() => {
+    if (!editMode) return
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (editData.size > 0) handleBatchSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editMode, editData])
+
+  function enterEditMode() {
+    setPreEditSnapshot([...opps])
+    setEditData(new Map())
+    setEditMode(true)
+  }
+
+  function cancelEditMode() {
+    setEditData(new Map())
+    setEditMode(false)
+  }
+
+  function cellValue(opp: Opp, field: keyof Opp): any {
+    const changed = editData.get(opp.id)
+    if (changed && field in changed) return changed[field as keyof Partial<Opp>]
+    return opp[field]
+  }
+
+  function updateCell(id: number, field: keyof Opp, value: any) {
+    setEditData((prev) => {
+      const next = new Map(prev)
+      const existing = next.get(id) ?? {}
+      next.set(id, { ...existing, [field]: value })
+      return next
+    })
+  }
+
+  async function handleBatchSave() {
+    if (editData.size === 0) return
+    setBatchSaveState('saving')
+    try {
+      const updates = Array.from(editData.entries()).map(([id, data]) => ({ id, ...data }))
+      const res = await fetch('/api/opportunities/batch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText)
+      }
+      const { updated } = await res.json()
+
+      // Flash green rows
+      const modifiedIds = new Set(editData.keys())
+      setFlashGreenRows(modifiedIds)
+      setTimeout(() => setFlashGreenRows(new Set()), 600)
+
+      setBatchSaveState('saved')
+      setToast(`✓ ${updated} opportunities berhasil diupdate`)
+      setTimeout(() => setToast(null), 4000)
+      setTimeout(() => setBatchSaveState('idle'), 1500)
+
+      setEditData(new Map())
+      setEditMode(false)
+      revalidate()
+    } catch (err: any) {
+      setBatchSaveState('idle')
+      setToast(`✗ Gagal menyimpan — ${err.message}`)
+      setTimeout(() => setToast(null), 5000)
+    }
+  }
+
+  // ─── End Bulk Edit Mode ───────────────────────────────────────────────────
 
   // Opps visible in the table (month-filtered)
   const monthFilteredOpps = useMemo(() => {
@@ -242,77 +307,15 @@ export default function OpportunitiesClient({
 
   const { widths, onMouseDown } = useResizableColumns(DEFAULT_WIDTHS.length, DEFAULT_WIDTHS)
 
-  const selectedTypeName = serviceTypes.find((s) => String(s.id) === form.serviceTypeId)?.name ?? ''
-  const availableSubs    = SUB_SERVICES[selectedTypeName] ?? []
-
-  function set(field: string, value: string) {
-    setForm((f) => {
-      const next = { ...f, [field]: value }
-      if (field === 'serviceTypeId') next.subServiceId = ''
-      return next
-    })
-  }
-
   function openNew() {
     setEditing(null)
-    setForm(emptyForm())
     setModal(true)
   }
 
   function openEdit(opp: Opp) {
+    if (editMode) return
     setEditing(opp)
-    setForm({
-      proposalName:  opp.proposalName,
-      clientName:    opp.clientName    ?? '',
-      clientInitial: opp.clientInitial ?? '',
-      serviceTypeId: opp.serviceTypeId != null ? String(opp.serviceTypeId) : '',
-      subServiceId:  opp.subService?.name ?? '',
-      phase:         opp.phase          ?? '',
-      status:        opp.status,
-      probability:   opp.probability   != null ? String(opp.probability) : '',
-      riskLevel:     opp.riskLevel     ?? '',
-      harga:         opp.harga         != null ? String(opp.harga)        : '',
-      revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)    : '',
-      rrPercentage:  opp.rrPercentage  != null ? String(opp.rrPercentage) : '',
-      expectedDate:  toInputDate(opp.expectedDate),
-      submittedDate: toInputDate(opp.submittedDate),
-      notes:         opp.notes         ?? '',
-      micInitial:    opp.micInitial    ?? '',
-      tm1Initial:    opp.tm1Initial    ?? '',
-      tm2Initial:    opp.tm2Initial    ?? '',
-      tm3Initial:    opp.tm3Initial    ?? '',
-      tm4Initial:    opp.tm4Initial    ?? '',
-      tm5Initial:    opp.tm5Initial    ?? '',
-      tm6Initial:    opp.tm6Initial    ?? '',
-    })
     setModal(true)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.proposalName || !form.clientName) return
-    setSaving(true)
-    try {
-      const url    = editing ? `/api/opportunities/${editing.id}` : '/api/opportunities'
-      const method = editing ? 'PUT' : 'POST'
-      const res    = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const body = await res.json()
-      if (!res.ok) throw new Error(body.error ?? res.statusText)
-      const saved: Opp = body
-      setOpps((prev) => editing
-        ? prev.map((o) => o.id === saved.id ? saved : o)
-        : [saved, ...prev])
-      setModal(false)
-      router.refresh()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
-    } finally {
-      setSaving(false)
-    }
   }
 
   async function handleDelete(id: number) {
@@ -321,9 +324,22 @@ export default function OpportunitiesClient({
     try {
       const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
-      setOpps((prev) => prev.filter((o) => o.id !== id))
       setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
-      router.refresh()
+      revalidate()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setDel(null)
+    }
+  }
+
+  async function handleDeleteDirect(id: number) {
+    setDel(id)
+    try {
+      const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -335,12 +351,11 @@ export default function OpportunitiesClient({
     if (!window.confirm(`Hapus ${selected.size} opportunity yang dipilih?`)) return
     setBulkDeleting(true)
     try {
-      await Promise.all([...selected].map((id) =>
+      await Promise.all(Array.from(selected).map((id) =>
         fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
       ))
-      setOpps((prev) => prev.filter((o) => !selected.has(o.id)))
       setSelected(new Set())
-      router.refresh()
+      revalidate()
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -407,8 +422,6 @@ export default function OpportunitiesClient({
     })
   }, [monthFilteredOpps, sortField, sortDir, filters])
 
-  const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
-
   function triggerDownload(blob: Blob, filename: string) {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -443,12 +456,7 @@ export default function OpportunitiesClient({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
 
-      // Refresh table data from API without full page reload
-      const refreshRes = await fetch('/api/opportunities')
-      if (refreshRes.ok) {
-        const fresh = await refreshRes.json()
-        setOpps(fresh)
-      }
+      revalidate()
 
       // Close modal and show toast
       setImport(false)
@@ -468,8 +476,6 @@ export default function OpportunitiesClient({
 
   // ─── Resize handle ────────────────────────────────────────────────────────────
 
-  // col index (0-based, skipping checkbox col 0 and delete col last)
-  // We give resize handles to cols 1..N-2
   function ResizeHandle({ col }: { col: number }) {
     return (
       <span
@@ -483,8 +489,10 @@ export default function OpportunitiesClient({
   const thBase = 'relative px-3 py-3 text-gray-500 font-medium text-left text-xs whitespace-nowrap overflow-hidden'
   const thSort = `${thBase} cursor-pointer hover:text-gray-700 select-none`
 
+  const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
+
   return (
-    <div className="space-y-5">
+    <div className="rsm-page-in space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">Opportunities</h1>
@@ -498,8 +506,20 @@ export default function OpportunitiesClient({
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Upload size={16} /> Import
           </button>
-          <button onClick={openNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
+          {/* Edit Mode toggle */}
+          <button
+            onClick={() => editMode ? cancelEditMode() : enterEditMode()}
+            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              editMode
+                ? 'bg-[#009CDE] text-white border-[#009CDE] hover:bg-[#007BB5]'
+                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Pencil size={16} />
+            {editMode ? '✓ Editing' : 'Edit Mode'}
+          </button>
+          <button onClick={() => { haptic(); openNew() }}
+            className="inline-flex items-center gap-2 px-4 py-2 rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white text-sm font-medium rounded-lg hover:bg-[#007BB5] transition-colors">
             <Plus size={16} /> Add Opportunity
           </button>
         </div>
@@ -586,13 +606,15 @@ export default function OpportunitiesClient({
         </p>
       )}
 
+      {/* ── Desktop Table (hidden on mobile) ─────────────────────────────── */}
+      <div className="hidden md:block">
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
-        {selected.size > 0 && (
+        {selected.size > 0 && !editMode && (
           <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
             <span className="font-medium">{selected.size} item dipilih</span>
             <button
-              onClick={handleBulkDelete}
+              onClick={() => { haptic(); handleBulkDelete() }}
               disabled={bulkDeleting}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 transition-colors"
             >
@@ -605,8 +627,8 @@ export default function OpportunitiesClient({
           </div>
         )}
 
-        <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: widths.reduce((a, b) => a + b, 0) }}>
+        <div className={`overflow-x-auto${selected.size > 0 && !editMode ? ' pb-12' : ''}`}>
+          <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -634,7 +656,7 @@ export default function OpportunitiesClient({
                   Service Type<ResizeHandle col={3} />
                 </th>
                 {/* Sub-service */}
-                <th className={thBase} style={{ width: widths[4] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[4] }}>
                   Sub-service<ResizeHandle col={4} />
                 </th>
                 {/* Proposal Name */}
@@ -643,121 +665,430 @@ export default function OpportunitiesClient({
                   <ResizeHandle col={5} />
                 </th>
                 {/* Phase */}
-                <th className={thBase} style={{ width: widths[6] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[6] }}>
                   Phase<ResizeHandle col={6} />
                 </th>
                 {/* Submitted Date */}
-                <th className={thBase} style={{ width: widths[7] }}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[7] }}>
                   Submitted Date<ResizeHandle col={7} />
                 </th>
-                {/* Status */}
-                <th className={thSort} style={{ width: widths[8] }} onClick={() => handleSort('status')}>
-                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
+                {/* Expected Date */}
+                <th className={thSort} style={{ width: widths[8] }} onClick={() => handleSort('expectedDate')}>
+                  Expected Date<SortIcon field="expectedDate" current={sortField} dir={sortDir} />
                   <ResizeHandle col={8} />
                 </th>
+                {/* Status */}
+                <th className={thSort} style={{ width: widths[9] }} onClick={() => handleSort('status')}>
+                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={9} />
+                </th>
                 {/* Probability */}
-                <th className={thBase} style={{ width: widths[9] }}>
-                  Prob.<ResizeHandle col={9} />
+                <th className={thBase} style={{ width: widths[10] }}>
+                  Prob.<ResizeHandle col={10} />
                 </th>
                 {/* Risk Level */}
-                <th className={thBase} style={{ width: widths[10] }}>
-                  Risk<ResizeHandle col={10} />
+                <th className={thBase} style={{ width: widths[11] }}>
+                  Risk<ResizeHandle col={11} />
                 </th>
                 {/* Notes */}
-                <th className={thBase} style={{ width: widths[11] }}>
-                  Notes<ResizeHandle col={11} />
+                <th className={thBase} style={{ width: widths[12] }}>
+                  Notes<ResizeHandle col={12} />
                 </th>
                 {/* %RR */}
-                <th className={thBase} style={{ width: widths[12] }}>
-                  %RR<ResizeHandle col={12} />
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[13] }}>
+                  %RR<ResizeHandle col={13} />
                 </th>
                 {/* Harga */}
-                <th className={thSort} style={{ width: widths[13] }} onClick={() => handleSort('harga')}>
+                <th className={thSort} style={{ width: widths[14] }} onClick={() => handleSort('harga')}>
                   Harga<SortIcon field="harga" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={13} />
+                  <ResizeHandle col={14} />
                 </th>
                 {/* Revenue CF */}
-                <th className={thBase} style={{ width: widths[14] }}>
-                  Revenue CF<ResizeHandle col={14} />
+                <th className={thBase} style={{ width: widths[15] }}>
+                  Revenue CF<ResizeHandle col={15} />
                 </th>
                 {/* Team (MIC + TM1–TM6) */}
-                <th className={thBase} style={{ width: widths[15] }}>
-                  Team<ResizeHandle col={15} />
+                <th className={thBase} style={{ width: widths[16] }}>
+                  Team<ResizeHandle col={16} />
                 </th>
                 {/* Delete */}
-                <th className={thBase} style={{ width: widths[16] }} />
+                <th className={thBase} style={{ width: widths[17] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={17} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={18} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
               )}
-              {sortedOpps.map((opp) => {
+              {sortedOpps.map((opp, index) => {
                 const isSelected = selected.has(opp.id)
+                const isModified = editData.has(opp.id)
+                const isFlashGreen = flashGreenRows.has(opp.id)
+                const tdEdit = editMode ? 'rsm-edit-cell' : ''
+
                 return (
-                  <tr
+                  <motion.tr
                     key={opp.id}
-                    className={`group cursor-pointer transition-colors ${isSelected ? 'bg-[#009CDE]/8' : 'hover:bg-gray-50'}`}
-                    onClick={() => openEdit(opp)}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      backgroundColor: isFlashGreen
+                        ? '#dcfce7'
+                        : flashedRow === opp.id
+                        ? 'rgba(0,156,222,0.18)'
+                        : isModified && editMode
+                        ? '#fefce8'
+                        : isSelected
+                        ? 'rgba(0,156,222,0.08)'
+                        : 'rgba(255,255,255,0)',
+                    }}
+                    transition={
+                      isFlashGreen || flashedRow === opp.id
+                        ? { duration: 0.05 }
+                        : { delay: index * 0.04, duration: 0.25, ease: 'easeOut' }
+                    }
+                    className={`rsm-row-click group relative h-14 ${editMode ? '' : 'cursor-pointer'} ${isModified && editMode ? 'border-l-2 border-l-blue-400' : ''}`}
+                    onClick={() => !editMode && openEdit(opp)}
                   >
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={isSelected}
-                        onChange={() => toggleSelect(opp.id)}
-                        className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                      />
+                    {/* Checkbox */}
+                    <td className="px-3 align-middle overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                      {!editMode && (
+                        <input type="checkbox" checked={isSelected}
+                          onChange={() => toggleSelect(opp.id)}
+                          className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        />
+                      )}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-600 font-mono text-xs truncate">
-                      {opp.clientInitial ?? '—'}
+                    {/* Client Initial */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(opp, 'clientInitial') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'clientInitial', e.target.value)} />
+                        : (opp.clientInitial ?? '—')}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-700 truncate" title={opp.clientName ?? ''}>
-                      {opp.clientName ?? '—'}
+                    {/* Client Name */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 ${tdEdit}`}
+                      title={opp.clientName ?? ''}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(opp, 'clientName') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'clientName', e.target.value)} />
+                        : (opp.clientName ?? '—')}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.serviceType?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-600 truncate">{opp.subService?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 font-medium text-gray-900 truncate">{opp.proposalName}</td>
-                    <td className="px-3 py-2.5 text-gray-500 truncate">{opp.phase ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(opp.submittedDate)}</td>
-                    <td className="px-3 py-2.5">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {opp.status}
-                      </span>
+                    {/* Service Type */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(opp, 'serviceTypeId') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'serviceTypeId', e.target.value ? Number(e.target.value) : null)}>
+                            <option value="">—</option>
+                            {serviceTypes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        : (opp.serviceType?.name ?? '—')}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-500 tabular-nums">{opp.probability != null ? `${opp.probability}%` : '—'}</td>
-                    <td className="px-3 py-2.5"><RiskBadge level={opp.riskLevel} /></td>
-                    <td className="px-3 py-2.5 text-gray-400 truncate text-xs">{opp.notes ?? ''}</td>
-                    <td className="px-3 py-2.5 text-gray-600 text-right">{opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.harga)}</td>
-                    <td className="px-3 py-2.5 text-gray-700 text-right whitespace-nowrap">{formatRupiah(opp.revenueCf)}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-0.5 flex-wrap">
-                        {opp.micInitial && <AvatarBubble initial={opp.micInitial} isMic />}
-                        {[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial]
-                          .filter(Boolean)
-                          .map((t) => <AvatarBubble key={t} initial={t!} isMic={false} />)}
-                        {!opp.micInitial && ![opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial].some(Boolean) && (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
-                      </div>
+                    {/* Sub-service */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(opp, 'subService') ?? (opp.subService?.name ?? ''))}
+                            onChange={(e) => updateCell(opp.id, 'subService' as any, e.target.value)} />
+                        : (opp.subService?.name ?? '—')}
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleDelete(opp.id)}
-                        disabled={deleting === opp.id}
-                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                    {/* Proposal Name */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(opp, 'proposalName') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'proposalName', e.target.value)} />
+                        : opp.proposalName}
                     </td>
-                  </tr>
+                    {/* Phase */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 hidden sm:table-cell ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(opp, 'phase') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'phase', e.target.value || null)}>
+                            <option value="">—</option>
+                            {OPP_PHASES.map((p) => <option key={p}>{p}</option>)}
+                          </select>
+                        : (opp.phase ?? '—')}
+                    </td>
+                    {/* Submitted Date */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 hidden sm:table-cell ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="date" value={String(cellValue(opp, 'submittedDate') ? toInputDate(String(cellValue(opp, 'submittedDate'))) : '')}
+                            onChange={(e) => updateCell(opp.id, 'submittedDate', e.target.value || null)} />
+                        : formatDate(opp.submittedDate)}
+                    </td>
+                    {/* Expected Date */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="date" value={String(cellValue(opp, 'expectedDate') ? toInputDate(String(cellValue(opp, 'expectedDate'))) : '')}
+                            onChange={(e) => updateCell(opp.id, 'expectedDate', e.target.value || null)} />
+                        : formatDate(opp.expectedDate)}
+                    </td>
+                    {/* Status */}
+                    <td className={`px-3 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(opp, 'status') ?? opp.status)}
+                            onChange={(e) => updateCell(opp.id, 'status', e.target.value)}>
+                            {OPP_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                          </select>
+                        : <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${OPP_STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {opp.status}
+                          </span>}
+                    </td>
+                    {/* Probability */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 tabular-nums ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(opp, 'probability') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'probability', e.target.value ? Number(e.target.value) : null)}>
+                            <option value="">—</option>
+                            {PROBABILITIES.map((p) => <option key={p} value={p}>{p}%</option>)}
+                          </select>
+                        : (opp.probability != null ? `${opp.probability}%` : '—')}
+                    </td>
+                    {/* Risk Level */}
+                    <td className={`px-3 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(opp, 'riskLevel') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'riskLevel', e.target.value || null)}>
+                            <option value="">—</option>
+                            {RISK_LEVELS.map((r) => <option key={r}>{r}</option>)}
+                          </select>
+                        : <RiskBadge level={opp.riskLevel} />}
+                    </td>
+                    {/* Notes */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-400 text-xs ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="text" value={String(cellValue(opp, 'notes') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'notes', e.target.value || null)} />
+                        : (opp.notes ?? '')}
+                    </td>
+                    {/* %RR */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 text-right hidden sm:table-cell ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="number" style={{ textAlign: 'right' }}
+                            value={cellValue(opp, 'rrPercentage') ?? ''}
+                            onChange={(e) => updateCell(opp.id, 'rrPercentage', e.target.value ? Number(e.target.value) : null)} />
+                        : (opp.rrPercentage != null ? `${opp.rrPercentage}%` : '—')}
+                    </td>
+                    {/* Harga */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 text-right ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="number" style={{ textAlign: 'right' }}
+                            value={cellValue(opp, 'harga') ?? ''}
+                            onChange={(e) => updateCell(opp.id, 'harga', e.target.value ? Number(e.target.value) : null)} />
+                        : formatRupiah(opp.harga)}
+                    </td>
+                    {/* Revenue CF */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 text-right ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="number" style={{ textAlign: 'right' }}
+                            value={cellValue(opp, 'revenueCf') ?? ''}
+                            onChange={(e) => updateCell(opp.id, 'revenueCf', e.target.value ? Number(e.target.value) : null)} />
+                        : formatRupiah(opp.revenueCf)}
+                    </td>
+                    {/* Team */}
+                    <td className={`px-3 align-middle overflow-hidden whitespace-nowrap ${editMode ? '' : ''}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? (
+                          <div className="flex gap-1 flex-wrap">
+                            <select className="rsm-edit-cell" style={{ minWidth: 50 }}
+                              value={String(cellValue(opp, 'micInitial') ?? '')}
+                              onChange={(e) => updateCell(opp.id, 'micInitial', e.target.value || null)}>
+                              {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                            </select>
+                          </div>
+                        )
+                        : (() => {
+                          const all = [
+                            opp.micInitial ? { initial: opp.micInitial, isMic: true } : null,
+                            ...[opp.tm1Initial, opp.tm2Initial, opp.tm3Initial, opp.tm4Initial, opp.tm5Initial, opp.tm6Initial]
+                              .filter(Boolean).map((t) => ({ initial: t!, isMic: false })),
+                          ].filter(Boolean) as { initial: string; isMic: boolean }[]
+                          const shown = all.slice(0, 4)
+                          const extra = all.length - shown.length
+                          if (all.length === 0) return <span className="text-gray-300 text-xs">—</span>
+                          return (
+                            <div className="flex items-center whitespace-nowrap overflow-hidden">
+                              {shown.map((a, i) => (
+                                <span key={a.initial + i} className={i > 0 ? '-ml-2' : ''}>
+                                  <AvatarBubble initial={a.initial} isMic={a.isMic} />
+                                </span>
+                              ))}
+                              {extra > 0 && (
+                                <span className="-ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold shrink-0">
+                                  +{extra}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
+                    </td>
+                    {/* Delete */}
+                    <td className="px-3 align-middle overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                      {!editMode && (
+                        <button
+                          onClick={() => { haptic(); handleDelete(opp.id) }}
+                          disabled={deleting === opp.id}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </td>
+                  </motion.tr>
                 )
               })}
             </tbody>
           </table>
         </div>
+      </div>
+      </div>{/* end hidden md:block desktop table */}
+
+      {/* ── Mobile view (< 768px) ────────────────────────────────────────── */}
+      <div className="md:hidden">
+        {/* Mobile filter toggle */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-400">
+            {sortedOpps.length} of {opps.length} opportunities
+          </p>
+          <button
+            onClick={() => setMobileFilterOpen(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: mobileFilterOpen || activeFilterCount > 0 ? '#EBF8FF' : 'transparent',
+              color: mobileFilterOpen || activeFilterCount > 0 ? '#009CDE' : '#6B7280',
+            }}
+          >
+            <Filter size={16} />
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#009CDE] text-white text-[10px] font-bold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Collapsible filter panel */}
+        {mobileFilterOpen && (
+          <div className="rsm-mfilter-panel">
+            <div className="rsm-mfilter-row">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  className="w-full pl-8 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009CDE]"
+                  placeholder="Search…"
+                  value={filters.search}
+                  onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+                />
+              </div>
+              <select
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009CDE] bg-white"
+                value={filters.serviceTypeId}
+                onChange={e => setFilters(f => ({ ...f, serviceTypeId: e.target.value }))}
+              >
+                <option value="">All Service Types</option>
+                {serviceTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009CDE] bg-white"
+                value={filters.teamMember}
+                onChange={e => setFilters(f => ({ ...f, teamMember: e.target.value }))}
+              >
+                <option value="">All Team Members</option>
+                {teamMembers.map(m => <option key={m.initial} value={m.initial}>{m.initial} · {m.fullName}</option>)}
+              </select>
+              <div className="flex flex-wrap gap-2">
+                {OPP_STATUSES.map(s => {
+                  const on = filters.statuses.has(s)
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleStatusFilter(s)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? 'border-transparent' : 'border-gray-200 bg-white text-gray-600'}`}
+                      style={on ? { backgroundColor: undefined } : {}}
+                    >
+                      {s}
+                    </button>
+                  )
+                })}
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => setFilters({ search: '', statuses: new Set(), serviceTypeId: '', teamMember: '' })}
+                  className="flex items-center gap-1 text-sm text-gray-500"
+                >
+                  <X size={14} /> Clear ({activeFilterCount})
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Card list */}
+        {sortedOpps.length === 0 ? (
+          <div className="rsm-mcard">
+            <p className="text-sm text-gray-400 text-center">
+              {opps.length === 0 ? 'Belum ada opportunity. Tekan + untuk mulai.' : 'Tidak ada opportunity yang cocok.'}
+            </p>
+          </div>
+        ) : (
+          <div className="rsm-mlist">
+            {sortedOpps.map(opp => (
+              <MobileOppCard key={opp.id} opp={opp as any} onTap={(o) => router.push(`/opportunities/${o.id}`)} onDelete={(o) => setDeleteTarget(o as unknown as Opp)} />
+            ))}
+          </div>
+        )}
+
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteTarget(null)} />
+            <div className="relative bg-white rounded-t-2xl px-5 pt-4 pb-8">
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+              <h3 className="text-base font-semibold text-gray-800 mb-1">Hapus Opportunity?</h3>
+              <p className="text-sm text-gray-500 mb-5">{deleteTarget.proposalName}</p>
+              <button
+                onClick={async () => { await handleDeleteDirect(deleteTarget.id); setDeleteTarget(null); }}
+                className="w-full py-3 mb-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors"
+              >
+                Ya, Hapus
+              </button>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="w-full py-3 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* FAB */}
+        <button
+          className="rsm-fab md:hidden"
+          onClick={() => { haptic(); router.push('/opportunities/new') }}
+          aria-label="Add Opportunity"
+        >
+          <Plus size={26} />
+        </button>
       </div>
 
       {/* ── Import Modal ─────────────────────────────────────────────────── */}
@@ -789,7 +1120,7 @@ export default function OpportunitiesClient({
                   Tutup
                 </button>
                 <button onClick={handleImport} disabled={!importFile || importing}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
+                  className="px-5 py-2 text-sm font-medium rsm-btn-spring rsm-btn-primary-glow bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
                   {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>
@@ -799,212 +1130,84 @@ export default function OpportunitiesClient({
       )}
 
       {/* ── Add/Edit Modal ────────────────────────────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-800">
-                {editing ? 'Edit Opportunity' : 'New Opportunity'}
-              </h2>
-              <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
+      <EditOpportunityModal
+        open={modalOpen}
+        onClose={() => setModal(false)}
+        opp={editing as OppFull | null}
+        serviceTypes={serviceTypes}
+        teamMembers={teamMembers}
+        onSaved={(saved) => {
+          setFlashedRow(saved.id)
+          revalidate()
+          setTimeout(() => setFlashedRow(null), 700)
+        }}
+        onDelete={handleDelete}
+      />
 
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-
-              {/* 1. Proposal Name */}
-              <Field label="Proposal Name" required>
-                <input className={inputCls} value={form.proposalName}
-                  onChange={(e) => set('proposalName', e.target.value)} required autoFocus />
-              </Field>
-
-              {/* 2–3. Client Initial + Client Name */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Client Initial">
-                  <input className={inputCls} value={form.clientInitial}
-                    onChange={(e) => set('clientInitial', e.target.value.toUpperCase().slice(0, 6))}
-                    placeholder="e.g. BRI" maxLength={6} />
-                </Field>
-                <div className="col-span-2">
-                  <Field label="Client Name" required>
-                    <input className={inputCls} value={form.clientName}
-                      onChange={(e) => set('clientName', e.target.value)}
-                      required placeholder="Nama lengkap client" />
-                  </Field>
-                </div>
-              </div>
-
-              {/* 4–5. Service Type + Sub-service */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Service Type">
-                  <select className={selectCls} value={form.serviceTypeId}
-                    onChange={(e) => set('serviceTypeId', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    {serviceTypes.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Sub-service">
-                  <select className={selectCls} value={form.subServiceId}
-                    onChange={(e) => set('subServiceId', e.target.value)}
-                    disabled={!form.serviceTypeId || availableSubs.length === 0}>
-                    <option value="">
-                      {!form.serviceTypeId
-                        ? '— (pilih service type dulu)'
-                        : availableSubs.length === 0
-                          ? 'Tidak ada sub-service'
-                          : '— (opsional)'}
-                    </option>
-                    {availableSubs.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-              </div>
-
-              {/* 6–7–8. Phase + Status + Probability */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Phase">
-                  <select className={selectCls} value={form.phase}
-                    onChange={(e) => set('phase', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    {['RFP','RFI','Diskusi Awal','Transferred'].map((f) => <option key={f}>{f}</option>)}
-                  </select>
-                </Field>
-                <Field label="Status" required>
-                  <select className={selectCls} value={form.status}
-                    onChange={(e) => set('status', e.target.value)} required>
-                    {OPP_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-                <Field label="Risk Level">
-                  <select className={selectCls} value={form.riskLevel}
-                    onChange={(e) => set('riskLevel', e.target.value)}>
-                    <option value="">— (opsional)</option>
-                    {['Low','Medium','High'].map((r) => <option key={r}>{r}</option>)}
-                  </select>
-                </Field>
-              </div>
-
-              {/* Probability */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Probability (%)">
-                  <div className="relative">
-                    <input type="number" min={0} max={100} step={1} className={inputCls}
-                      value={form.probability}
-                      onChange={(e) => set('probability', e.target.value)}
-                      placeholder="e.g. 75" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
-                  </div>
-                </Field>
-              </div>
-
-              {/* 9–10–11. Harga + Revenue CF + %RR */}
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Harga (IDR)">
-                  <CurrencyInput value={form.harga} onChange={(v) => set('harga', v)} />
-                </Field>
-                <Field label="Revenue CF (IDR)">
-                  <CurrencyInput value={form.revenueCf} onChange={(v) => set('revenueCf', v)} />
-                </Field>
-                <Field label="%RR">
-                  <input type="number" step="0.01" className={inputCls} value={form.rrPercentage}
-                    onChange={(e) => set('rrPercentage', e.target.value)} placeholder="0" />
-                </Field>
-              </div>
-
-              {/* 12–13. Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Expected Date">
-                  <input type="date" className={inputCls} value={form.expectedDate}
-                    onChange={(e) => set('expectedDate', e.target.value)} />
-                </Field>
-                <Field label="Submitted Date">
-                  <input type="date" className={inputCls} value={form.submittedDate}
-                    onChange={(e) => set('submittedDate', e.target.value)} />
-                </Field>
-              </div>
-
-              {/* 14. MIC + TM1–TM3 */}
-              <div className="grid grid-cols-4 gap-4">
-                <Field label="MIC">
-                  <select className={selectCls} value={form.micInitial}
-                    onChange={(e) => set('micInitial', e.target.value)}>
-                    {tmOptions.map((m) => (
-                      <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
-                    ))}
-                  </select>
-                </Field>
-                {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+1}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => (
-                        <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
-                      ))}
-                    </select>
-                  </Field>
-                ))}
-              </div>
-
-              {/* TM4–TM6 */}
-              <div className="grid grid-cols-3 gap-4">
-                {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
-                  <Field key={k} label={`TM${i+4}`}>
-                    <select className={selectCls} value={form[k]}
-                      onChange={(e) => set(k, e.target.value)}>
-                      {tmOptions.map((m) => (
-                        <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>
-                      ))}
-                    </select>
-                  </Field>
-                ))}
-              </div>
-
-              {/* Notes */}
-              <Field label="Notes">
-                <textarea className={inputCls} rows={3} value={form.notes}
-                  onChange={(e) => set('notes', e.target.value)}
-                  placeholder="(opsional)" />
-              </Field>
-
-              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button type="button" onClick={() => setModal(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Batal
-                </button>
-                <button type="submit" disabled={saving}
-                  className="px-5 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-60 transition-colors">
-                  {saving ? 'Menyimpan...' : (editing ? 'Update' : 'Simpan')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* ── Bulk Edit bottom save bar ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {editMode && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 md:left-60 z-40 flex items-center gap-3 px-5 py-3 bg-white border-t border-gray-200 shadow-lg"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+          >
+            <span className="text-sm text-gray-700 font-medium flex-1">
+              {editData.size} baris diubah
+            </span>
+            <button
+              onClick={cancelEditMode}
+              className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <motion.button
+              onClick={handleBatchSave}
+              disabled={editData.size === 0 || batchSaveState === 'saving'}
+              animate={batchSaveState === 'saved' ? { backgroundColor: '#22c55e' } : { backgroundColor: '#009CDE' }}
+              transition={{ duration: 0.3 }}
+              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition-colors"
+            >
+              {batchSaveState === 'saving' && <Loader2 size={14} className="animate-spin" />}
+              {batchSaveState === 'saved' && <Check size={14} />}
+              {batchSaveState === 'saving' ? 'Saving...' : batchSaveState === 'saved' ? '✓ Saved' : 'Save All'}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Toast ────────────────────────────────────────────────────────── */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2">
-          <div className="flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-xl shadow-xl">
-            <span>{toast}</span>
-            <button onClick={() => setToast(null)} className="text-white/50 hover:text-white">
-              <X size={14} />
-            </button>
-          </div>
-          {importSkipped.length > 0 && (
-            <div className="bg-white border border-amber-200 rounded-xl shadow-xl p-4 text-sm w-80 max-h-48 overflow-y-auto">
-              <p className="font-medium text-amber-700 mb-1">{importSkipped.length} row(s) skipped:</p>
-              <ul className="list-disc list-inside text-gray-600 text-xs space-y-0.5">
-                {importSkipped.map((s) => (
-                  <li key={s.row}>Row {s.row}: {s.reason}</li>
-                ))}
-              </ul>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, x: 60 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 60 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[60] flex flex-col items-stretch sm:items-center gap-2"
+          >
+            <div className="flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-xl shadow-xl">
+              <span className="flex-1">{toast}</span>
+              <button onClick={() => setToast(null)} className="text-white/50 hover:text-white shrink-0">
+                <X size={14} />
+              </button>
             </div>
-          )}
-        </div>
-      )}
+            {importSkipped.length > 0 && (
+              <div className="bg-white border border-amber-200 rounded-xl shadow-xl p-4 text-sm w-full sm:w-80 max-h-48 overflow-y-auto">
+                <p className="font-medium text-amber-700 mb-1">{importSkipped.length} row(s) skipped:</p>
+                <ul className="list-disc list-inside text-gray-600 text-xs space-y-0.5">
+                  {importSkipped.map((s) => (
+                    <li key={s.row}>Row {s.row}: {s.reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
