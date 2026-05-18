@@ -54,7 +54,6 @@ export default async function DashboardPage({
   const quarterYear = searchParams.month ? Number(searchParams.month.split('-')[0]) : new Date().getFullYear()
 
   const [allFilteredOpps, ongoingProjects, workload, serviceTypes, teamMembers, quarterlyOpps] = await Promise.all([
-    // All opportunities in month filter (for cards 1+2 and pipeline)
     prisma.opportunity.findMany({
       where: oppDateFilter,
       select: {
@@ -66,7 +65,6 @@ export default async function DashboardPage({
       },
       orderBy: { expectedDate: 'asc' },
     }),
-    // Ongoing projects (cards 3+4 and table)
     prisma.project.findMany({
       where: { status: { in: ['Fieldwork', 'Reporting'] }, ...projDateFilter },
       select: {
@@ -79,7 +77,6 @@ export default async function DashboardPage({
     getWorkload(),
     prisma.serviceType.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.teamMember.findMany({ select: { id: true, initial: true, fullName: true, level: true }, orderBy: { initial: 'asc' } }),
-    // Quarterly section: active opps for the entire selected year (not month-scoped)
     prisma.opportunity.findMany({
       where: {
         status: { in: ['Waiting for Result', 'In progress', 'Submitted'] },
@@ -96,22 +93,22 @@ export default async function DashboardPage({
     }),
   ])
 
-  // Card 1: total opps + harga sum
   const totalOpps  = allFilteredOpps.length
   const hargaTotal = allFilteredOpps.reduce((s, o) => s + Number(o.harga ?? 0), 0)
 
-  // Card 2: win rate (Win / (Win + Lose))
   const wins  = allFilteredOpps.filter((o) => o.status === 'Win').length
   const loses = allFilteredOpps.filter((o) => o.status === 'Lose').length
   const winRate = (wins + loses) > 0 ? wins / (wins + loses) * 100 : 0
 
-  // Card 3 + 4
   const ongoingCount = ongoingProjects.length
-  const confirmedFee = allFilteredOpps
-    .filter((o) => o.status === 'Win')
-    .reduce((s, o) => s + Number(o.harga ?? 0), 0)
 
-  // Pipeline: filter to relevant statuses
+  // Card 4: sum of harga from ALL won opportunities (not month-scoped)
+  const wonOpps = await prisma.opportunity.findMany({
+    where: { status: 'Win' },
+    select: { id: true, proposalName: true, harga: true, clientName: true, status: true },
+  })
+  const confirmedFee = wonOpps.reduce((s, o) => s + Number(o.harga ?? 0), 0)
+
   const pipeline = allFilteredOpps.filter((o) =>
     ['Waiting for Result', 'In progress', 'Submitted'].includes(o.status)
   )
@@ -132,10 +129,13 @@ export default async function DashboardPage({
         ongoingProjects={ongoingCount}
         confirmedFee={confirmedFee}
         oppsList={serialize(allFilteredOpps) as any}
+        wonOppsList={serialize(wonOpps) as any}
         projectsList={serialize(ongoingProjects) as any}
       />
 
       <QuarterlySection opps={serialize(quarterlyOpps) as any} year={quarterYear} />
+
+      <OngoingProjects projects={serialize(ongoingProjects) as any} />
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="md:col-span-3">
@@ -145,8 +145,6 @@ export default async function DashboardPage({
           <TeamWorkload workload={workload} />
         </div>
       </div>
-
-      <OngoingProjects projects={serialize(ongoingProjects) as any} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trash2, Plus, Save, Download, UploadCloud, FileText, X } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -110,7 +110,6 @@ function FileUploadOrDownload({ path, onUploaded, onClear }: { path: string; onU
 export default function ProjectDetailClient({ project, teamMembers }: Props) {
   const router = useRouter()
 
-  // Project form state
   const [form, setForm] = useState({
     proposalName:  project.proposalName,
     clientName:    project.clientName    ?? '',
@@ -131,7 +130,6 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
     confirmedFee:  project.confirmedFee  != null ? String(project.confirmedFee) : '',
   })
 
-  // Termins state
   const [termins, setTermins] = useState<TerminRow[]>(
     project.termins.map((t) => ({
       terminNumber: t.terminNumber,
@@ -143,10 +141,22 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
 
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
+  const [savedMsg, setSavedMsg] = useState('Perubahan berhasil disimpan')
   const [deleting, setDeleting] = useState(false)
+  const [confirmFinish, setConfirmFinish] = useState(false)
+  const pendingStatusRef = useRef<string | null>(null)
 
   function setField(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
+  }
+
+  function handleStatusChange(value: string) {
+    if (value === 'Finish' && form.status !== 'Finish') {
+      pendingStatusRef.current = value
+      setConfirmFinish(true)
+    } else {
+      setField('status', value)
+    }
   }
 
   function setTermin(index: number, field: keyof TerminRow, value: string) {
@@ -186,6 +196,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
       ])
       if (!r1.ok) throw new Error(await r1.text())
       if (!r2.ok) throw new Error(await r2.text())
+      setSavedMsg(form.status === 'Finish' ? 'Project moved to Finished' : 'Perubahan berhasil disimpan')
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
       router.refresh()
@@ -220,7 +231,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
       {saved && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-[#43B02A] text-white text-sm font-medium rounded-xl shadow-lg animate-fade-in">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          Tersimpan!
+          {savedMsg}
         </div>
       )}
 
@@ -273,7 +284,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
               </select>
             </Field>
             <Field label="Status">
-              <select className={selectCls} value={form.status} onChange={(e) => setField('status', e.target.value)}>
+              <select className={selectCls} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>
                 {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </Field>
@@ -374,7 +385,6 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
             </div>
           ))}
 
-          {/* Add termin button */}
           {termins.length < 4 && (
             <button
               type="button"
@@ -385,7 +395,6 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
             </button>
           )}
 
-          {/* Termin summary */}
           {termins.length > 0 && (
             <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-sm">
               <div className="flex gap-4">
@@ -413,6 +422,35 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
         </button>
       </div>
     </form>
+
+    {/* Confirm Finish dialog */}
+    {confirmFinish && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmFinish(false)} />
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 rsm-modal-pop">
+          <h3 className="text-base font-semibold text-gray-800">Move to Finished?</h3>
+          <p className="text-sm text-gray-500">Project ini akan dipindahkan ke status <span className="font-medium text-gray-700">Finish</span> dan dihapus dari daftar project aktif.</p>
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={() => setConfirmFinish(false)}
+              className="flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => {
+                if (pendingStatusRef.current) setField('status', pendingStatusRef.current)
+                pendingStatusRef.current = null
+                setConfirmFinish(false)
+              }}
+              className="flex-1 py-2.5 text-sm font-medium bg-[#009CDE] text-white rounded-xl hover:bg-[#007BB5] transition-colors"
+            >
+              Move to Finished
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     </div>
   )
