@@ -20,6 +20,7 @@ interface Props {
   ongoingProjects: number
   confirmedFee:   number
   oppsList: OppPreview[]
+  wonOppsList?: OppPreview[]
   projectsList: ProjectPreview[]
 }
 
@@ -103,7 +104,7 @@ function AnimatedCurrency({ target, reduced }: { target: number; reduced: boolea
 
 export default function SummaryCards({
   totalOpps, hargaTotal, winRate, ongoingProjects, confirmedFee,
-  oppsList, projectsList,
+  oppsList, wonOppsList, projectsList,
 }: Props) {
   const reduced = useReducedMotion() ?? false
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
