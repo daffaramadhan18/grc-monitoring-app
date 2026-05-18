@@ -127,28 +127,22 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-// Column order: Client Initial, Client Name, Service Type, Sub-service, Proposal Name,
-//               Phase, Submitted Date, Expected Date, Status, Probability, Risk Level, Notes, %RR,
-//               Harga, Revenue CF, Team (MIC+TM1-TM6), delete
+// Column order: checkbox | Client Initial | Sub-service | Proposal Name | Status | Phase |
+//               Expected Date | Probability | %RR | Harga | Team | delete
+// Cols 1–3 (Client Initial, Sub-service, Proposal Name) are sticky/frozen
 const DEFAULT_WIDTHS = [
-  40,  // checkbox
-  90,  // Client Initial
-  140, // Client Name
-  110, // Service Type
-  120, // Sub-service
-  180, // Proposal Name
-  90,  // Phase
-  110, // Submitted Date
-  110, // Expected Date
-  130, // Status
-  80,  // Probability
-  100, // Risk Level
-  140, // Notes
-  70,  // %RR
-  130, // Harga
-  130, // Revenue CF
-  180, // Team
-  44,  // delete
+  40,  // 0: checkbox
+  90,  // 1: Client Initial  [FROZEN]
+  120, // 2: Sub-service     [FROZEN]
+  200, // 3: Proposal Name   [FROZEN]
+  130, // 4: Status
+  90,  // 5: Phase
+  110, // 6: Expected Date
+  80,  // 7: Probability
+  70,  // 8: %RR
+  130, // 9: Harga
+  180, // 10: Team
+  44,  // 11: delete
 ]
 
 const OPP_PHASES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed']
@@ -634,91 +628,68 @@ export default function OpportunitiesClient({
             </colgroup>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                {/* Checkbox */}
-                <th className={thBase} style={{ width: widths[0] }}>
+                {/* Checkbox — sticky col 0 */}
+                <th className={`${thBase} sticky z-20 bg-gray-50`} style={{ width: widths[0], left: 0 }}>
                   <input type="checkbox"
                     checked={sortedOpps.length > 0 && selected.size === sortedOpps.length}
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
-                {/* Client Initial */}
-                <th className={thBase} style={{ width: widths[1] }}>
+                {/* Client Initial — sticky col 1 */}
+                <th className={`${thBase} sticky z-20 bg-gray-50`} style={{ width: widths[1], left: widths[0] }}>
                   Client Initial<ResizeHandle col={1} />
                 </th>
-                {/* Client Name */}
-                <th className={`${thSort}`} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
-                  Client Name<SortIcon field="client" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={2} />
+                {/* Sub-service — sticky col 2 */}
+                <th className={`${thBase} sticky z-20 bg-gray-50`} style={{ width: widths[2], left: widths[0] + widths[1] }}>
+                  Sub-service<ResizeHandle col={2} />
                 </th>
-                {/* Service Type */}
-                <th className={thBase} style={{ width: widths[3] }}>
-                  Service Type<ResizeHandle col={3} />
-                </th>
-                {/* Sub-service */}
-                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[4] }}>
-                  Sub-service<ResizeHandle col={4} />
-                </th>
-                {/* Proposal Name */}
-                <th className={thSort} style={{ width: widths[5] }} onClick={() => handleSort('proposalName')}>
+                {/* Proposal Name — sticky col 3 (last frozen, has shadow) */}
+                <th className={`${thSort} sticky z-20 bg-gray-50`}
+                  style={{ width: widths[3], left: widths[0] + widths[1] + widths[2], boxShadow: '2px 0 4px -1px rgba(0,0,0,0.08)' }}
+                  onClick={() => handleSort('proposalName')}>
                   Proposal Name<SortIcon field="proposalName" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={5} />
-                </th>
-                {/* Phase */}
-                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[6] }}>
-                  Phase<ResizeHandle col={6} />
-                </th>
-                {/* Submitted Date */}
-                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[7] }}>
-                  Submitted Date<ResizeHandle col={7} />
-                </th>
-                {/* Expected Date */}
-                <th className={thSort} style={{ width: widths[8] }} onClick={() => handleSort('expectedDate')}>
-                  Expected Date<SortIcon field="expectedDate" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={8} />
+                  <ResizeHandle col={3} />
                 </th>
                 {/* Status */}
-                <th className={thSort} style={{ width: widths[9] }} onClick={() => handleSort('status')}>
+                <th className={thSort} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
                   Status<SortIcon field="status" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={9} />
+                  <ResizeHandle col={4} />
+                </th>
+                {/* Phase */}
+                <th className={thBase} style={{ width: widths[5] }}>
+                  Phase<ResizeHandle col={5} />
+                </th>
+                {/* Expected Date */}
+                <th className={thSort} style={{ width: widths[6] }} onClick={() => handleSort('expectedDate')}>
+                  Expected Date<SortIcon field="expectedDate" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={6} />
                 </th>
                 {/* Probability */}
-                <th className={thBase} style={{ width: widths[10] }}>
-                  Prob.<ResizeHandle col={10} />
-                </th>
-                {/* Risk Level */}
-                <th className={thBase} style={{ width: widths[11] }}>
-                  Risk<ResizeHandle col={11} />
-                </th>
-                {/* Notes */}
-                <th className={thBase} style={{ width: widths[12] }}>
-                  Notes<ResizeHandle col={12} />
+                <th className={thBase} style={{ width: widths[7] }}>
+                  Prob.<ResizeHandle col={7} />
                 </th>
                 {/* %RR */}
-                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[13] }}>
-                  %RR<ResizeHandle col={13} />
+                <th className={thBase} style={{ width: widths[8] }}>
+                  %RR<ResizeHandle col={8} />
                 </th>
                 {/* Harga */}
-                <th className={thSort} style={{ width: widths[14] }} onClick={() => handleSort('harga')}>
+                <th className={thSort} style={{ width: widths[9] }} onClick={() => handleSort('harga')}>
                   Harga<SortIcon field="harga" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={14} />
+                  <ResizeHandle col={9} />
                 </th>
-                {/* Revenue CF */}
-                <th className={thBase} style={{ width: widths[15] }}>
-                  Revenue CF<ResizeHandle col={15} />
-                </th>
-                {/* Team (MIC + TM1–TM6) */}
-                <th className={thBase} style={{ width: widths[16] }}>
-                  Team<ResizeHandle col={16} />
+                {/* Team */}
+                <th className={thBase} style={{ width: widths[10] }}>
+                  Team<ResizeHandle col={10} />
                 </th>
                 {/* Delete */}
-                <th className={thBase} style={{ width: widths[17] }} />
+                <th className={thBase} style={{ width: widths[11] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={18} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={12} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
@@ -754,8 +725,9 @@ export default function OpportunitiesClient({
                     className={`rsm-row-click group relative h-14 ${editMode ? '' : 'cursor-pointer'} ${isModified && editMode ? 'border-l-2 border-l-blue-400' : ''}`}
                     onClick={() => !editMode && openEdit(opp)}
                   >
-                    {/* Checkbox */}
-                    <td className="px-3 align-middle overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    {/* Checkbox — sticky col 0 */}
+                    <td className="px-3 align-middle overflow-hidden sticky z-10 bg-white" style={{ left: 0 }}
+                      onClick={(e) => e.stopPropagation()}>
                       {!editMode && (
                         <input type="checkbox" checked={isSelected}
                           onChange={() => toggleSelect(opp.id)}
@@ -763,76 +735,32 @@ export default function OpportunitiesClient({
                         />
                       )}
                     </td>
-                    {/* Client Initial */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs ${tdEdit}`}
+                    {/* Client Initial — sticky col 1 */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs sticky z-10 bg-white ${tdEdit}`}
+                      style={{ left: widths[0] }}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="text" value={String(cellValue(opp, 'clientInitial') ?? '')}
                             onChange={(e) => updateCell(opp.id, 'clientInitial', e.target.value)} />
                         : (opp.clientInitial ?? '—')}
                     </td>
-                    {/* Client Name */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 ${tdEdit}`}
-                      title={opp.clientName ?? ''}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="text" value={String(cellValue(opp, 'clientName') ?? '')}
-                            onChange={(e) => updateCell(opp.id, 'clientName', e.target.value)} />
-                        : (opp.clientName ?? '—')}
-                    </td>
-                    {/* Service Type */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <select value={String(cellValue(opp, 'serviceTypeId') ?? '')}
-                            onChange={(e) => updateCell(opp.id, 'serviceTypeId', e.target.value ? Number(e.target.value) : null)}>
-                            <option value="">—</option>
-                            {serviceTypes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                          </select>
-                        : (opp.serviceType?.name ?? '—')}
-                    </td>
-                    {/* Sub-service */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell ${tdEdit}`}
+                    {/* Sub-service — sticky col 2 */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 sticky z-10 bg-white ${tdEdit}`}
+                      style={{ left: widths[0] + widths[1] }}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="text" value={String(cellValue(opp, 'subService') ?? (opp.subService?.name ?? ''))}
                             onChange={(e) => updateCell(opp.id, 'subService' as any, e.target.value)} />
                         : (opp.subService?.name ?? '—')}
                     </td>
-                    {/* Proposal Name */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
+                    {/* Proposal Name — sticky col 3 (last frozen, shadow) */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 sticky z-10 bg-white ${tdEdit}`}
+                      style={{ left: widths[0] + widths[1] + widths[2], boxShadow: '2px 0 4px -1px rgba(0,0,0,0.08)' }}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="text" value={String(cellValue(opp, 'proposalName') ?? '')}
                             onChange={(e) => updateCell(opp.id, 'proposalName', e.target.value)} />
                         : opp.proposalName}
-                    </td>
-                    {/* Phase */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 hidden sm:table-cell ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <select value={String(cellValue(opp, 'phase') ?? '')}
-                            onChange={(e) => updateCell(opp.id, 'phase', e.target.value || null)}>
-                            <option value="">—</option>
-                            {OPP_PHASES.map((p) => <option key={p}>{p}</option>)}
-                          </select>
-                        : (opp.phase ?? '—')}
-                    </td>
-                    {/* Submitted Date */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 hidden sm:table-cell ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="date" value={String(cellValue(opp, 'submittedDate') ? toInputDate(String(cellValue(opp, 'submittedDate'))) : '')}
-                            onChange={(e) => updateCell(opp.id, 'submittedDate', e.target.value || null)} />
-                        : formatDate(opp.submittedDate)}
-                    </td>
-                    {/* Expected Date */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="date" value={String(cellValue(opp, 'expectedDate') ? toInputDate(String(cellValue(opp, 'expectedDate'))) : '')}
-                            onChange={(e) => updateCell(opp.id, 'expectedDate', e.target.value || null)} />
-                        : formatDate(opp.expectedDate)}
                     </td>
                     {/* Status */}
                     <td className={`px-3 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
@@ -846,6 +774,25 @@ export default function OpportunitiesClient({
                             {opp.status}
                           </span>}
                     </td>
+                    {/* Phase */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <select value={String(cellValue(opp, 'phase') ?? '')}
+                            onChange={(e) => updateCell(opp.id, 'phase', e.target.value || null)}>
+                            <option value="">—</option>
+                            {OPP_PHASES.map((p) => <option key={p}>{p}</option>)}
+                          </select>
+                        : (opp.phase ?? '—')}
+                    </td>
+                    {/* Expected Date */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 ${tdEdit}`}
+                      onClick={(e) => editMode && e.stopPropagation()}>
+                      {editMode
+                        ? <input type="date" value={String(cellValue(opp, 'expectedDate') ? toInputDate(String(cellValue(opp, 'expectedDate'))) : '')}
+                            onChange={(e) => updateCell(opp.id, 'expectedDate', e.target.value || null)} />
+                        : formatDate(opp.expectedDate)}
+                    </td>
                     {/* Probability */}
                     <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 tabular-nums ${tdEdit}`}
                       onClick={(e) => editMode && e.stopPropagation()}>
@@ -857,27 +804,8 @@ export default function OpportunitiesClient({
                           </select>
                         : (opp.probability != null ? `${opp.probability}%` : '—')}
                     </td>
-                    {/* Risk Level */}
-                    <td className={`px-3 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <select value={String(cellValue(opp, 'riskLevel') ?? '')}
-                            onChange={(e) => updateCell(opp.id, 'riskLevel', e.target.value || null)}>
-                            <option value="">—</option>
-                            {RISK_LEVELS.map((r) => <option key={r}>{r}</option>)}
-                          </select>
-                        : <RiskBadge level={opp.riskLevel} />}
-                    </td>
-                    {/* Notes */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-400 text-xs ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="text" value={String(cellValue(opp, 'notes') ?? '')}
-                            onChange={(e) => updateCell(opp.id, 'notes', e.target.value || null)} />
-                        : (opp.notes ?? '')}
-                    </td>
                     {/* %RR */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 text-right hidden sm:table-cell ${tdEdit}`}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 text-right ${tdEdit}`}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="number" style={{ textAlign: 'right' }}
@@ -893,15 +821,6 @@ export default function OpportunitiesClient({
                             value={cellValue(opp, 'harga') ?? ''}
                             onChange={(e) => updateCell(opp.id, 'harga', e.target.value ? Number(e.target.value) : null)} />
                         : formatRupiah(opp.harga)}
-                    </td>
-                    {/* Revenue CF */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 text-right ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="number" style={{ textAlign: 'right' }}
-                            value={cellValue(opp, 'revenueCf') ?? ''}
-                            onChange={(e) => updateCell(opp.id, 'revenueCf', e.target.value ? Number(e.target.value) : null)} />
-                        : formatRupiah(opp.revenueCf)}
                     </td>
                     {/* Team */}
                     <td className={`px-3 align-middle overflow-hidden whitespace-nowrap ${editMode ? '' : ''}`}
