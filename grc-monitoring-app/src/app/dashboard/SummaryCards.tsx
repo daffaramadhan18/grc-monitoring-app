@@ -299,18 +299,18 @@ export default function SummaryCards({
               transition={{ duration: 0.15, ease: 'easeOut' }}
               className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
             >
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">By Project</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Won Opportunities</p>
               <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                {[...projectsList].filter(p => (p.confirmedFee ?? 0) > 0).sort((a, b) => (b.confirmedFee ?? 0) - (a.confirmedFee ?? 0)).map(p => (
-                  <div key={p.id} className="flex items-start gap-2">
+                {[...(wonOppsList ?? [])].sort((a, b) => (b.harga ?? 0) - (a.harga ?? 0)).map(opp => (
+                  <div key={opp.id} className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">{p.proposalName.slice(0, 24)}</p>
-                      <p className="text-[10px] text-gray-400 truncate">{p.clientName ?? '—'}</p>
+                      <p className="text-xs font-semibold text-gray-800 truncate">{opp.proposalName.slice(0, 24)}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{opp.clientName ?? '—'}</p>
                     </div>
-                    <p className="text-xs font-semibold text-green-600 whitespace-nowrap">{formatRupiahFull(p.confirmedFee ?? 0)}</p>
+                    <p className="text-xs font-semibold text-green-600 whitespace-nowrap">{opp.harga ? formatRupiahFull(opp.harga) : '—'}</p>
                   </div>
                 ))}
-                {projectsList.filter(p => (p.confirmedFee ?? 0) > 0).length === 0 && <p className="text-xs text-gray-400">No confirmed fees</p>}
+                {(wonOppsList ?? []).length === 0 && <p className="text-xs text-gray-400">No won opportunities</p>}
               </div>
             </motion.div>
           )}

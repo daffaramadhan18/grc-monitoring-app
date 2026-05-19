@@ -55,9 +55,10 @@ export const OPP_STATUS_COLORS: Record<string, string> = {
 
 // ─── Project status ───────────────────────────────────────────────────────────
 
-export const PROJ_STATUSES = ['Planning', 'Fieldwork', 'Reporting', 'Finish'] as const
+export const PROJ_STATUSES = ['Waiting to Start', 'Planning', 'Fieldwork', 'Reporting', 'Finish'] as const
 
 export const PROJ_STATUS_COLORS: Record<string, string> = {
+  'Waiting to Start': 'bg-violet-100 text-violet-700',
   Planning:  'bg-[#009CDE]/15 text-[#006fa0]',
   Fieldwork: 'bg-amber-100 text-amber-700',
   Reporting: 'bg-orange-100 text-orange-700',

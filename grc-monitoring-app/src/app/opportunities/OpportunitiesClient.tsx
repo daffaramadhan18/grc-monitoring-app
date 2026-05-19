@@ -129,7 +129,6 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 
 // Column order: checkbox | Client Initial | Sub-service | Proposal Name | Status | Phase |
 //               Expected Date | Probability | %RR | Harga | Team | delete
-// Cols 1–3 (Client Initial, Sub-service, Proposal Name) are sticky/frozen
 const DEFAULT_WIDTHS = [
   40,  // 0: checkbox
   90,  // 1: Client Initial  [FROZEN]
@@ -622,31 +621,31 @@ export default function OpportunitiesClient({
         )}
 
         <div className={`overflow-x-auto${selected.size > 0 && !editMode ? ' pb-12' : ''}`}>
-          <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
+          <table className="text-sm" style={{ tableLayout: 'fixed', width: widths.reduce((s, w) => s + w, 0) }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                {/* Checkbox — sticky col 0 */}
-                <th className={`${thBase} sticky z-20 bg-gray-50`} style={{ width: widths[0], left: 0 }}>
+                {/* Checkbox */}
+                <th className={`${thBase} bg-gray-50`} style={{ width: widths[0] }}>
                   <input type="checkbox"
                     checked={sortedOpps.length > 0 && selected.size === sortedOpps.length}
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
-                {/* Client Initial — sticky col 1 */}
-                <th className={`${thBase} sticky z-20 bg-gray-50`} style={{ width: widths[1], left: widths[0] }}>
+                {/* Client Initial */}
+                <th className={`${thBase} bg-gray-50`} style={{ width: widths[1] }}>
                   Client Initial<ResizeHandle col={1} />
                 </th>
-                {/* Sub-service — sticky col 2 */}
-                <th className={`${thBase} sticky z-20 bg-gray-50`} style={{ width: widths[2], left: widths[0] + widths[1] }}>
+                {/* Sub-service */}
+                <th className={`${thBase} bg-gray-50`} style={{ width: widths[2] }}>
                   Sub-service<ResizeHandle col={2} />
                 </th>
-                {/* Proposal Name — sticky col 3 (last frozen, has shadow) */}
-                <th className={`${thSort} sticky z-20 bg-gray-50`}
-                  style={{ width: widths[3], left: widths[0] + widths[1] + widths[2], boxShadow: '2px 0 4px -1px rgba(0,0,0,0.08)' }}
+                {/* Proposal Name */}
+                <th className={`${thSort} bg-gray-50`}
+                  style={{ width: widths[3] }}
                   onClick={() => handleSort('proposalName')}>
                   Proposal Name<SortIcon field="proposalName" current={sortField} dir={sortDir} />
                   <ResizeHandle col={3} />
@@ -725,8 +724,8 @@ export default function OpportunitiesClient({
                     className={`rsm-row-click group relative h-14 ${editMode ? '' : 'cursor-pointer'} ${isModified && editMode ? 'border-l-2 border-l-blue-400' : ''}`}
                     onClick={() => !editMode && openEdit(opp)}
                   >
-                    {/* Checkbox — sticky col 0 */}
-                    <td className="px-3 align-middle overflow-hidden sticky z-10 bg-white" style={{ left: 0 }}
+                    {/* Checkbox */}
+                    <td className="px-3 align-middle overflow-hidden"
                       onClick={(e) => e.stopPropagation()}>
                       {!editMode && (
                         <input type="checkbox" checked={isSelected}
@@ -735,27 +734,24 @@ export default function OpportunitiesClient({
                         />
                       )}
                     </td>
-                    {/* Client Initial — sticky col 1 */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs sticky z-10 bg-white ${tdEdit}`}
-                      style={{ left: widths[0] }}
+                    {/* Client Initial */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs ${tdEdit}`}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="text" value={String(cellValue(opp, 'clientInitial') ?? '')}
                             onChange={(e) => updateCell(opp.id, 'clientInitial', e.target.value)} />
                         : (opp.clientInitial ?? '—')}
                     </td>
-                    {/* Sub-service — sticky col 2 */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 sticky z-10 bg-white ${tdEdit}`}
-                      style={{ left: widths[0] + widths[1] }}
+                    {/* Sub-service */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 ${tdEdit}`}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="text" value={String(cellValue(opp, 'subService') ?? (opp.subService?.name ?? ''))}
                             onChange={(e) => updateCell(opp.id, 'subService' as any, e.target.value)} />
                         : (opp.subService?.name ?? '—')}
                     </td>
-                    {/* Proposal Name — sticky col 3 (last frozen, shadow) */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 sticky z-10 bg-white ${tdEdit}`}
-                      style={{ left: widths[0] + widths[1] + widths[2], boxShadow: '2px 0 4px -1px rgba(0,0,0,0.08)' }}
+                    {/* Proposal Name */}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <input type="text" value={String(cellValue(opp, 'proposalName') ?? '')}
