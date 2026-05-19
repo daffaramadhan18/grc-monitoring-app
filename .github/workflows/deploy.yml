@@ -19,5 +19,4 @@ jobs:
             git pull origin main
             npm install --production
             npx prisma db push
-            npm run build
-            pm2 restart grc-app
+            npm run build && pm2 restart grc-app || echo "Build failed, keeping existing version running"
