@@ -193,6 +193,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
   type BatchSaveState = 'idle' | 'saving' | 'saved'
   const [batchSaveState, setBatchSaveState] = useState<BatchSaveState>('idle')
   const [batchToast, setBatchToast] = useState<string | null>(null)
+  const [finishedOpen, setFinishedOpen] = useState(false)
 
   useEffect(() => {
     if (!editMode || editData.size === 0) return
@@ -376,10 +377,27 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
   }
 
   function toggleSelectAll() {
-    if (selected.size === sortedProjects.length) {
+    if (selected.size === activeProjects.length) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(sortedProjects.map((p) => p.id)))
+      setSelected(new Set(activeProjects.map((p) => p.id)))
+    }
+  }
+
+  function toggleSelectAllFinished() {
+    const allSelected = finishedProjects.length > 0 && finishedProjects.every((p) => selected.has(p.id))
+    if (allSelected) {
+      setSelected((prev) => {
+        const s = new Set(prev)
+        finishedProjects.forEach((p) => s.delete(p.id))
+        return s
+      })
+    } else {
+      setSelected((prev) => {
+        const s = new Set(prev)
+        finishedProjects.forEach((p) => s.add(p.id))
+        return s
+      })
     }
   }
 
@@ -422,6 +440,9 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       return 0
     })
   }, [monthFilteredProjects, sortField, sortDir, filters])
+
+  const activeProjects   = useMemo(() => sortedProjects.filter((p) => p.status !== 'Finish'), [sortedProjects])
+  const finishedProjects = useMemo(() => sortedProjects.filter((p) => p.status === 'Finish'),  [sortedProjects])
 
   const tmOptions = [{ initial: '', fullName: '—' }, ...teamMembers]
 
@@ -482,6 +503,156 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
 
   const thBase     = 'relative px-4 py-3 text-gray-500 font-medium text-left whitespace-nowrap overflow-hidden'
   const thSortCls  = `${thBase} cursor-pointer hover:text-gray-700 select-none`
+
+  function renderRows(list: Project[]) {
+    return list.map((proj, index) => {
+      const team = [proj.tm1Initial, proj.tm2Initial, proj.tm3Initial,
+                    proj.tm4Initial, proj.tm5Initial, proj.tm6Initial].filter(Boolean) as string[]
+      const paidCount = proj.termins.filter((t) => t.status === 'Paid').length
+      const isSelected = selected.has(proj.id)
+      const isModified = editData.has(proj.id)
+      const isFlashGreen = flashGreenRows.has(proj.id)
+      const tdEdit = editMode ? 'rsm-edit-cell' : ''
+      return (
+        <motion.tr key={proj.id}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            backgroundColor: isFlashGreen
+              ? '#dcfce7'
+              : isModified && editMode
+              ? '#fefce8'
+              : isSelected
+              ? 'rgba(0,156,222,0.08)'
+              : 'rgba(255,255,255,0)',
+          }}
+          transition={
+            isFlashGreen
+              ? { duration: 0.05 }
+              : { delay: index * 0.04, duration: 0.25, ease: 'easeOut' }
+          }
+          className={`rsm-row-click group h-14 ${editMode ? '' : 'cursor-pointer'} ${isModified && editMode ? 'border-l-2 border-l-blue-400' : ''}`}
+          onClick={() => !editMode && router.push(`/projects/${proj.id}`)}>
+          <td className="px-4 align-middle overflow-hidden w-10" onClick={(e) => e.stopPropagation()}>
+            {!editMode && (
+              <input type="checkbox" checked={isSelected}
+                onChange={() => toggleSelect(proj.id)}
+                className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+              />
+            )}
+          </td>
+          {/* Engagement Name */}
+          <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? <input type="text" value={String(cellValue(proj, 'proposalName') ?? '')}
+                  onChange={(e) => updateCell(proj.id, 'proposalName', e.target.value)} />
+              : proj.proposalName}
+          </td>
+          {/* Client */}
+          <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 ${tdEdit}`}
+            title={proj.clientName ?? ''}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? <input type="text" value={String(cellValue(proj, 'clientInitial') ?? '')}
+                  onChange={(e) => updateCell(proj.id, 'clientInitial', e.target.value)} />
+              : (proj.clientInitial ?? proj.clientName ?? '—')}
+          </td>
+          {/* Owner */}
+          <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs hidden sm:table-cell">
+            {proj.projectOwner ?? '—'}
+          </td>
+          {/* Status */}
+          <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? <select value={String(cellValue(proj, 'status') ?? proj.status)}
+                  onChange={(e) => updateCell(proj.id, 'status', e.target.value)}>
+                  {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              : <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {proj.status}
+                </span>}
+          </td>
+          {/* MIC */}
+          <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell ${tdEdit}`}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? <select value={String(cellValue(proj, 'micInitial') ?? '')}
+                  onChange={(e) => updateCell(proj.id, 'micInitial', e.target.value || null)}>
+                  {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                </select>
+              : (proj.micInitial ?? '—')}
+          </td>
+          {/* Team */}
+          <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${editMode ? 'rsm-edit-cell' : ''}`}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? (
+                <div className="flex gap-1 flex-wrap">
+                  {(['tm1Initial', 'tm2Initial', 'tm3Initial'] as const).map((k) => (
+                    <select key={k} style={{ minWidth: 50 }}
+                      value={String(cellValue(proj, k) ?? '')}
+                      onChange={(e) => updateCell(proj.id, k, e.target.value || null)}>
+                      {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
+                    </select>
+                  ))}
+                </div>
+              )
+              : (() => {
+                const shown = team.slice(0, 4)
+                const extra = team.length - shown.length
+                if (team.length === 0) return <span className="text-gray-300">—</span>
+                return (
+                  <div className="flex items-center whitespace-nowrap overflow-hidden">
+                    {shown.map((t, i) => (
+                      <span key={t} className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-semibold shrink-0${i > 0 ? ' -ml-2' : ''}`}
+                        style={{ backgroundColor: ['#009CDE','#43B02A','#58595B','#F59E0B','#8B5CF6','#EC4899'][t.split('').reduce((a,c) => a + c.charCodeAt(0), 0) % 6] }}>
+                        {t.slice(0, 2)}
+                      </span>
+                    ))}
+                    {extra > 0 && (
+                      <span className="-ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold shrink-0">
+                        +{extra}
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
+          </td>
+          {/* Period */}
+          <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs ${editMode ? 'rsm-edit-cell' : ''}`}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? (
+                <div className="flex gap-1">
+                  <input type="date" style={{ minWidth: 110 }}
+                    value={String(cellValue(proj, 'startedDate') ? toInputDate(String(cellValue(proj, 'startedDate'))) : '')}
+                    onChange={(e) => updateCell(proj.id, 'startedDate', e.target.value || null)} />
+                  <input type="date" style={{ minWidth: 110 }}
+                    value={String(cellValue(proj, 'endDate') ? toInputDate(String(cellValue(proj, 'endDate'))) : '')}
+                    onChange={(e) => updateCell(proj.id, 'endDate', e.target.value || null)} />
+                </div>
+              )
+              : `${formatDate(proj.startedDate)} – ${formatDate(proj.endDate)}`}
+          </td>
+          {/* Confirmed Fee */}
+          <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-right text-gray-700 ${tdEdit}`}
+            onClick={(e) => editMode && e.stopPropagation()}>
+            {editMode
+              ? <input type="number" style={{ textAlign: 'right' }}
+                  value={cellValue(proj, 'confirmedFee') ?? ''}
+                  onChange={(e) => updateCell(proj.id, 'confirmedFee', e.target.value ? Number(e.target.value) : null)} />
+              : formatRupiah(proj.confirmedFee)}
+          </td>
+          <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-center text-sm text-gray-600 hidden sm:table-cell">
+            {proj.termins.length > 0 ? `${paidCount}/${proj.termins.length} paid` : '—'}
+          </td>
+        </motion.tr>
+      )
+    })
+  }
 
   return (
     <div className="rsm-page-in space-y-5">
@@ -586,8 +757,9 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       )}
 
       {/* ── Desktop Table (hidden on mobile) ─────────────────────────────── */}
-      <div className="hidden md:block">
-      {/* Table */}
+      <div className="hidden md:block space-y-4">
+
+      {/* Active projects table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
         {/* Floating bulk action bar */}
         {selected.size > 0 && (
@@ -612,7 +784,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
               <tr>
                 <th className={thBase} style={{ width: widths[0] }}>
                   <input type="checkbox"
-                    checked={sortedProjects.length > 0 && selected.size === sortedProjects.length}
+                    checked={activeProjects.length > 0 && selected.size === activeProjects.length}
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
@@ -652,175 +824,139 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {sortedProjects.length === 0 && (
+              {activeProjects.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
                 </tr>
               )}
-              {sortedProjects.map((proj, index) => {
-                const team = [proj.tm1Initial, proj.tm2Initial, proj.tm3Initial,
-                              proj.tm4Initial, proj.tm5Initial, proj.tm6Initial].filter(Boolean) as string[]
-                const paidCount = proj.termins.filter((t) => t.status === 'Paid').length
-                const isSelected = selected.has(proj.id)
-                const isModified = editData.has(proj.id)
-                const isFlashGreen = flashGreenRows.has(proj.id)
-                const tdEdit = editMode ? 'rsm-edit-cell' : ''
-                return (
-                  <motion.tr key={proj.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      backgroundColor: isFlashGreen
-                        ? '#dcfce7'
-                        : isModified && editMode
-                        ? '#fefce8'
-                        : isSelected
-                        ? 'rgba(0,156,222,0.08)'
-                        : 'rgba(255,255,255,0)',
-                    }}
-                    transition={
-                      isFlashGreen
-                        ? { duration: 0.05 }
-                        : { delay: index * 0.04, duration: 0.25, ease: 'easeOut' }
-                    }
-                    className={`rsm-row-click group h-14 ${editMode ? '' : 'cursor-pointer'} ${isModified && editMode ? 'border-l-2 border-l-blue-400' : ''}`}
-                    onClick={() => !editMode && router.push(`/projects/${proj.id}`)}>
-                    <td className="px-4 align-middle overflow-hidden w-10" onClick={(e) => e.stopPropagation()}>
-                      {!editMode && (
-                        <input type="checkbox" checked={isSelected}
-                          onChange={() => toggleSelect(proj.id)}
-                          className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                        />
-                      )}
-                    </td>
-                    {/* Engagement Name */}
-                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="text" value={String(cellValue(proj, 'proposalName') ?? '')}
-                            onChange={(e) => updateCell(proj.id, 'proposalName', e.target.value)} />
-                        : proj.proposalName}
-                    </td>
-                    {/* Client */}
-                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 ${tdEdit}`}
-                      title={proj.clientName ?? ''}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="text" value={String(cellValue(proj, 'clientInitial') ?? '')}
-                            onChange={(e) => updateCell(proj.id, 'clientInitial', e.target.value)} />
-                        : (proj.clientInitial ?? proj.clientName ?? '—')}
-                    </td>
-                    {/* Owner */}
-                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs hidden sm:table-cell">
-                      {proj.projectOwner ?? '—'}
-                    </td>
-                    {/* Status */}
-                    <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <select value={String(cellValue(proj, 'status') ?? proj.status)}
-                            onChange={(e) => updateCell(proj.id, 'status', e.target.value)}>
-                            {PROJ_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                          </select>
-                        : <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[proj.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {proj.status}
-                          </span>}
-                    </td>
-                    {/* MIC */}
-                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 hidden sm:table-cell ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <select value={String(cellValue(proj, 'micInitial') ?? '')}
-                            onChange={(e) => updateCell(proj.id, 'micInitial', e.target.value || null)}>
-                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                          </select>
-                        : (proj.micInitial ?? '—')}
-                    </td>
-                    {/* Team */}
-                    <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${editMode ? 'rsm-edit-cell' : ''}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? (
-                          <div className="flex gap-1 flex-wrap">
-                            {(['tm1Initial', 'tm2Initial', 'tm3Initial'] as const).map((k) => (
-                              <select key={k} style={{ minWidth: 50 }}
-                                value={String(cellValue(proj, k) ?? '')}
-                                onChange={(e) => updateCell(proj.id, k, e.target.value || null)}>
-                                {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                              </select>
-                            ))}
-                          </div>
-                        )
-                        : (() => {
-                          const shown = team.slice(0, 4)
-                          const extra = team.length - shown.length
-                          if (team.length === 0) return <span className="text-gray-300">—</span>
-                          return (
-                            <div className="flex items-center whitespace-nowrap overflow-hidden">
-                              {shown.map((t, i) => (
-                                <span key={t} className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-semibold shrink-0${i > 0 ? ' -ml-2' : ''}`}
-                                  style={{ backgroundColor: ['#009CDE','#43B02A','#58595B','#F59E0B','#8B5CF6','#EC4899'][t.split('').reduce((a,c) => a + c.charCodeAt(0), 0) % 6] }}>
-                                  {t.slice(0, 2)}
-                                </span>
-                              ))}
-                              {extra > 0 && (
-                                <span className="-ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold shrink-0">
-                                  +{extra}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })()}
-                    </td>
-                    {/* Period */}
-                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 text-xs ${editMode ? 'rsm-edit-cell' : ''}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? (
-                          <div className="flex gap-1">
-                            <input type="date" style={{ minWidth: 110 }}
-                              value={String(cellValue(proj, 'startedDate') ? toInputDate(String(cellValue(proj, 'startedDate'))) : '')}
-                              onChange={(e) => updateCell(proj.id, 'startedDate', e.target.value || null)} />
-                            <input type="date" style={{ minWidth: 110 }}
-                              value={String(cellValue(proj, 'endDate') ? toInputDate(String(cellValue(proj, 'endDate'))) : '')}
-                              onChange={(e) => updateCell(proj.id, 'endDate', e.target.value || null)} />
-                          </div>
-                        )
-                        : `${formatDate(proj.startedDate)} – ${formatDate(proj.endDate)}`}
-                    </td>
-                    {/* Confirmed Fee */}
-                    <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-right text-gray-700 ${tdEdit}`}
-                      onClick={(e) => editMode && e.stopPropagation()}>
-                      {editMode
-                        ? <input type="number" style={{ textAlign: 'right' }}
-                            value={cellValue(proj, 'confirmedFee') ?? ''}
-                            onChange={(e) => updateCell(proj.id, 'confirmedFee', e.target.value ? Number(e.target.value) : null)} />
-                        : formatRupiah(proj.confirmedFee)}
-                    </td>
-                    <td className="px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-center text-sm text-gray-600 hidden sm:table-cell">
-                      {proj.termins.length > 0 ? `${paidCount}/${proj.termins.length} paid` : '—'}
-                    </td>
-                  </motion.tr>
-                )
-              })}
+              {renderRows(activeProjects)}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Finished Projects collapsible */}
+      {finishedProjects.length > 0 && (
+        <div>
+          <button
+            onClick={() => setFinishedOpen((o) => !o)}
+            className="flex items-center gap-2 px-1 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ChevronDown
+              size={16}
+              className={`transition-transform duration-200 ${finishedOpen ? '' : '-rotate-90'}`}
+            />
+            Finished Projects ({finishedProjects.length})
+          </button>
+          {finishedOpen && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden relative mt-1">
+              {selected.size > 0 && (
+                <div className="absolute bottom-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3 bg-[#2D2D2D] text-white text-sm rounded-b-xl">
+                  <span className="font-medium">{selected.size} item dipilih</span>
+                  <button onClick={() => { haptic(); handleBulkDelete() }} disabled={bulkDeleting}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 transition-colors">
+                    <Trash2 size={13} /> {bulkDeleting ? 'Menghapus...' : 'Hapus'}
+                  </button>
+                  <button onClick={() => setSelected(new Set())}
+                    className="ml-auto text-white/50 hover:text-white transition-colors">
+                    <X size={15} />
+                  </button>
+                </div>
+              )}
+              <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
+                <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
+                  <colgroup>
+                    {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
+                  </colgroup>
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className={thBase} style={{ width: widths[0] }}>
+                        <input type="checkbox"
+                          checked={finishedProjects.length > 0 && finishedProjects.every((p) => selected.has(p.id))}
+                          onChange={toggleSelectAllFinished}
+                          className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
+                        />
+                      </th>
+                      <th className={thSortCls} style={{ width: widths[1] }} onClick={() => handleSort('proposalName')}>
+                        Engagement Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={1} />
+                      </th>
+                      <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
+                        Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={2} />
+                      </th>
+                      <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[3] }}>
+                        Owner<ResizeHandle col={3} />
+                      </th>
+                      <th className={thSortCls} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
+                        Status <SortIcon field="status" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={4} />
+                      </th>
+                      <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[5] }}>
+                        MIC<ResizeHandle col={5} />
+                      </th>
+                      <th className={thBase} style={{ width: widths[6] }}>
+                        Team<ResizeHandle col={6} />
+                      </th>
+                      <th className={thSortCls} style={{ width: widths[7] }} onClick={() => handleSort('startedDate')}>
+                        Period <SortIcon field="startedDate" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={7} />
+                      </th>
+                      <th className={`${thSortCls} text-right`} style={{ width: widths[8] }} onClick={() => handleSort('confirmedFee')}>
+                        Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={8} />
+                      </th>
+                      <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[9] }}>
+                        Termins<ResizeHandle col={9} />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {renderRows(finishedProjects)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       </div>{/* end hidden md:block desktop table */}
 
       {/* ── Mobile view ─────────────────────────────────────────────────── */}
       <div className="md:hidden">
-        {sortedProjects.length === 0 ? (
+        {activeProjects.length === 0 ? (
           <div className="rsm-mcard">
             <p className="text-sm text-gray-400 text-center">Belum ada project.</p>
           </div>
         ) : (
           <div className="rsm-mlist">
-            {sortedProjects.map(proj => (
+            {activeProjects.map(proj => (
               <MobileProjCard key={proj.id} project={proj} onTap={p => router.push(`/projects/${p.id}`)} />
             ))}
+          </div>
+        )}
+
+        {/* Finished Projects collapsible (mobile) */}
+        {finishedProjects.length > 0 && (
+          <div className="mt-4">
+            <button
+              onClick={() => setFinishedOpen((o) => !o)}
+              className="flex items-center gap-2 px-1 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <ChevronDown
+                size={16}
+                className={`transition-transform duration-200 ${finishedOpen ? '' : '-rotate-90'}`}
+              />
+              Finished Projects ({finishedProjects.length})
+            </button>
+            {finishedOpen && (
+              <div className="rsm-mlist mt-1">
+                {finishedProjects.map(proj => (
+                  <MobileProjCard key={proj.id} project={proj} onTap={p => router.push(`/projects/${p.id}`)} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
