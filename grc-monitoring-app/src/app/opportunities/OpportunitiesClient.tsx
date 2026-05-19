@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search, Filter, Pencil, Loader2, Check } from 'lucide-react'
+import { Plus, Trash2, X, Download, Upload, ChevronUp, ChevronDown, ChevronsUpDown, Crown, Search, Filter, Pencil, Loader2, Check, Copy } from 'lucide-react'
 import MobileOppCard from './MobileOppCard'
 import useSWR, { mutate } from 'swr'
 import MonthFilter from '@/components/MonthFilter'
@@ -141,7 +141,7 @@ const DEFAULT_WIDTHS = [
   70,  // 8: %RR
   130, // 9: Harga
   180, // 10: Team
-  44,  // 11: delete
+  80,  // 11: actions
 ]
 
 const OPP_PHASES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed']
@@ -172,6 +172,9 @@ export default function OpportunitiesClient({
   const [flashedRow, setFlashedRow]   = useState<number | null>(null)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Opp | null>(null)
+  const [copyTarget,   setCopyTarget]   = useState<Opp | null>(null)
+  const [copying,      setCopying]      = useState(false)
+  const [copyToast,    setCopyToast]    = useState<{ type: 'success' | 'warning' | 'error'; msg: string } | null>(null)
 
   const [filters, setFilters] = useState({
     search: '',
@@ -414,6 +417,47 @@ export default function OpportunitiesClient({
       return 0
     })
   }, [monthFilteredOpps, sortField, sortDir, filters])
+
+  async function handleCopyConfirm() {
+    if (!copyTarget) return
+    setCopying(true)
+    try {
+      const teamMembers = [
+        copyTarget.tm1Initial, copyTarget.tm2Initial, copyTarget.tm3Initial,
+        copyTarget.tm4Initial, copyTarget.tm5Initial, copyTarget.tm6Initial,
+      ].filter((t): t is string => t !== null)
+
+      const res = await fetch('/api/projects/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposalName:  copyTarget.proposalName,
+          clientInitial: copyTarget.clientInitial,
+          clientName:    copyTarget.clientName,
+          micInitial:    copyTarget.micInitial,
+          teamMembers,
+        }),
+      })
+
+      setCopyTarget(null)
+
+      if (res.status === 409) {
+        setCopyToast({ type: 'warning', msg: 'Already exists in Active Engagements' })
+      } else if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setCopyToast({ type: 'error', msg: data.error ?? 'Failed to copy' })
+      } else {
+        setCopyToast({ type: 'success', msg: 'Successfully copied to Active Engagements' })
+      }
+      setTimeout(() => setCopyToast(null), 3000)
+    } catch (err: unknown) {
+      setCopyTarget(null)
+      setCopyToast({ type: 'error', msg: err instanceof Error ? err.message : 'Unknown error' })
+      setTimeout(() => setCopyToast(null), 3000)
+    } finally {
+      setCopying(false)
+    }
+  }
 
   function triggerDownload(blob: Blob, filename: string) {
     const a = document.createElement('a')
@@ -856,16 +900,27 @@ export default function OpportunitiesClient({
                           )
                         })()}
                     </td>
-                    {/* Delete */}
+                    {/* Actions */}
                     <td className="px-3 align-middle overflow-hidden" onClick={(e) => e.stopPropagation()}>
                       {!editMode && (
-                        <button
-                          onClick={() => { haptic(); handleDelete(opp.id) }}
-                          disabled={deleting === opp.id}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-0.5">
+                          {opp.status === 'Win' && (
+                            <button
+                              onClick={() => { haptic(); setCopyTarget(opp) }}
+                              className="p-1.5 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                              title="Copy to Active Engagements"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { haptic(); handleDelete(opp.id) }}
+                            disabled={deleting === opp.id}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </motion.tr>
@@ -1090,6 +1145,88 @@ export default function OpportunitiesClient({
               {batchSaveState === 'saved' && <Check size={14} />}
               {batchSaveState === 'saving' ? 'Saving...' : batchSaveState === 'saved' ? '✓ Saved' : 'Save All'}
             </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Copy confirmation dialog ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {copyTarget && (
+          <>
+            <motion.div
+              key="copy-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => !copying && setCopyTarget(null)}
+            />
+            <motion.div
+              key="copy-dialog"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4"
+            >
+              <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 pointer-events-auto">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-50 rounded-xl shrink-0">
+                    <Copy size={18} className="text-emerald-600" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-800">Copy to Active Engagements?</h3>
+                </div>
+                <p className="text-sm text-gray-500">
+                  A new project will be created from{' '}
+                  <span className="font-medium text-gray-700">{copyTarget.proposalName}</span>{' '}
+                  with status <span className="font-medium text-gray-700">Waiting to Start</span>.
+                </p>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => setCopyTarget(null)}
+                    disabled={copying}
+                    className="flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleCopyConfirm}
+                    disabled={copying}
+                    className="flex-1 py-2.5 text-sm font-medium bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-2"
+                  >
+                    {copying && <Loader2 size={14} className="animate-spin" />}
+                    {copying ? 'Copying…' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Copy toast (top-right, slide from right) ─────────────────────── */}
+      <AnimatePresence>
+        {copyToast && (
+          <motion.div
+            key="copy-toast"
+            initial={{ opacity: 0, x: 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 80 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed top-6 right-6 z-[70] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-sm font-medium max-w-xs"
+            style={{
+              backgroundColor:
+                copyToast.type === 'success' ? '#059669'
+                : copyToast.type === 'warning' ? '#d97706'
+                : '#dc2626',
+              color: 'white',
+            }}
+          >
+            {copyToast.type === 'success' && <Check size={15} className="shrink-0" />}
+            {copyToast.type === 'warning' && <span className="shrink-0 text-base leading-none">⚠</span>}
+            {copyToast.type === 'error'   && <X size={15} className="shrink-0" />}
+            <span>{copyToast.msg}</span>
           </motion.div>
         )}
       </AnimatePresence>

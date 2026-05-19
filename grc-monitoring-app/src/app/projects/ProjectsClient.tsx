@@ -771,7 +771,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
           </div>
         )}
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
+          <table className="text-sm" style={{ tableLayout: 'fixed', width: widths.reduce((s, w) => s + w, 0) }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -859,7 +859,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                 </div>
               )}
               <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-                <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
+                <table className="text-sm" style={{ tableLayout: 'fixed', width: widths.reduce((s, w) => s + w, 0) }}>
                   <colgroup>
                     {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
                   </colgroup>
