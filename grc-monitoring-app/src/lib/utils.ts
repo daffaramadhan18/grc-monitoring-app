@@ -40,6 +40,7 @@ export const OPP_STATUSES = [
   'Backlog',
   'Transfer to others',
   'In progress',
+  'Submitted',
 ] as const
 
 export const OPP_STATUS_COLORS: Record<string, string> = {

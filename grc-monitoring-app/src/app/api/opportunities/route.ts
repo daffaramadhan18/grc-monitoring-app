@@ -67,6 +67,29 @@ export async function POST(req: NextRequest) {
       },
       include: { serviceType: true, subService: true },
     })
+
+    // Auto-create project when created with Win status (same as PUT handler)
+    if (data.status === 'Win') {
+      const existing = await prisma.project.findFirst({ where: { opportunityId: data.id } })
+      if (!existing) {
+        const teamMembers = [
+          data.tm1Initial, data.tm2Initial, data.tm3Initial,
+          data.tm4Initial, data.tm5Initial, data.tm6Initial,
+        ].filter((t): t is string => t !== null)
+        await prisma.project.create({
+          data: {
+            opportunityId: data.id,
+            proposalName:  data.proposalName,
+            clientName:    data.clientName,
+            clientInitial: data.clientInitial,
+            micInitial:    data.micInitial,
+            teamMembers,
+            status:        'Planning',
+          },
+        })
+      }
+    }
+
     return NextResponse.json(serialize(data), { status: 201 })
   } catch (err: unknown) {
     console.error('[API POST /api/opportunities]', err)

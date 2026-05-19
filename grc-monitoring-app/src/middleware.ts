@@ -5,6 +5,7 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 
 const RATE_LIMIT_MAX    = 60   // requests
 const RATE_LIMIT_WINDOW = 60_000 // 1 minute in ms
+const LOCALHOST_IPS     = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -15,6 +16,9 @@ function getClientIp(req: NextRequest): string {
 }
 
 function checkRateLimit(ip: string): boolean {
+  // Exempt localhost from rate limiting (CI, tests, internal tool)
+  if (LOCALHOST_IPS.has(ip)) return true
+
   const now = Date.now()
   const entry = rateLimitStore.get(ip)
 
@@ -31,7 +35,7 @@ function checkRateLimit(ip: string): boolean {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Rate limit API routes
+  // Rate limit API routes (localhost is exempt)
   if (pathname.startsWith('/api/')) {
     const ip = getClientIp(req)
     if (!checkRateLimit(ip)) {
