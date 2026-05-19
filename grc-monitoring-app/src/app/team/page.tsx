@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import TeamClient from './TeamClient'
 
+export const dynamic = 'force-dynamic'
+
 const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 
 export default async function TeamPage() {
@@ -33,27 +35,10 @@ export default async function TeamPage() {
   }> = {}
 
   for (const m of members) {
-    alloc[m.initial]   = { projects: 0, proposals: 0 }
-    details[m.initial] = { projects: [], proposals: [] }
-  }
-
-  for (const p of activeProjects) {
-    for (const f of TM_FIELDS) {
-      const ini = p[f]
-      if (ini && alloc[ini]) {
-        alloc[ini].projects++
-        details[ini].projects.push(p)
-      }
-    }
-  }
-  for (const o of activeOpps) {
-    for (const f of TM_FIELDS) {
-      const ini = o[f]
-      if (ini && alloc[ini]) {
-        alloc[ini].proposals++
-        details[ini].proposals.push(o)
-      }
-    }
+    const memberProjects  = activeProjects.filter((p) => TM_FIELDS.some((f) => p[f] === m.initial))
+    const memberProposals = activeOpps.filter((o) => TM_FIELDS.some((f) => o[f] === m.initial))
+    alloc[m.initial]   = { projects: memberProjects.length, proposals: memberProposals.length }
+    details[m.initial] = { projects: memberProjects, proposals: memberProposals }
   }
 
   // Serialize dates

@@ -23,7 +23,7 @@ npx prisma db seed   # Seed service types, sub-services, 14 team members
 - Run `git status` and `git log --oneline -5` before any task
 
 ### Git
-- Push to `origin/dev` only, never `main`
+- Push to `origin/main`
 - If git push fails, report the error and stop — do not retry more than once
 
 ### Scope
