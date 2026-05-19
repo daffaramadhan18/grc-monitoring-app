@@ -8,6 +8,7 @@ import SWRProvider from "@/components/SWRProvider"
 export const metadata: Metadata = {
   title: "RSM CC3 — GRC Monitoring",
   description: "IT GRC & Cybersecurity Division — Internal Monitoring App",
+  icons: { icon: "/logo.svg" },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
