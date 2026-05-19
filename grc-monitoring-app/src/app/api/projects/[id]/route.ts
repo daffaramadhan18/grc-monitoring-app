@@ -13,6 +13,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const b = await req.json()
+  const teamMembers = Array.isArray(b.teamMembers) ? (b.teamMembers as unknown[]).filter((t): t is string => typeof t === 'string' && t.length > 0) : []
   const data = await prisma.project.update({
     where: { id: Number(params.id) },
     data: {
@@ -21,12 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       clientInitial: b.clientInitial || null,
       projectOwner:  b.projectOwner  || null,
       micInitial:    b.micInitial    || null,
-      tm1Initial:    b.tm1Initial    || null,
-      tm2Initial:    b.tm2Initial    || null,
-      tm3Initial:    b.tm3Initial    || null,
-      tm4Initial:    b.tm4Initial    || null,
-      tm5Initial:    b.tm5Initial    || null,
-      tm6Initial:    b.tm6Initial    || null,
+      teamMembers,
       startedDate:   b.startedDate   ? new Date(b.startedDate) : null,
       endDate:       b.endDate       ? new Date(b.endDate)     : null,
       status:        b.status,

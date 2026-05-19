@@ -69,12 +69,7 @@ model Project {
   clientInitial String?
   projectOwner  String?
   micInitial    String?
-  tm1Initial    String?
-  tm2Initial    String?
-  tm3Initial    String?
-  tm4Initial    String?
-  tm5Initial    String?
-  tm6Initial    String?
+  teamMembers   String[]
   startedDate   DateTime?
   endDate       DateTime?
   status        String

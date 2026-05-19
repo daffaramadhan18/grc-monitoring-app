@@ -3,8 +3,6 @@ import TeamClient from './TeamClient'
 
 export const dynamic = 'force-dynamic'
 
-const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
-
 export default async function TeamPage() {
   const [members, activeProjects, activeOpps] = await Promise.all([
     prisma.teamMember.findMany({ orderBy: { fullName: 'asc' } }),
@@ -13,8 +11,7 @@ export default async function TeamPage() {
       select: {
         id: true, proposalName: true, status: true, endDate: true,
         clientName: true, clientInitial: true,
-        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+        micInitial: true, teamMembers: true,
       },
     }),
     prisma.opportunity.findMany({
@@ -28,6 +25,8 @@ export default async function TeamPage() {
     }),
   ])
 
+  const OPP_TM = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
+
   const alloc: Record<string, { projects: number; proposals: number }> = {}
   const details: Record<string, {
     projects: typeof activeProjects
@@ -35,8 +34,8 @@ export default async function TeamPage() {
   }> = {}
 
   for (const m of members) {
-    const memberProjects  = activeProjects.filter((p) => TM_FIELDS.some((f) => p[f] === m.initial))
-    const memberProposals = activeOpps.filter((o) => TM_FIELDS.some((f) => o[f] === m.initial))
+    const memberProjects  = activeProjects.filter((p) => p.micInitial === m.initial || p.teamMembers.includes(m.initial))
+    const memberProposals = activeOpps.filter((o) => OPP_TM.some((f) => o[f] === m.initial))
     alloc[m.initial]   = { projects: memberProjects.length, proposals: memberProposals.length }
     details[m.initial] = { projects: memberProjects, proposals: memberProposals }
   }

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { serialize } from '@/lib/serialize'
 import TeamMemberClient from './TeamMemberClient'
 
-const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
+const OPP_TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 
 export default async function TeamMemberPage({ params }: { params: { id: string } }) {
   const id = Number(params.id)
@@ -12,13 +12,13 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   const member = await prisma.teamMember.findUnique({ where: { id } })
   if (!member) notFound()
 
-  const orFilter = TM_FIELDS.map((f) => ({ [f]: member.initial }))
+  const oppOrFilter = OPP_TM_FIELDS.map((f) => ({ [f]: member.initial }))
 
   const [proposals, projects] = await Promise.all([
     prisma.opportunity.findMany({
       where: {
         status: 'In progress',
-        OR: orFilter,
+        OR: oppOrFilter,
       },
       include: { serviceType: true },
       orderBy: { expectedDate: 'asc' },
@@ -26,7 +26,10 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
     prisma.project.findMany({
       where: {
         status: { in: ['Fieldwork', 'Reporting'] },
-        OR: orFilter,
+        OR: [
+          { micInitial: member.initial },
+          { teamMembers: { has: member.initial } },
+        ],
       },
       include: { termins: true },
       orderBy: { startedDate: 'asc' },

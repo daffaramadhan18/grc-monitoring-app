@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // Column order: 0: Engagement Name, 1: Client Name, 2: Client Initial, 3: Project Owner,
     // 4: Status, 5: Start Date, 6: End Date, 7: Confirmed Fee, 8: SPK, 9: PKS,
-    // 10: MIC, 11-16: TM1-TM6, 17-28: Termins (%, fee, status) x4
+    // 10: MIC, 11: Team Members (comma-sep), 12-23: Termins (%, fee, status) x4
     const clientName    = String(row[1] ?? '').trim() || null
     const clientInitial = String(row[2] ?? '').trim() || null
     const projectOwner  = String(row[3] ?? '').trim() || null
@@ -61,17 +61,15 @@ export async function POST(req: NextRequest) {
     const spk           = String(row[8] ?? '').trim() || null
     const pks           = String(row[9] ?? '').trim() || null
     const micInitial    = String(row[10] ?? '').trim() || null
-    const tm1Initial    = String(row[11] ?? '').trim() || null
-    const tm2Initial    = String(row[12] ?? '').trim() || null
-    const tm3Initial    = String(row[13] ?? '').trim() || null
-    const tm4Initial    = String(row[14] ?? '').trim() || null
-    const tm5Initial    = String(row[15] ?? '').trim() || null
-    const tm6Initial    = String(row[16] ?? '').trim() || null
+    const teamMembersRaw = String(row[11] ?? '').trim()
+    const teamMembers   = teamMembersRaw
+      ? teamMembersRaw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+      : []
 
-    // Termin data [%, fee, status] x4, cols 17-28
+    // Termin data [%, fee, status] x4, cols 12-23
     const terminData: Array<{ pct: number | null; fee: number | null; status: string | null }> = []
     for (let t = 0; t < 4; t++) {
-      const base = 17 + t * 3
+      const base = 12 + t * 3
       terminData.push({
         pct:    parseNumber(row[base]),
         fee:    parseNumber(row[base + 1]),
@@ -93,12 +91,7 @@ export async function POST(req: NextRequest) {
           spk,
           pks,
           micInitial,
-          tm1Initial,
-          tm2Initial,
-          tm3Initial,
-          tm4Initial,
-          tm5Initial,
-          tm6Initial,
+          teamMembers,
         },
       })
 

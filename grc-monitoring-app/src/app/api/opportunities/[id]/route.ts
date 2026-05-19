@@ -59,6 +59,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (updated.status === 'Win') {
       const existing = await prisma.project.findFirst({ where: { opportunityId: id } })
       if (!existing) {
+        const teamMembers = [
+          updated.tm1Initial, updated.tm2Initial, updated.tm3Initial,
+          updated.tm4Initial, updated.tm5Initial, updated.tm6Initial,
+        ].filter((t): t is string => t !== null)
         await prisma.project.create({
           data: {
             opportunityId: id,
@@ -66,12 +70,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             clientName:    updated.clientName,
             clientInitial: updated.clientInitial,
             micInitial:    updated.micInitial,
-            tm1Initial:    updated.tm1Initial,
-            tm2Initial:    updated.tm2Initial,
-            tm3Initial:    updated.tm3Initial,
-            tm4Initial:    updated.tm4Initial,
-            tm5Initial:    updated.tm5Initial,
-            tm6Initial:    updated.tm6Initial,
+            teamMembers,
             status:        'Planning',
           },
         })

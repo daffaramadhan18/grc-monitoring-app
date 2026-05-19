@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
+const OPP_TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const id = Number(params.id)
@@ -30,18 +30,20 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
 
   const ini = member.initial
 
-  // Build OR filter across all team fields
-  const assignedFilter = TM_FIELDS.map((f) => ({ [f]: ini }))
+  const oppAssignedFilter = OPP_TM_FIELDS.map((f) => ({ [f]: ini }))
 
   const [activeProject, activeOpp] = await Promise.all([
     prisma.project.findFirst({
-      where: { status: { in: ['Fieldwork', 'Reporting'] }, OR: assignedFilter },
+      where: {
+        status: { in: ['Fieldwork', 'Reporting'] },
+        OR: [{ micInitial: ini }, { teamMembers: { has: ini } }],
+      },
       select: { id: true },
     }),
     prisma.opportunity.findFirst({
       where: {
         status: { in: ['Waiting for Result', 'Backlog', 'In progress'] },
-        OR: assignedFilter,
+        OR: oppAssignedFilter,
       },
       select: { id: true },
     }),

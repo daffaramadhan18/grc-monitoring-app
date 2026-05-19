@@ -21,8 +21,7 @@ interface Project {
   clientInitial: string | null
   projectOwner: string | null; status: string
   micInitial: string | null
-  tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
-  tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
+  teamMembers: string[]
   startedDate: string | null; endDate: string | null
   confirmedFee: number | null
   termins: Termin[]
@@ -44,8 +43,7 @@ const emptyForm = () => ({
   spkFilename:    '',
   pksFilename:    '',
   micInitial:     '',
-  tm1Initial: '', tm2Initial: '', tm3Initial: '',
-  tm4Initial: '', tm5Initial: '', tm6Initial: '',
+  teamMembers:    [] as string[],
 })
 
 const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
@@ -177,6 +175,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
   const { data: projects = initial, mutate: revalidate } = useSWR<Project[]>('/api/projects', fetcher, { fallbackData: initial })
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm]           = useState(emptyForm())
+  const [tmAddInput, setTmAddInput] = useState('')
   type SaveState = 'idle' | 'saving' | 'success' | 'error'
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [dateError, setDateError] = useState('')
@@ -315,6 +314,16 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     filters.statuses.size +
     (filters.teamMember ? 1 : 0)
 
+  function addTeamMember(initial: string) {
+    if (!initial || form.teamMembers.includes(initial)) return
+    setForm((f) => ({ ...f, teamMembers: [...f.teamMembers, initial] }))
+    setTmAddInput('')
+  }
+
+  function removeTeamMember(initial: string) {
+    setForm((f) => ({ ...f, teamMembers: f.teamMembers.filter((t) => t !== initial) }))
+  }
+
   function set(field: string, value: string) {
     setForm((f) => {
       const next = { ...f, [field]: value }
@@ -424,8 +433,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
 
     if (filters.teamMember)
       result = result.filter((p) =>
-        [p.micInitial, p.tm1Initial, p.tm2Initial, p.tm3Initial,
-         p.tm4Initial, p.tm5Initial, p.tm6Initial].includes(filters.teamMember))
+        p.micInitial === filters.teamMember || p.teamMembers.includes(filters.teamMember))
 
     return [...result].sort((a, b) => {
       let av: string | number = ''
@@ -506,8 +514,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
 
   function renderRows(list: Project[]) {
     return list.map((proj, index) => {
-      const team = [proj.tm1Initial, proj.tm2Initial, proj.tm3Initial,
-                    proj.tm4Initial, proj.tm5Initial, proj.tm6Initial].filter(Boolean) as string[]
+      const team = proj.teamMembers
       const paidCount = proj.termins.filter((t) => t.status === 'Paid').length
       const isSelected = selected.has(proj.id)
       const isModified = editData.has(proj.id)
@@ -586,21 +593,9 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
               : (proj.micInitial ?? '—')}
           </td>
           {/* Team */}
-          <td className={`px-4 align-middle overflow-hidden whitespace-nowrap ${editMode ? 'rsm-edit-cell' : ''}`}
+          <td className="px-4 align-middle overflow-hidden whitespace-nowrap"
             onClick={(e) => editMode && e.stopPropagation()}>
-            {editMode
-              ? (
-                <div className="flex gap-1 flex-wrap">
-                  {(['tm1Initial', 'tm2Initial', 'tm3Initial'] as const).map((k) => (
-                    <select key={k} style={{ minWidth: 50 }}
-                      value={String(cellValue(proj, k) ?? '')}
-                      onChange={(e) => updateCell(proj.id, k, e.target.value || null)}>
-                      {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                    </select>
-                  ))}
-                </div>
-              )
-              : (() => {
+            {(() => {
                 const shown = team.slice(0, 4)
                 const extra = team.length - shown.length
                 if (team.length === 0) return <span className="text-gray-300">—</span>
@@ -963,7 +958,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
         {/* FAB */}
         <button
           className="rsm-fab md:hidden"
-          onClick={() => { haptic(); setForm(emptyForm()); setDateError(''); setModalOpen(true) }}
+          onClick={() => { haptic(); setForm(emptyForm()); setTmAddInput(''); setDateError(''); setModalOpen(true) }}
           aria-label="Add Project"
         >
           <Plus size={26} />
@@ -1168,32 +1163,42 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                         uploading={false} onUpload={(path, name) => setFile('pks', path, name)} />
                     </div>
 
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <Field label="MIC">
                         <select className={selectCls} value={form.micInitial}
                           onChange={(e) => set('micInitial', e.target.value)}>
                           {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
                         </select>
                       </Field>
-                      {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
-                        <Field key={k} label={`TM${i+1}`}>
-                          <select className={selectCls} value={form[k]}
-                            onChange={(e) => set(k, e.target.value)}>
-                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                          </select>
-                        </Field>
-                      ))}
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
-                        <Field key={k} label={`TM${i+4}`}>
-                          <select className={selectCls} value={form[k]}
-                            onChange={(e) => set(k, e.target.value)}>
-                            {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                          </select>
-                        </Field>
-                      ))}
-                    </div>
+                    <Field label="Team Members">
+                      <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
+                        {form.teamMembers.length === 0 && (
+                          <span className="text-xs text-gray-400 py-1">No team members added</span>
+                        )}
+                        {form.teamMembers.map((t) => (
+                          <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
+                            {t}
+                            <button type="button" onClick={() => removeTeamMember(t)}
+                              className="text-blue-400 hover:text-blue-700 transition-colors ml-0.5">
+                              <X size={10} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <select className={`${selectCls} flex-1`} value={tmAddInput} onChange={(e) => setTmAddInput(e.target.value)}>
+                          <option value="">Add member…</option>
+                          {teamMembers
+                            .filter((m) => m.initial !== form.micInitial && !form.teamMembers.includes(m.initial))
+                            .map((m) => <option key={m.initial} value={m.initial}>{m.initial} – {m.fullName}</option>)}
+                        </select>
+                        <button type="button" onClick={() => addTeamMember(tmAddInput)} disabled={!tmAddInput}
+                          className="px-3 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-40 transition-colors shrink-0">
+                          Add
+                        </button>
+                      </div>
+                    </Field>
 
                     <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                       <button type="button" onClick={() => setModalOpen(false)}

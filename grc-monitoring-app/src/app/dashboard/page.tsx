@@ -16,11 +16,12 @@ function monthRange(month: string | undefined) {
 
 async function getWorkload() {
   const members = await prisma.teamMember.findMany({ select: { id: true, initial: true, fullName: true, level: true } })
+  const OPP_TM = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
+
   const [projects, opps] = await Promise.all([
     prisma.project.findMany({
       where: { status: { in: ['Fieldwork', 'Reporting'] } },
-      select: { micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-                tm4Initial: true, tm5Initial: true, tm6Initial: true },
+      select: { micInitial: true, teamMembers: true },
     }),
     prisma.opportunity.findMany({
       where: { status: 'In progress' },
@@ -29,15 +30,13 @@ async function getWorkload() {
     }),
   ])
 
-  const TM = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
-
   return members.map((m) => ({
     id:               m.id,
     initial:          m.initial,
     fullName:         m.fullName,
     level:            m.level,
-    active_projects:  projects.filter((p) => TM.some((f) => p[f] === m.initial)).length,
-    active_proposals: opps.filter((o) => TM.some((f) => o[f] === m.initial)).length,
+    active_projects:  projects.filter((p) => p.micInitial === m.initial || p.teamMembers.includes(m.initial)).length,
+    active_proposals: opps.filter((o) => OPP_TM.some((f) => o[f] === m.initial)).length,
   })).filter((m) => m.active_projects > 0 || m.active_proposals > 0)
     .sort((a, b) => (b.active_projects + b.active_proposals) - (a.active_projects + a.active_proposals))
 }

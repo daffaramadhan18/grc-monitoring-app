@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trash2, Plus, Save, Download, UploadCloud, FileText, X } from 'lucide-react'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -16,8 +16,7 @@ interface Project {
   clientInitial: string | null
   projectOwner: string | null; status: string
   micInitial: string | null
-  tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
-  tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
+  teamMembers: string[]
   startedDate: string | null; endDate: string | null
   spk: string | null; pks: string | null
   confirmedFee: number | null
@@ -117,18 +116,14 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
     projectOwner:  project.projectOwner  ?? '',
     status:        project.status,
     micInitial:    project.micInitial    ?? '',
-    tm1Initial:    project.tm1Initial    ?? '',
-    tm2Initial:    project.tm2Initial    ?? '',
-    tm3Initial:    project.tm3Initial    ?? '',
-    tm4Initial:    project.tm4Initial    ?? '',
-    tm5Initial:    project.tm5Initial    ?? '',
-    tm6Initial:    project.tm6Initial    ?? '',
+    teamMembers:   project.teamMembers,
     startedDate:   toInputDate(project.startedDate),
     endDate:       toInputDate(project.endDate),
     spk:           project.spk           ?? '',
     pks:           project.pks           ?? '',
     confirmedFee:  project.confirmedFee  != null ? String(project.confirmedFee) : '',
   })
+  const [tmAddInput, setTmAddInput] = useState('')
 
   const [termins, setTermins] = useState<TerminRow[]>(
     project.termins.map((t) => ({
@@ -218,6 +213,21 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
       alert('Error: ' + err.message)
       setDeleting(false)
     }
+  }
+
+  const availableTmOptions = useMemo(
+    () => teamMembers.filter((m) => m.initial !== form.micInitial && !form.teamMembers.includes(m.initial)),
+    [teamMembers, form.micInitial, form.teamMembers],
+  )
+
+  function addTeamMember(initial: string) {
+    if (!initial || form.teamMembers.includes(initial)) return
+    setForm((f) => ({ ...f, teamMembers: [...f.teamMembers, initial] }))
+    setTmAddInput('')
+  }
+
+  function removeTeamMember(initial: string) {
+    setForm((f) => ({ ...f, teamMembers: f.teamMembers.filter((t) => t !== initial) }))
   }
 
   const tmOptions   = [{ initial: '', fullName: '—' }, ...teamMembers]
@@ -324,29 +334,41 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
 
         {/* Team */}
         <Section title="Tim Project">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Field label="MIC">
               <select className={selectCls} value={form.micInitial} onChange={(e) => setField('micInitial', e.target.value)}>
                 {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
               </select>
             </Field>
-            {(['tm1Initial','tm2Initial','tm3Initial'] as const).map((k, i) => (
-              <Field key={k} label={`TM${i+1}`}>
-                <select className={selectCls} value={form[k]} onChange={(e) => setField(k, e.target.value)}>
-                  {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                </select>
-              </Field>
-            ))}
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            {(['tm4Initial','tm5Initial','tm6Initial'] as const).map((k, i) => (
-              <Field key={k} label={`TM${i+4}`}>
-                <select className={selectCls} value={form[k]} onChange={(e) => setField(k, e.target.value)}>
-                  {tmOptions.map((m) => <option key={m.initial} value={m.initial}>{m.initial || '—'}</option>)}
-                </select>
-              </Field>
-            ))}
-          </div>
+          <Field label="Team Members">
+            <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
+              {form.teamMembers.length === 0 && (
+                <span className="text-xs text-gray-400 py-1">No team members added</span>
+              )}
+              {form.teamMembers.map((t) => (
+                <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
+                  {t}
+                  <button type="button" onClick={() => removeTeamMember(t)}
+                    className="text-blue-400 hover:text-blue-700 transition-colors ml-0.5">
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <select className={`${selectCls} flex-1`} value={tmAddInput} onChange={(e) => setTmAddInput(e.target.value)}>
+                <option value="">Add member…</option>
+                {availableTmOptions.map((m) => (
+                  <option key={m.initial} value={m.initial}>{m.initial} – {m.fullName}</option>
+                ))}
+              </select>
+              <button type="button" onClick={() => addTeamMember(tmAddInput)} disabled={!tmAddInput}
+                className="px-3 py-2 text-sm font-medium bg-[#009CDE] text-white rounded-lg hover:bg-[#007BB5] disabled:opacity-40 transition-colors shrink-0">
+                Add
+              </button>
+            </div>
+          </Field>
         </Section>
 
       {/* Termins */}

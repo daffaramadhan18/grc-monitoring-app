@@ -6,7 +6,7 @@ interface Termin { id: number; status: string | null; fee: number | null }
 interface Project {
   id: number; proposalName: string; clientName: string | null; clientInitial: string | null
   status: string; confirmedFee: number | null; endDate: string | null
-  micInitial: string | null; tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
+  micInitial: string | null; teamMembers: string[]
   termins: Termin[]
 }
 
@@ -24,9 +24,8 @@ export default function MobileProjCard({ project, onTap }: { project: Project; o
 
   const team = [
     project.micInitial ? { i: project.micInitial, mic: true } : null,
-    ...[project.tm1Initial,project.tm2Initial,project.tm3Initial]
-      .filter(Boolean).map(t => ({ i: t!, mic: false }))
-  ].filter(Boolean) as { i: string; mic: boolean }[]
+    ...project.teamMembers.map(t => ({ i: t, mic: false })),
+  ].filter((x): x is { i: string; mic: boolean } => x !== null)
 
   return (
     <article className="rsm-mcard" onClick={() => onTap(project)}>
