@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (!proposalName) continue
 
     // Column order: 0: Client Initial, 1: Client Name, 2: Service Type, 3: Sub-service, 4: Proposal Name,
-    // 5: Phase, 6: Submitted Date, 7: Status, 8: Probability (%), 9: Notes, 10: %RR,
+    // 5: Phase, 6: Submitted Date, 7: Status, 8: Probability, 9: Notes, 10: %RR,
     // 11: Harga, 12: Revenue CF, 13: MIC, 14-19: TM1-TM6, 20: Expected Date, 21: Risk Level
     const clientInitial   = String(row[0] ?? '').trim() || null
     const clientName      = String(row[1] ?? '').trim() || null
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const phase           = String(row[5] ?? '').trim() || null
     const submittedDate   = parseDateDMY(row[6])
     const status          = String(row[7] ?? '').trim() || 'In progress'
-    const probability     = parseNumber(row[8])
+    const probability     = String(row[8] ?? '').trim() || null
     const notes           = String(row[9] ?? '').trim() || null
     const rrPercentage    = parseNumber(row[10])
     const harga           = parseNumber(row[11])

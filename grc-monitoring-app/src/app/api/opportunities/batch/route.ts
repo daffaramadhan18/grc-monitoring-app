@@ -10,7 +10,7 @@ export async function PATCH(req: Request) {
     if (data.harga != null) data.harga = Number(data.harga)
     if (data.revenueCf != null) data.revenueCf = Number(data.revenueCf)
     if (data.rrPercentage != null) data.rrPercentage = Number(data.rrPercentage)
-    if (data.probability != null) data.probability = Number(data.probability)
+    // probability is now a String field — no numeric coercion needed
     if (data.serviceTypeId != null) data.serviceTypeId = Number(data.serviceTypeId)
     if (data.subServiceId != null) data.subServiceId = Number(data.subServiceId)
     await prisma.opportunity.update({ where: { id }, data })

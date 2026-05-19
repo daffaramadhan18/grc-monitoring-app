@@ -230,17 +230,15 @@ export default function OpportunityNewPage({ serviceTypes, teamMembers }: Props)
           </select>
         </Field>
 
-        <Field label="Probability (%)">
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            className={inputCls}
+        <Field label="Probability">
+          <select
+            className={selectCls}
             value={form.probability}
             onChange={(e) => set('probability', e.target.value)}
-            placeholder="e.g. 75"
-          />
+          >
+            <option value="">— (opsional)</option>
+            {['Low', 'Medium', 'High'].map((p) => <option key={p}>{p}</option>)}
+          </select>
         </Field>
 
         <Field label="Risk Level">

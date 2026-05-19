@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       subServiceId,
       phase:         b.phase         || null,
       status:        b.status        || 'In progress',
-      probability:   b.probability   != null && b.probability !== '' ? Number(b.probability) : null,
+      probability:   b.probability   || null,
       riskLevel:     b.riskLevel     || null,
       harga:         b.harga         ? BigInt(b.harga)     : null,
       revenueCf:     b.revenueCf     ? BigInt(b.revenueCf) : null,

@@ -36,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         subServiceId,
         phase:         b.phase         || null,
         status:        b.status,
-        probability:   b.probability   != null && b.probability !== '' ? Number(b.probability) : null,
+        probability:   b.probability   || null,
         riskLevel:     b.riskLevel     || null,
         harga:         b.harga         ? BigInt(b.harga)     : null,
         revenueCf:     b.revenueCf     ? BigInt(b.revenueCf) : null,

@@ -23,7 +23,7 @@ interface Opp {
   clientInitial: string | null
   serviceTypeId: number | null; serviceType: ServiceType | null
   subServiceId: number | null; subService: SubService | null
-  phase: string | null; status: string; probability: number | null; riskLevel: string | null
+  phase: string | null; status: string; probability: string | null; riskLevel: string | null
   harga: number | null; revenueCf: number | null; rrPercentage: number | null
   expectedDate: string | null; submittedDate: string | null; notes: string | null
   micInitial: string | null
@@ -146,7 +146,7 @@ const DEFAULT_WIDTHS = [
 
 const OPP_PHASES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed']
 const RISK_LEVELS = ['Low', 'Medium', 'High']
-const PROBABILITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+const PROBABILITIES = ['Low', 'Medium', 'High']
 
 export default function OpportunitiesClient({
   opportunities: initial, serviceTypes, teamMembers,
@@ -666,7 +666,7 @@ export default function OpportunitiesClient({
                 </th>
                 {/* Probability */}
                 <th className={thBase} style={{ width: widths[7] }}>
-                  Prob.<ResizeHandle col={7} />
+                  Prob<ResizeHandle col={7} />
                 </th>
                 {/* %RR */}
                 <th className={thBase} style={{ width: widths[8] }}>
@@ -790,15 +790,15 @@ export default function OpportunitiesClient({
                         : formatDate(opp.expectedDate)}
                     </td>
                     {/* Probability */}
-                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 tabular-nums ${tdEdit}`}
+                    <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 ${tdEdit}`}
                       onClick={(e) => editMode && e.stopPropagation()}>
                       {editMode
                         ? <select value={String(cellValue(opp, 'probability') ?? '')}
-                            onChange={(e) => updateCell(opp.id, 'probability', e.target.value ? Number(e.target.value) : null)}>
+                            onChange={(e) => updateCell(opp.id, 'probability', e.target.value || null)}>
                             <option value="">—</option>
-                            {PROBABILITIES.map((p) => <option key={p} value={p}>{p}%</option>)}
+                            {PROBABILITIES.map((p) => <option key={p}>{p}</option>)}
                           </select>
-                        : (opp.probability != null ? `${opp.probability}%` : '—')}
+                        : (opp.probability ?? '—')}
                     </td>
                     {/* %RR */}
                     <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 text-right ${tdEdit}`}

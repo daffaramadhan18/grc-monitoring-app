@@ -20,7 +20,7 @@ export interface OppFull {
   subService: { id: number; name: string; serviceTypeId: number } | null
   phase: string | null
   status: string
-  probability: number | null
+  probability: string | null
   riskLevel: string | null
   harga: number | null
   revenueCf: number | null
@@ -115,7 +115,7 @@ export default function EditOpportunityModal({
         subServiceId:  opp.subService?.name ?? '',
         phase:         opp.phase          ?? '',
         status:        opp.status,
-        probability:   opp.probability   != null ? String(opp.probability)   : '',
+        probability:   opp.probability   ?? '',
         riskLevel:     opp.riskLevel     ?? '',
         harga:         opp.harga         != null ? String(opp.harga)         : '',
         revenueCf:     opp.revenueCf     != null ? String(opp.revenueCf)     : '',
@@ -280,14 +280,12 @@ export default function EditOpportunityModal({
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
-                  <Field label="Probability (%)">
-                    <div className="relative">
-                      <input type="number" min={0} max={100} step={1} className={inputCls}
-                        value={form.probability}
-                        onChange={(e) => set('probability', e.target.value)}
-                        placeholder="e.g. 75" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
-                    </div>
+                  <Field label="Probability">
+                    <select className={selectCls} value={form.probability}
+                      onChange={(e) => set('probability', e.target.value)}>
+                      <option value="">— (opsional)</option>
+                      {['Low', 'Medium', 'High'].map((p) => <option key={p}>{p}</option>)}
+                    </select>
                   </Field>
                 </div>
 
