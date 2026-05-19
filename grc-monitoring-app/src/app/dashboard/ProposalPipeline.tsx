@@ -67,8 +67,9 @@ export default function ProposalPipeline({ opps, serviceTypes, teamMembers }: Pr
       const data: OppFull = await res.json()
       setEditingOpp(data)
       setModalOpen(true)
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setLoadingId(null)
     }

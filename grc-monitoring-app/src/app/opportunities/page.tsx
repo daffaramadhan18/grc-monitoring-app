@@ -14,8 +14,7 @@ export default async function OpportunitiesPage() {
 
   return (
     <OpportunitiesClient
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      opportunities={serialize(opportunities) as any}
+      opportunities={serialize(opportunities) as Parameters<typeof OpportunitiesClient>[0]['opportunities']}
       serviceTypes={serialize(serviceTypes)}
       teamMembers={serialize(teamMembers)}
     />

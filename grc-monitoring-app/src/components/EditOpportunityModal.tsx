@@ -166,10 +166,11 @@ export default function EditOpportunityModal({
       onSaved(body as OppFull)
       await new Promise(r => setTimeout(r, 800))
       onClose()
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
       setSaveState('error')
       setTimeout(() => setSaveState('idle'), 2000)
-      alert('Error: ' + err.message)
+      alert('Error: ' + message)
     }
   }
 

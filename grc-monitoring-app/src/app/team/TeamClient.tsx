@@ -147,8 +147,9 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
       if (!res.ok) throw new Error(data.error ?? res.statusText)
       setCrudOpen(false)
       revalidate()
-    } catch (err: any) {
-      alert(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert(message)
     } finally {
       setSaving(false)
     }
@@ -164,8 +165,9 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
         throw new Error(data.error ?? res.statusText)
       }
       revalidate()
-    } catch (err: any) {
-      alert(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert(message)
     } finally {
       setDeleting(null)
     }

@@ -8,19 +8,35 @@ async function resolveSubService(name: string | undefined | null, serviceTypeId:
   return ss?.id ?? null
 }
 
+function isP2025(err: unknown): boolean {
+  return !!(err && typeof err === 'object' && 'code' in err && (err as { code: unknown }).code === 'P2025')
+}
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const data = await prisma.opportunity.findUnique({
-    where: { id: Number(params.id) },
-    include: { serviceType: true, subService: true },
-  })
-  if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(serialize(data))
+  try {
+    const data = await prisma.opportunity.findUnique({
+      where: { id: Number(params.id) },
+      include: { serviceType: true, subService: true },
+    })
+    if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(serialize(data))
+  } catch (err: unknown) {
+    console.error('[API GET /api/opportunities/[id]]', err)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const id = Number(params.id)
     const b  = await req.json()
+
+    // BUG 11: Negative fee validation
+    if (b.harga != null && Number(b.harga) < 0)
+      return NextResponse.json({ error: 'Fee tidak boleh negatif' }, { status: 400 })
+    if (b.revenueCf != null && Number(b.revenueCf) < 0)
+      return NextResponse.json({ error: 'Fee tidak boleh negatif' }, { status: 400 })
+
     const serviceTypeId = b.serviceTypeId ? Number(b.serviceTypeId) : null
     const subServiceId = serviceTypeId
       ? await resolveSubService(b.subServiceId || b.subServiceName, serviceTypeId)
@@ -79,12 +95,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     return NextResponse.json(serialize(updated))
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    if (isP2025(err)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    console.error('[API PUT /api/opportunities/[id]]', err)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.opportunity.delete({ where: { id: Number(params.id) } })
-  return new NextResponse(null, { status: 204 })
+  try {
+    await prisma.opportunity.delete({ where: { id: Number(params.id) } })
+    return new NextResponse(null, { status: 204 })
+  } catch (err: unknown) {
+    if (isP2025(err)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    console.error('[API DELETE /api/opportunities/[id]]', err)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
 }

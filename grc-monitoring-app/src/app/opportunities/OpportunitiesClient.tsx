@@ -223,13 +223,13 @@ export default function OpportunitiesClient({
     setEditMode(false)
   }
 
-  function cellValue(opp: Opp, field: keyof Opp): any {
+  function cellValue<K extends keyof Opp>(opp: Opp, field: K): Opp[K] {
     const changed = editData.get(opp.id)
-    if (changed && field in changed) return changed[field as keyof Partial<Opp>]
+    if (changed && field in changed) return changed[field] as Opp[K]
     return opp[field]
   }
 
-  function updateCell(id: number, field: keyof Opp, value: any) {
+  function updateCell(id: number, field: keyof Opp, value: Opp[keyof Opp]) {
     setEditData((prev) => {
       const next = new Map(prev)
       const existing = next.get(id) ?? {}
@@ -267,9 +267,10 @@ export default function OpportunitiesClient({
       setEditData(new Map())
       setEditMode(false)
       revalidate()
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
       setBatchSaveState('idle')
-      setToast(`✗ Gagal menyimpan — ${err.message}`)
+      setToast(`✗ Gagal menyimpan — ${message}`)
       setTimeout(() => setToast(null), 5000)
     }
   }
@@ -322,8 +323,9 @@ export default function OpportunitiesClient({
       if (!res.ok) throw new Error(await res.text())
       setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
       revalidate()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setDel(null)
     }
@@ -336,8 +338,9 @@ export default function OpportunitiesClient({
       if (!res.ok) throw new Error(await res.text())
       setSelected((prev) => { const s = new Set(prev); s.delete(id); return s })
       revalidate()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setDel(null)
     }
@@ -352,8 +355,9 @@ export default function OpportunitiesClient({
       ))
       setSelected(new Set())
       revalidate()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setBulkDeleting(false)
     }
@@ -504,8 +508,9 @@ export default function OpportunitiesClient({
         : `${data.imported} rows imported successfully`
       setToast(msg)
       setTimeout(() => setToast(null), 4000)
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setImporting(false)
     }

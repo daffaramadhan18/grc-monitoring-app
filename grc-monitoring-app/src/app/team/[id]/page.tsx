@@ -39,10 +39,8 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   return (
     <TeamMemberClient
       member={member}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      proposals={proposals.map((o) => serialize(o)) as any}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      projects={projects.map((p) => serialize(p)) as any}
+      proposals={proposals.map((o) => serialize(o)) as unknown as Parameters<typeof TeamMemberClient>[0]['proposals']}
+      projects={projects.map((p) => serialize(p)) as unknown as Parameters<typeof TeamMemberClient>[0]['projects']}
     />
   )
 }

@@ -17,8 +17,7 @@ function avatarBg(s: string) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length]
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function MobileOppCard({ opp, onTap, onDelete }: { opp: Opp; onTap: (o: any) => void; onDelete?: (opp: Opp) => void }) {
+export default function MobileOppCard({ opp, onTap, onDelete }: { opp: Opp; onTap: (o: Opp) => void; onDelete?: (opp: Opp) => void }) {
   const team = [
     opp.micInitial ? { i: opp.micInitial, mic: true } : null,
     ...[opp.tm1Initial,opp.tm2Initial,opp.tm3Initial,opp.tm4Initial,opp.tm5Initial,opp.tm6Initial]

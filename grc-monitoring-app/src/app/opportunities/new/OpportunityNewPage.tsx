@@ -113,8 +113,9 @@ export default function OpportunityNewPage({ serviceTypes, teamMembers }: Props)
         throw new Error(body.error ?? res.statusText)
       }
       router.push('/opportunities')
-    } catch (err: any) {
-      setToast('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setToast('Error: ' + message)
       setTimeout(() => setToast(null), 4000)
     } finally {
       setSaving(false)

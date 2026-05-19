@@ -19,8 +19,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
   return (
     <ProjectDetailClient
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      project={serialize(project) as any}
+      project={serialize(project) as Parameters<typeof ProjectDetailClient>[0]['project']}
       teamMembers={serialize(teamMembers)}
     />
   )

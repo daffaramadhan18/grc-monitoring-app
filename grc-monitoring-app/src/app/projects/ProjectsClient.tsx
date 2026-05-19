@@ -243,13 +243,13 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
     setEditMode(false)
   }
 
-  function cellValue(proj: Project, field: keyof Project): any {
+  function cellValue<K extends keyof Project>(proj: Project, field: K): Project[K] {
     const changed = editData.get(proj.id)
-    if (changed && field in changed) return changed[field as keyof Partial<Project>]
+    if (changed && field in changed) return changed[field] as Project[K]
     return proj[field]
   }
 
-  function updateCell(id: number, field: keyof Project, value: any) {
+  function updateCell(id: number, field: keyof Project, value: Project[keyof Project]) {
     setEditData((prev) => {
       const next = new Map(prev)
       const existing = next.get(id) ?? {}
@@ -286,9 +286,10 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       setEditData(new Map())
       setEditMode(false)
       revalidate()
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
       setBatchSaveState('idle')
-      setBatchToast(`✗ Gagal menyimpan — ${err.message}`)
+      setBatchToast(`✗ Gagal menyimpan — ${message}`)
       setTimeout(() => setBatchToast(null), 5000)
     }
   }
@@ -374,10 +375,11 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       await new Promise(r => setTimeout(r, 600))
       setModalOpen(false)
       router.push(`/projects/${saved.id}`)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
       setSaveState('error')
       setTimeout(() => setSaveState('idle'), 2000)
-      alert('Error: ' + err.message)
+      alert('Error: ' + message)
     }
   }
 
@@ -390,8 +392,9 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       ))
       setSelected(new Set())
       revalidate()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setBulkDeleting(false)
     }
@@ -510,8 +513,9 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
       setImportResult(data)
       revalidate()
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error: ' + message)
     } finally {
       setImporting(false)
     }

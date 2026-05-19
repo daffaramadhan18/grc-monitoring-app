@@ -10,6 +10,7 @@ import QuarterlySection from '../opportunities/QuarterlySection'
 
 function monthRange(month: string | undefined) {
   if (!month) return null
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return null
   const [y, m] = month.split('-').map(Number)
   return { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) }
 }
