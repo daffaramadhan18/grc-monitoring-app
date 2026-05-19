@@ -19,7 +19,7 @@ export default function Sidebar() {
     <aside className="hidden md:flex md:w-60 shrink-0 flex-col bg-[#2D2D2D] text-white">
       {/* Logo */}
       <div className="rsm-sidebar-logo px-6 py-5 border-b border-white/10">
-        <img src="/logo.svg" alt="RSM" style={{ height: 36 }} />
+        <div className="rsm-sidebar-logo-mark text-white font-bold text-xl leading-none">RSM</div>
         <div className="text-xs text-white/50 mt-1">CC3 · GRC Monitoring</div>
       </div>
 
