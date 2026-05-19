@@ -46,6 +46,26 @@ const emptyForm = () => ({
   teamMembers:    [] as string[],
 })
 
+// Active statuses — Finish is handled by the separate collapsible section
+const ACTIVE_PROJ_STATUSES = ['Waiting to Start', 'Planning', 'Fieldwork', 'Reporting'] as const
+
+// Explicit color values for Framer Motion animate (can't animate Tailwind classes)
+const STATUS_ACTIVE_STYLES: Record<string, { bg: string; color: string }> = {
+  'Waiting to Start': { bg: '#ede9fe', color: '#6d28d9' },
+  Planning:           { bg: 'rgba(0,156,222,0.15)', color: '#006fa0' },
+  Fieldwork:          { bg: '#fef3c7', color: '#b45309' },
+  Reporting:          { bg: '#ffedd5', color: '#c2410c' },
+}
+
+const badgeContainerVariants = {
+  hidden: {},
+  show:   { transition: { staggerChildren: 0.07 } },
+}
+const badgeItemVariants = {
+  hidden: { opacity: 0, scale: 0.75 },
+  show:   { opacity: 1, scale: 1, transition: { type: 'spring' as const, stiffness: 280, damping: 22 } },
+}
+
 const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
 
@@ -683,13 +703,22 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
       </div>
 
       {/* Summary pills */}
-      <div className="flex flex-wrap gap-2">
-        {PROJ_STATUSES.map((s) => (
-          <span key={s} className={`px-3 py-1 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[s]}`}>
+      <motion.div
+        className="flex flex-wrap gap-2"
+        variants={badgeContainerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {ACTIVE_PROJ_STATUSES.map((s) => (
+          <motion.span
+            key={s}
+            variants={badgeItemVariants}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${PROJ_STATUS_COLORS[s]}`}
+          >
             {s}: {monthFilteredProjects.filter((p) => p.status === s).length}
-          </span>
+          </motion.span>
         ))}
-      </div>
+      </motion.div>
 
       {/* Filter bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
@@ -725,20 +754,23 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
         </div>
         {/* Status chips */}
         <div className="flex flex-wrap gap-1.5">
-          {PROJ_STATUSES.map((s) => {
+          {ACTIVE_PROJ_STATUSES.map((s) => {
             const active = filters.statuses.has(s)
+            const style  = STATUS_ACTIVE_STYLES[s]
             return (
-              <button
+              <motion.button
                 key={s}
                 onClick={() => toggleStatusFilter(s)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  active
-                    ? `${PROJ_STATUS_COLORS[s] ?? 'bg-gray-200 text-gray-700'} border-transparent`
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                }`}
+                animate={{
+                  backgroundColor: active ? style.bg   : '#ffffff',
+                  color:           active ? style.color : '#6b7280',
+                  borderColor:     active ? 'transparent' : '#e5e7eb',
+                }}
+                transition={{ duration: 0.18 }}
+                className="px-2.5 py-1 rounded-full text-xs font-medium border"
               >
                 {s}
-              </button>
+              </motion.button>
             )
           })}
         </div>
@@ -771,7 +803,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
           </div>
         )}
         <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-          <table className="text-sm" style={{ tableLayout: 'fixed', width: widths.reduce((s, w) => s + w, 0) }}>
+          <table className="w-full text-sm" style={{ tableLayout: 'auto', minWidth: widths.reduce((s, w) => s + w, 0) }}>
             <colgroup>
               {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
@@ -859,7 +891,7 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                 </div>
               )}
               <div className={`overflow-x-auto${selected.size > 0 ? ' pb-12' : ''}`}>
-                <table className="text-sm" style={{ tableLayout: 'fixed', width: widths.reduce((s, w) => s + w, 0) }}>
+                <table className="w-full text-sm" style={{ tableLayout: 'auto', minWidth: widths.reduce((s, w) => s + w, 0) }}>
                   <colgroup>
                     {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
                   </colgroup>
