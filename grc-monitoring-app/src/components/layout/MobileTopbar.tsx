@@ -1,11 +1,14 @@
 'use client'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
+import { LogOut } from 'lucide-react'
 
 const PAGE_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/opportunities': 'Opportunities',
   '/projects': 'Projects',
   '/team': 'Team',
+  '/users': 'Users',
 }
 
 export default function MobileTopbar() {
@@ -23,6 +26,13 @@ export default function MobileTopbar() {
       {label && (
         <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.75)' }}>{label}</span>
       )}
+      <button
+        onClick={() => signOut({ callbackUrl: '/login' })}
+        aria-label="Sign out"
+        className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+      >
+        <LogOut size={18} />
+      </button>
     </header>
   )
 }

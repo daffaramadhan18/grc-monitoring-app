@@ -1,8 +1,8 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { LayoutDashboard, TrendingUp, FolderKanban, Users, ShieldCheck } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
+import { LayoutDashboard, TrendingUp, FolderKanban, Users, ShieldCheck, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const baseNavItems = [
@@ -21,7 +21,6 @@ export default function Sidebar() {
     : baseNavItems
 
   return (
-    /* Desktop-only sidebar — on mobile, BottomNav handles navigation */
     <aside className="hidden md:flex md:w-60 shrink-0 flex-col bg-[#2D2D2D] text-white">
       {/* Logo */}
       <div className="rsm-sidebar-logo px-6 py-5 border-b border-white/10">
@@ -51,8 +50,18 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="px-6 py-4 border-t border-white/10 text-xs text-white/30">
-        v0.1.0
+      {/* Footer: username + sign out */}
+      <div className="px-3 py-3 border-t border-white/10 space-y-1">
+        {session?.user?.username && (
+          <div className="px-3 py-1 text-xs text-white/40 truncate">{session.user.username}</div>
+        )}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
       </div>
     </aside>
   )
