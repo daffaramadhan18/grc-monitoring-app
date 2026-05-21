@@ -12,6 +12,7 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -51,8 +52,8 @@ export default function ChangePasswordPage() {
         return
       }
 
-      await update({ mustChangePassword: false })
-      router.replace('/dashboard')
+      setSuccess(true)
+      setTimeout(() => signOut({ callbackUrl: '/login' }), 2000)
     } catch {
       setError('Terjadi kesalahan. Coba lagi.')
     } finally {
@@ -76,6 +77,18 @@ export default function ChangePasswordPage() {
           <div className="text-sm text-gray-500 mt-1 font-medium">CC3 · GRC Monitoring</div>
         </div>
 
+        {success ? (
+          <div className="text-center space-y-3 py-2">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mx-auto">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-800">Password changed successfully.</p>
+            <p className="text-xs text-gray-400">Redirecting to login...</p>
+          </div>
+        ) : (
+          <>
         <h2 className="text-base font-semibold text-gray-800 mb-1">Ganti Password</h2>
         <p className="text-xs text-gray-500 mb-6">
           Akun Anda memerlukan password baru sebelum melanjutkan.
@@ -142,6 +155,8 @@ export default function ChangePasswordPage() {
         >
           Keluar
         </button>
+          </>
+        )}
       </div>
     </div>
   )
