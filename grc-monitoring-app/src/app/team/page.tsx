@@ -25,7 +25,7 @@ export default async function TeamPage() {
     }),
     prisma.project.findMany({
       where: { status: 'Finish' },
-      select: { micInitial: true, teamMembers: true },
+      select: { id: true, proposalName: true, clientName: true, micInitial: true, teamMembers: true },
     }),
   ])
 
@@ -35,6 +35,7 @@ export default async function TeamPage() {
   const details: Record<string, {
     projects: typeof activeProjects
     proposals: typeof activeOpps
+    finishedProjects: typeof finishedProjects
   }> = {}
 
   for (const m of members) {
@@ -42,13 +43,14 @@ export default async function TeamPage() {
     const memberProposals = activeOpps.filter((o) => OPP_TM.some((f) => o[f] === m.initial))
     const memberFinished  = finishedProjects.filter((p) => p.micInitial === m.initial || p.teamMembers.includes(m.initial))
     alloc[m.initial]   = { projects: memberProjects.length, proposals: memberProposals.length, finished: memberFinished.length }
-    details[m.initial] = { projects: memberProjects, proposals: memberProposals }
+    details[m.initial] = { projects: memberProjects, proposals: memberProposals, finishedProjects: memberFinished }
   }
 
   // Serialize dates
   const serializedDetails: Record<string, {
     projects: { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }[]
     proposals: { id: number; proposalName: string; status: string; clientInitial: string | null }[]
+    finishedProjects: { id: number; proposalName: string; clientName: string | null }[]
   }> = {}
 
   for (const [ini, d] of Object.entries(details)) {
@@ -66,6 +68,11 @@ export default async function TeamPage() {
         proposalName: o.proposalName,
         status: o.status,
         clientInitial: o.clientInitial ?? null,
+      })),
+      finishedProjects: d.finishedProjects.map((p) => ({
+        id: p.id,
+        proposalName: p.proposalName,
+        clientName: p.clientName ?? null,
       })),
     }
   }
