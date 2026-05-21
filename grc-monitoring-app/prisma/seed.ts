@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client"
+import bcrypt from "bcryptjs"
 
 const prisma = new PrismaClient()
 
@@ -78,6 +79,24 @@ async function main() {
     }
   }
   console.log("Seeded service types and sub-services")
+
+  // ─── Default Admin User ─────────────────────────────────────────────────────
+  const existingUser = await prisma.user.findUnique({ where: { username: 'daffa.ramadhan' } })
+  if (!existingUser) {
+    const hash = await bcrypt.hash('ITGRC@2026', 12)
+    await prisma.user.create({
+      data: {
+        username:           'daffa.ramadhan',
+        password:           hash,
+        role:               'ADMIN',
+        isActive:           true,
+        mustChangePassword: false,
+      },
+    })
+    console.log("Seeded default admin user: daffa.ramadhan")
+  } else {
+    console.log("Admin user already exists, skipping")
+  }
 }
 
 main()

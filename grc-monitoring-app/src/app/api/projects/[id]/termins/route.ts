@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
+import { authOptions } from '@/lib/auth'
 
 // PUT replaces all termins for a project
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const projectId = Number(params.id)
     const termins: { terminNumber: number; percentage?: number; fee?: number; status?: string }[] =

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
+import { authOptions } from '@/lib/auth'
 
 async function resolveSubService(name: string | undefined | null, serviceTypeId: number) {
   if (!name) return null
@@ -22,6 +24,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const b = await req.json()
 

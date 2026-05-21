@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
 // In-memory rate limit store — resets on PM2 restart (acceptable for internal tool)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
@@ -6,6 +7,9 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_MAX    = 60   // requests
 const RATE_LIMIT_WINDOW = 60_000 // 1 minute in ms
 const LOCALHOST_IPS     = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+
+// Paths where session/token check is skipped (rate limiting still applies)
+const SESSION_SKIP_PATHS = ['/login', '/api/auth']
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -32,15 +36,54 @@ function checkRateLimit(ip: string): boolean {
   return true
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Rate limit API routes (localhost is exempt)
+  // Rate limit API routes (localhost is exempt) — applies to ALL /api/* including /api/auth
   if (pathname.startsWith('/api/')) {
     const ip = getClientIp(req)
     if (!checkRateLimit(ip)) {
       return new NextResponse(JSON.stringify({ error: 'Too Many Requests' }), {
         status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+  }
+
+  // Skip token check for login page and NextAuth endpoints
+  const skipSession = SESSION_SKIP_PATHS.some((p) => pathname.startsWith(p))
+
+  if (!skipSession) {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+
+    if (!token) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      const loginUrl = req.nextUrl.clone()
+      loginUrl.pathname = '/login'
+      return NextResponse.redirect(loginUrl)
+    }
+
+    // Force password change: redirect to /change-password for all other paths
+    if (token.mustChangePassword && pathname !== '/change-password') {
+      const changeUrl = req.nextUrl.clone()
+      changeUrl.pathname = '/change-password'
+      return NextResponse.redirect(changeUrl)
+    }
+
+    // VIEWER role cannot mutate data
+    const mutatingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+    if (
+      token.role === 'VIEWER' &&
+      pathname.startsWith('/api/') &&
+      mutatingMethods.has(req.method)
+    ) {
+      return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' },
       })
     }
@@ -62,5 +105,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icon-192\\.png|icon-512\\.png|logo\\.svg|manifest\\.json|icons/).*)',
+  ],
 }
