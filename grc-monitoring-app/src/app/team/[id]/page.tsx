@@ -13,8 +13,12 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   if (!member) notFound()
 
   const oppOrFilter = OPP_TM_FIELDS.map((f) => ({ [f]: member.initial }))
+  const projOrFilter = [
+    { micInitial: member.initial },
+    { teamMembers: { has: member.initial } },
+  ]
 
-  const [proposals, projects] = await Promise.all([
+  const [proposals, projects, finishedProjects] = await Promise.all([
     prisma.opportunity.findMany({
       where: {
         status: 'In progress',
@@ -26,13 +30,18 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
     prisma.project.findMany({
       where: {
         status: { in: ['Planning', 'Fieldwork', 'Reporting'] },
-        OR: [
-          { micInitial: member.initial },
-          { teamMembers: { has: member.initial } },
-        ],
+        OR: projOrFilter,
       },
       include: { termins: true },
       orderBy: { startedDate: 'asc' },
+    }),
+    prisma.project.findMany({
+      where: {
+        status: 'Finish',
+        OR: projOrFilter,
+      },
+      include: { termins: true },
+      orderBy: { startedDate: 'desc' },
     }),
   ])
 
@@ -41,6 +50,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
       member={member}
       proposals={proposals.map((o) => serialize(o)) as unknown as Parameters<typeof TeamMemberClient>[0]['proposals']}
       projects={projects.map((p) => serialize(p)) as unknown as Parameters<typeof TeamMemberClient>[0]['projects']}
+      finishedProjects={finishedProjects.map((p) => serialize(p)) as unknown as Parameters<typeof TeamMemberClient>[0]['finishedProjects']}
     />
   )
 }

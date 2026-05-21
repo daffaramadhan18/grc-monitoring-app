@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
-import { OPP_STATUS_COLORS, PROJ_STATUS_COLORS, TERMIN_STATUS_COLORS, formatRupiah, formatDate } from '@/lib/utils'
+import { OPP_STATUS_COLORS, PROJ_STATUS_COLORS, formatRupiah, formatDate } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ interface Project {
   termins?: Termin[]
 }
 
-interface Props { member: Member; proposals: Proposal[]; projects: Project[] }
+interface Props { member: Member; proposals: Proposal[]; projects: Project[]; finishedProjects: Project[] }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ function capacityBadge(projects: number, proposals: number) {
 const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 const TM_LABELS = ['MIC','TM1','TM2','TM3','TM4','TM5','TM6']
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function roleOf(row: Record<string, any>, initial: string): string {
   for (let i = 0; i < TM_FIELDS.length; i++) {
     if (row[TM_FIELDS[i]] === initial) return TM_LABELS[i]
@@ -58,16 +60,114 @@ function roleOf(row: Record<string, any>, initial: string): string {
   return '—'
 }
 
+// ─── Project table ────────────────────────────────────────────────────────────
+
+interface ProjectTableProps {
+  projects: Project[]
+  member: Member
+  rowContainer: Variants
+  rowItem: Variants
+  onRowClick: (id: number) => void
+}
+
+function ProjectTable({ projects, member, rowContainer, rowItem, onRowClick }: ProjectTableProps) {
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Engagement Name</th>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Client</th>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Period</th>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Confirmed Fee</th>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Termins</th>
+          <th className="text-left px-4 py-3 text-gray-500 font-medium">Role</th>
+        </tr>
+      </thead>
+      <motion.tbody
+        className="divide-y divide-gray-50"
+        variants={rowContainer}
+        initial="hidden"
+        animate="show"
+      >
+        {projects.map((p) => {
+          const paid = p.termins?.filter((t) => t.status === 'Paid').length ?? 0
+          const total = p.termins?.length ?? 0
+          return (
+            <motion.tr
+              key={p.id}
+              variants={rowItem}
+              onClick={() => onRowClick(p.id)}
+              className="rsm-row-click hover:bg-gray-50/60 transition-colors cursor-pointer"
+            >
+              <td className="px-4 py-3 font-medium text-gray-900">{p.proposalName}</td>
+              <td className="px-4 py-3 text-gray-600">{p.clientName ?? '—'}</td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${PROJ_STATUS_COLORS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {p.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                {formatDate(p.startedDate)} – {formatDate(p.endDate)}
+              </td>
+              <td className="px-4 py-3 text-gray-700">{formatRupiah(p.confirmedFee)}</td>
+              <td className="px-4 py-3 text-gray-500">
+                {total > 0 ? `${paid}/${total} paid` : '—'}
+              </td>
+              <td className="px-4 py-3">
+                <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
+                  {roleOf(p, member.initial)}
+                </span>
+              </td>
+            </motion.tr>
+          )
+        })}
+      </motion.tbody>
+    </table>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function TeamMemberClient({ member, proposals, projects }: Props) {
+export default function TeamMemberClient({ member, proposals, projects, finishedProjects }: Props) {
   const router = useRouter()
+  const reduced = useReducedMotion() ?? false
   const badge = capacityBadge(projects.length, proposals.length)
 
+  const pageContainer: Variants = {
+    hidden: {},
+    show: { transition: { staggerChildren: reduced ? 0 : 0.08 } },
+  }
+
+  const topSlide: Variants = {
+    hidden: { opacity: reduced ? 1 : 0, y: reduced ? 0 : -16 },
+    show: { opacity: 1, y: 0, transition: { duration: reduced ? 0 : 0.3, ease: 'easeOut' } },
+  }
+
+  const sectionVariants: Variants = {
+    hidden: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 20 },
+    show: { opacity: 1, y: 0, transition: { duration: reduced ? 0 : 0.3, ease: 'easeOut' } },
+  }
+
+  const rowContainer: Variants = {
+    hidden: {},
+    show: { transition: { staggerChildren: reduced ? 0 : 0.04 } },
+  }
+
+  const rowItem: Variants = {
+    hidden: { opacity: reduced ? 1 : 0 },
+    show: { opacity: 1, transition: { duration: reduced ? 0 : 0.18 } },
+  }
+
   return (
-    <div className="rsm-page-in space-y-6">
+    <motion.div
+      className="rsm-page-in space-y-6"
+      variants={pageContainer}
+      initial="hidden"
+      animate="show"
+    >
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <motion.div variants={topSlide} className="flex items-center gap-3">
         <button
           onClick={() => router.push('/team')}
           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -75,10 +175,10 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
           <ArrowLeft size={18} />
         </button>
         <h1 className="text-xl font-semibold text-gray-800">Team Member Detail</h1>
-      </div>
+      </motion.div>
 
       {/* Profile card */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+      <motion.div variants={topSlide} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
         <div className={`w-14 h-14 ${avatarColor(member.initial)} rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0`}>
           {member.initial.slice(0, 2)}
         </div>
@@ -94,10 +194,10 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
             {badge.label}
           </span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Active Proposals */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <motion.div variants={sectionVariants} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">Active Proposals</h3>
           <span className="text-xs text-gray-400">{proposals.length} proposal{proposals.length !== 1 ? 's' : ''}</span>
@@ -116,9 +216,14 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">Role</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <motion.tbody
+              className="divide-y divide-gray-50"
+              variants={rowContainer}
+              initial="hidden"
+              animate="show"
+            >
               {proposals.map((o) => (
-                <tr key={o.id} className="rsm-row-click hover:bg-gray-50/60 transition-colors">
+                <motion.tr key={o.id} variants={rowItem} className="rsm-row-click hover:bg-gray-50/60 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{o.proposalName}</td>
                   <td className="px-4 py-3 text-gray-600">{o.clientName ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{o.serviceType?.name ?? '—'}</td>
@@ -133,15 +238,15 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
                       {roleOf(o, member.initial)}
                     </span>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
-            </tbody>
+            </motion.tbody>
           </table>
         )}
-      </div>
+      </motion.div>
 
       {/* Active Projects */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <motion.div variants={sectionVariants} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">Active Projects</h3>
           <span className="text-xs text-gray-400">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
@@ -149,54 +254,34 @@ export default function TeamMemberClient({ member, proposals, projects }: Props)
         {projects.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-gray-400">Tidak ada project aktif</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Engagement Name</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Client</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Period</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Confirmed Fee</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Termins</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Role</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {projects.map((p) => {
-                const paid = p.termins?.filter((t) => t.status === 'Paid').length ?? 0
-                const total = p.termins?.length ?? 0
-                return (
-                  <tr
-                    key={p.id}
-                    onClick={() => router.push(`/projects/${p.id}`)}
-                    className="rsm-row-click hover:bg-gray-50/60 transition-colors cursor-pointer"
-                  >
-                    <td className="px-4 py-3 font-medium text-gray-900">{p.proposalName}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.clientName ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${PROJ_STATUS_COLORS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {formatDate(p.startedDate)} – {formatDate(p.endDate)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{formatRupiah(p.confirmedFee)}</td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {total > 0 ? `${paid}/${total} paid` : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
-                        {roleOf(p, member.initial)}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <ProjectTable
+            projects={projects}
+            member={member}
+            rowContainer={rowContainer}
+            rowItem={rowItem}
+            onRowClick={(id) => router.push(`/projects/${id}`)}
+          />
         )}
-      </div>
-    </div>
+      </motion.div>
+
+      {/* Finished Projects */}
+      <motion.div variants={sectionVariants} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-700">Finished Projects</h3>
+          <span className="text-xs text-gray-400">{finishedProjects.length} project{finishedProjects.length !== 1 ? 's' : ''}</span>
+        </div>
+        {finishedProjects.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-gray-400">Tidak ada finished project</p>
+        ) : (
+          <ProjectTable
+            projects={finishedProjects}
+            member={member}
+            rowContainer={rowContainer}
+            rowItem={rowItem}
+            onRowClick={(id) => router.push(`/projects/${id}`)}
+          />
+        )}
+      </motion.div>
+    </motion.div>
   )
 }
