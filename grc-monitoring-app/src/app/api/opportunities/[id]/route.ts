@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
 import { authOptions } from '@/lib/auth'
+import { stripFinancial } from '@/lib/financial'
 
 async function resolveSubService(name: string | undefined | null, serviceTypeId: number) {
   if (!name) return null
@@ -16,12 +17,14 @@ function isP2025(err: unknown): boolean {
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const session = await getServerSession(authOptions)
+    const role = session?.user?.role ?? ''
     const data = await prisma.opportunity.findUnique({
       where: { id: Number(params.id) },
       include: { serviceType: true, subService: true },
     })
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(serialize(data))
+    return NextResponse.json(stripFinancial(serialize(data), role))
   } catch (err: unknown) {
     console.error('[API GET /api/opportunities/[id]]', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -31,7 +34,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (session.user.role === 'Intern') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     const id = Number(params.id)
@@ -110,7 +113,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (session.user.role === 'Intern') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     await prisma.opportunity.delete({ where: { id: Number(params.id) } })

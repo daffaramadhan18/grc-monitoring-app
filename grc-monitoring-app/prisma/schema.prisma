@@ -96,7 +96,8 @@ model User {
   id                 Int       @id @default(autoincrement())
   username           String    @unique
   password           String
-  role               String    // "ADMIN" | "VIEWER"
+  role               String    // jabatan: "Partner" | "Manager" | "Assistant Manager" | "Senior Associate 2" | "Senior Associate 1" | "Associate 2" | "Associate 1" | "Intern"
+  isAdmin            Boolean   @default(false)
   isActive           Boolean   @default(true)
   mustChangePassword Boolean   @default(false)
   lastLoginAt        DateTime?

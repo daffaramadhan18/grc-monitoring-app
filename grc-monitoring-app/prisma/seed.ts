@@ -88,14 +88,24 @@ async function main() {
       data: {
         username:           'daffa.ramadhan',
         password:           hash,
-        role:               'ADMIN',
+        role:               'Senior Associate 1',
+        isAdmin:            true,
         isActive:           true,
         mustChangePassword: false,
       },
     })
     console.log("Seeded default admin user: daffa.ramadhan")
   } else {
-    console.log("Admin user already exists, skipping")
+    await prisma.user.update({
+      where: { username: 'daffa.ramadhan' },
+      data: {
+        role:               'Senior Associate 1',
+        isAdmin:            true,
+        isActive:           true,
+        mustChangePassword: false,
+      },
+    })
+    console.log("Updated daffa.ramadhan to new role schema")
   }
 }
 

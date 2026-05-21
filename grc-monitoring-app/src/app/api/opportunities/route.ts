@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { serialize } from '@/lib/serialize'
 import { authOptions } from '@/lib/auth'
+import { stripFinancialArray } from '@/lib/financial'
 
 async function resolveSubService(name: string | undefined | null, serviceTypeId: number) {
   if (!name) return null
@@ -12,11 +13,13 @@ async function resolveSubService(name: string | undefined | null, serviceTypeId:
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    const role = session?.user?.role ?? ''
     const data = await prisma.opportunity.findMany({
       include: { serviceType: true, subService: true },
       orderBy: { createdAt: 'desc' },
     })
-    return NextResponse.json(serialize(data))
+    return NextResponse.json(stripFinancialArray(serialize(data), role))
   } catch (err: unknown) {
     console.error('[API GET /api/opportunities]', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -26,7 +29,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (session.user.role === 'Intern') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     const b = await req.json()

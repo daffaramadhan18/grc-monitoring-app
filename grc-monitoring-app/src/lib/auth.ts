@@ -36,6 +36,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           username: user.username,
           role: user.role,
+          isAdmin: user.isAdmin,
           mustChangePassword: user.mustChangePassword,
           name: user.username,
           email: null,
@@ -50,6 +51,7 @@ export const authOptions: NextAuthOptions = {
         token.id = Number(user.id)
         token.username = user.username
         token.role = user.role
+        token.isAdmin = user.isAdmin
         token.mustChangePassword = user.mustChangePassword
       }
       return token
@@ -58,6 +60,7 @@ export const authOptions: NextAuthOptions = {
       session.user.id = token.id
       session.user.username = token.username
       session.user.role = token.role
+      session.user.isAdmin = token.isAdmin
       session.user.mustChangePassword = token.mustChangePassword
       return session
     },

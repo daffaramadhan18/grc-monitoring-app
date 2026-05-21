@@ -75,10 +75,10 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(changeUrl)
     }
 
-    // VIEWER role cannot mutate data
+    // Intern role cannot mutate data
     const mutatingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
     if (
-      token.role === 'VIEWER' &&
+      token.role === 'Intern' &&
       pathname.startsWith('/api/') &&
       mutatingMethods.has(req.method)
     ) {
@@ -86,6 +86,21 @@ export async function middleware(req: NextRequest) {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
       })
+    }
+
+    // /users page and /api/users routes require isAdmin
+    if (pathname.startsWith('/users') || pathname.startsWith('/api/users')) {
+      if (!token.isAdmin) {
+        if (pathname.startsWith('/api/')) {
+          return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        const dashUrl = req.nextUrl.clone()
+        dashUrl.pathname = '/dashboard'
+        return NextResponse.redirect(dashUrl)
+      }
     }
   }
 

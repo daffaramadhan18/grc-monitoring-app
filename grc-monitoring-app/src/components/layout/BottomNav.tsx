@@ -1,18 +1,24 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileText, Briefcase, Users } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { LayoutDashboard, FileText, Briefcase, Users, ShieldCheck } from 'lucide-react'
 import { haptic } from '@/lib/haptic'
 
-const tabs = [
+const baseTabs = [
   { href: '/dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
   { href: '/opportunities', label: 'Opportunities', icon: FileText },
   { href: '/projects',      label: 'Projects',      icon: Briefcase },
   { href: '/team',          label: 'Team',          icon: Users },
 ]
 
+const adminTab = { href: '/users', label: 'Users', icon: ShieldCheck }
+
 export default function BottomNav() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  const tabs = session?.user?.isAdmin ? [...baseTabs, adminTab] : baseTabs
   const activeIdx = Math.max(0, tabs.findIndex(t => pathname.startsWith(t.href)))
   const width = 100 / tabs.length
 
@@ -32,7 +38,7 @@ export default function BottomNav() {
         }}
       />
       <div className="flex h-16">
-        {tabs.map(({ href, label, icon: Icon }, i) => {
+        {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)
           return (
             <Link

@@ -1,10 +1,11 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, TrendingUp, FolderKanban, Users } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { LayoutDashboard, TrendingUp, FolderKanban, Users, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const navItems = [
+const baseNavItems = [
   { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard },
   { href: "/opportunities", label: "Opportunities", icon: TrendingUp },
   { href: "/projects",      label: "Projects",      icon: FolderKanban },
@@ -13,6 +14,11 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  const navItems = session?.user?.isAdmin
+    ? [...baseNavItems, { href: "/users", label: "Users", icon: ShieldCheck }]
+    : baseNavItems
 
   return (
     /* Desktop-only sidebar — on mobile, BottomNav handles navigation */
