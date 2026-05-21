@@ -17,6 +17,6 @@ jobs:
           script: |
             cd ~/grc-monitoring-app/grc-monitoring-app
             git pull origin main
-            npm install --production
+            npm ci
             npm run build
             pm2 restart grc-app
