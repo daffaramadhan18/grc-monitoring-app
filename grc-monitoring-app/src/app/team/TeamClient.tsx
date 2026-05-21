@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText } from 'lucide-react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText, Archive, ChevronDown } from 'lucide-react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/fetcher'
 import { capacityBadge, capacityLoadPct } from '@/lib/utils'
@@ -16,9 +16,12 @@ interface Alloc  { projects: number; proposals: number; finished: number }
 interface ProjectRow  { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }
 interface ProposalRow { id: number; proposalName: string; status: string; clientInitial: string | null }
 
+interface FinishedProjectRow { id: number; proposalName: string; clientName: string | null }
+
 interface Details {
   projects:  ProjectRow[]
   proposals: ProposalRow[]
+  finishedProjects: FinishedProjectRow[]
 }
 
 interface Props {
@@ -100,6 +103,7 @@ const PROJ_STATUS_CLS: Record<string, string> = {
 
 export default function TeamClient({ members: initial, allocation, details }: Props) {
   const router = useRouter()
+  const reduced = useReducedMotion() ?? false
   const { data: members = initial, mutate: revalidate } = useSWR<Member[]>('/api/team', fetcher, { fallbackData: initial })
 
   // Manage Team drawer
@@ -114,6 +118,12 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
 
   // Member detail side panel
   const [detailMember, setDetailMember] = useState<Member | null>(null)
+  const [finishedOpen, setFinishedOpen] = useState(false)
+
+  function openDetail(m: Member) {
+    setDetailMember(m)
+    setFinishedOpen(false)
+  }
 
   function openNew() {
     setEditing(null)
@@ -184,7 +194,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   })
 
   const detailAlloc   = detailMember ? (allocation[detailMember.initial] ?? { projects: 0, proposals: 0, finished: 0 }) : null
-  const detailData    = detailMember ? (details[detailMember.initial] ?? { projects: [], proposals: [] }) : null
+  const detailData    = detailMember ? (details[detailMember.initial] ?? { projects: [], proposals: [], finishedProjects: [] }) : null
   const detailBadge   = detailAlloc  ? capacityBadge(detailAlloc.projects, detailAlloc.proposals) : null
 
   return (
@@ -225,7 +235,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             return (
               <button
                 key={member.id}
-                onClick={() => setDetailMember(member)}
+                onClick={() => openDetail(member)}
                 className="w-full px-5 py-4 flex items-center gap-4 hover:bg-gray-50/70 transition-colors text-left"
               >
                 <Avatar initial={member.initial} size="sm" />
@@ -269,7 +279,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             return (
               <button
                 key={member.id}
-                onClick={() => setDetailMember(member)}
+                onClick={() => openDetail(member)}
                 className="w-full bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-left active:bg-gray-50 transition-colors"
               >
                 <div className="rsm-mworkload-card">
@@ -445,10 +455,17 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
       )}
 
       {/* ── Member detail side panel ──────────────────────────────────────── */}
+      <AnimatePresence>
       {detailMember && detailAlloc && detailData && detailBadge && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div key="detail-panel" className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDetailMember(null)} />
-          <div className="relative bg-white w-full max-w-sm h-full shadow-2xl flex flex-col overflow-hidden">
+          <motion.div
+            className="relative bg-white w-full max-w-sm h-full shadow-2xl flex flex-col overflow-hidden"
+            initial={{ x: reduced ? 0 : 300, opacity: reduced ? 1 : 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: reduced ? 0 : 300, opacity: reduced ? 1 : 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          >
 
             {/* Header */}
             <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4 shrink-0">
@@ -555,10 +572,46 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                 )}
               </div>
 
+              {/* Finished Projects (collapsible) */}
+              <div>
+                <button
+                  className="flex items-center gap-2 w-full mb-2"
+                  onClick={() => setFinishedOpen((v) => !v)}
+                >
+                  <Archive size={13} className="text-[#43B02A] shrink-0" />
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex-1 text-left">
+                    Finished Projects ({detailData.finishedProjects.length})
+                  </span>
+                  <ChevronDown
+                    size={13}
+                    className={`text-gray-400 shrink-0 transition-transform duration-200 ${finishedOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {finishedOpen && (
+                  detailData.finishedProjects.length === 0 ? (
+                    <p className="text-xs text-gray-400">No finished projects.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailData.finishedProjects.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => router.push(`/projects/${p.id}`)}
+                          className="w-full bg-gray-50 rounded-lg px-3 py-2.5 text-left hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="text-sm font-medium text-gray-900 leading-snug">{p.proposalName}</div>
+                          {p.clientName && <div className="text-xs text-gray-500 mt-0.5">{p.clientName}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
     </div>
   )
 }
