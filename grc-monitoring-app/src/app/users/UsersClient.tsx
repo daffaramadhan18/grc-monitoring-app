@@ -39,7 +39,6 @@ interface Props {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// All possible role values derived from LEVEL_TO_ROLE, ordered from senior to junior
 const MANUAL_ROLES = [
   'Partner',
   'Senior Manager 3', 'Senior Manager 2', 'Senior Manager 1',
@@ -49,8 +48,6 @@ const MANUAL_ROLES = [
   'Associate',
   'Intern',
 ] as const
-
-const MANUAL_SENTINEL = '__manual__'
 
 const inputCls  = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009CDE]'
 const selectCls = inputCls
@@ -99,19 +96,6 @@ function suggestUsername(fullName: string): string {
   return last ? `${first}.${last}` : first
 }
 
-// ─── Create form state shape ──────────────────────────────────────────────────
-
-interface CreateForm {
-  teamMemberId: number | null  // null = manual mode
-  username: string
-  role: string
-  isAdmin: boolean
-}
-
-function emptyCreate(): CreateForm {
-  return { teamMemberId: null, username: '', role: '', isAdmin: false }
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function UsersClient({ currentUserId }: Props) {
@@ -119,46 +103,52 @@ export default function UsersClient({ currentUserId }: Props) {
   const { data: unlinked = [] } = useSWR<UnlinkedMember[]>('/api/team-members/unlinked', fetcher)
 
   // ── Create modal ──────────────────────────────────────────────────────────
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState<CreateForm>(emptyCreate())
-  const [creating, setCreating] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
+  const [createOpen, setCreateOpen]     = useState(false)
+  const [useLinked, setUseLinked]       = useState(false)
+  const [teamMemberId, setTeamMemberId] = useState<number | null>(null)
+  const [createUsername, setCreateUsername] = useState('')
+  const [createRole, setCreateRole]     = useState('')
+  const [createIsAdmin, setCreateIsAdmin] = useState(false)
+  const [creating, setCreating]         = useState(false)
+  const [createError, setCreateError]   = useState<string | null>(null)
 
   // ── Edit modal ────────────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<User | null>(null)
-  const [editForm, setEditForm] = useState({ role: '', isAdmin: false, isActive: true })
-  const [saving, setSaving] = useState(false)
-  const [editError, setEditError] = useState<string | null>(null)
+  const [editForm, setEditForm]     = useState({ role: '', isAdmin: false, isActive: true })
+  const [saving, setSaving]         = useState(false)
+  const [editError, setEditError]   = useState<string | null>(null)
 
   // ── Banner error ──────────────────────────────────────────────────────────
   const [actionError, setActionError] = useState<string | null>(null)
 
-  // ── Derived create state ──────────────────────────────────────────────────
-  const isManual = createForm.teamMemberId === null
-  const derivedRole = !isManual && createForm.teamMemberId !== null
-    ? (LEVEL_TO_ROLE[unlinked.find((m) => m.id === createForm.teamMemberId)?.level ?? ''] ?? '')
-    : ''
+  // Derived role when a team member is selected
+  const selectedMember   = unlinked.find((m) => m.id === teamMemberId) ?? null
+  const derivedRole      = selectedMember ? (LEVEL_TO_ROLE[selectedMember.level] ?? selectedMember.level) : ''
 
+  // ── Open / reset create modal ─────────────────────────────────────────────
   function openCreate() {
-    setCreateForm(emptyCreate())
+    setUseLinked(false)
+    setTeamMemberId(null)
+    setCreateUsername('')
+    setCreateRole('')
+    setCreateIsAdmin(false)
     setCreateError(null)
     setCreateOpen(true)
   }
 
-  function handleTeamMemberSelect(value: string) {
-    if (value === MANUAL_SENTINEL || value === '') {
-      setCreateForm((f) => ({ ...f, teamMemberId: null, username: '', role: '' }))
-      return
-    }
-    const memberId = Number(value)
-    const member = unlinked.find((m) => m.id === memberId)
-    if (!member) return
-    setCreateForm((f) => ({
-      ...f,
-      teamMemberId: memberId,
-      username: suggestUsername(member.fullName),
-      role: LEVEL_TO_ROLE[member.level] ?? member.level,
-    }))
+  function handleCheckbox(checked: boolean) {
+    setUseLinked(checked)
+    setTeamMemberId(null)
+    setCreateUsername('')
+    setCreateRole('')
+  }
+
+  function handleMemberSelect(value: string) {
+    if (!value) { setTeamMemberId(null); setCreateUsername(''); return }
+    const id = Number(value)
+    const member = unlinked.find((m) => m.id === id)
+    setTeamMemberId(id)
+    setCreateUsername(member ? suggestUsername(member.fullName) : '')
   }
 
   function openEdit(u: User) {
@@ -175,13 +165,13 @@ export default function UsersClient({ currentUserId }: Props) {
     setCreating(true)
     try {
       const payload: Record<string, unknown> = {
-        username: createForm.username,
-        isAdmin: createForm.isAdmin,
+        username: createUsername,
+        isAdmin: createIsAdmin,
       }
-      if (createForm.teamMemberId !== null) {
-        payload.teamMemberId = createForm.teamMemberId
+      if (useLinked && teamMemberId !== null) {
+        payload.teamMemberId = teamMemberId
       } else {
-        payload.role = createForm.role
+        payload.role = createRole
       }
 
       const res = await fetch('/api/users', {
@@ -228,7 +218,7 @@ export default function UsersClient({ currentUserId }: Props) {
     try {
       const res = await fetch(`/api/users/${u.id}/reset-password`, { method: 'POST' })
       const data = await res.json() as { error?: string }
-      if (!res.ok) { setActionError(data.error ?? 'Gagal reset password'); return }
+      if (!res.ok) setActionError(data.error ?? 'Gagal reset password')
     } catch {
       setActionError('Terjadi kesalahan')
     }
@@ -241,8 +231,8 @@ export default function UsersClient({ currentUserId }: Props) {
       const res = await fetch(`/api/users/${u.id}`, { method: 'DELETE' })
       if (res.status === 204) { mutate(); return }
       const data = await res.json() as { error?: string }
-      if (!res.ok) { setActionError(data.error ?? 'Gagal menghapus'); return }
-      mutate()
+      if (!res.ok) setActionError(data.error ?? 'Gagal menghapus')
+      else mutate()
     } catch {
       setActionError('Terjadi kesalahan')
     }
@@ -318,39 +308,25 @@ export default function UsersClient({ currentUserId }: Props) {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
                         {u.isActive ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDateTime(u.lastLoginAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(u)}
-                          disabled={isSelf}
-                          title="Edit user"
-                          className="p-1.5 text-gray-400 hover:text-[#009CDE] hover:bg-[#009CDE]/10 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
+                        <button onClick={() => openEdit(u)} disabled={isSelf} title="Edit user"
+                          className="p-1.5 text-gray-400 hover:text-[#009CDE] hover:bg-[#009CDE]/10 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                           <Pencil size={14} />
                         </button>
-                        <button
-                          onClick={() => handleResetPassword(u)}
-                          disabled={isSelf}
-                          title="Reset password"
-                          className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
+                        <button onClick={() => handleResetPassword(u)} disabled={isSelf} title="Reset password"
+                          className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                           <KeyRound size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(u)}
-                          disabled={isSelf}
-                          title="Hapus user"
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
+                        <button onClick={() => handleDelete(u)} disabled={isSelf} title="Hapus user"
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -375,80 +351,87 @@ export default function UsersClient({ currentUserId }: Props) {
               </button>
             </div>
             <form onSubmit={handleCreate} className="px-6 py-5 space-y-4">
-              {/* Step 1: team member selection */}
-              <Field label="Anggota Tim" required>
-                <select
-                  className={selectCls}
-                  value={createForm.teamMemberId ?? MANUAL_SENTINEL}
-                  onChange={(e) => handleTeamMemberSelect(e.target.value)}
-                >
-                  <option value="">Pilih anggota tim...</option>
-                  {unlinked.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.fullName} ({m.initial}) — {m.level}
-                    </option>
-                  ))}
-                  <option value={MANUAL_SENTINEL}>Tidak ada (input manual)</option>
-                </select>
-              </Field>
 
-              {/* Username — editable regardless of mode */}
+              {/* Checkbox: use existing team member */}
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={useLinked}
+                  onChange={(e) => handleCheckbox(e.target.checked)}
+                  className="w-4 h-4 rounded accent-[#009CDE]"
+                />
+                <span className="text-sm font-medium text-gray-700">Gunakan anggota tim yang ada</span>
+              </label>
+
+              {/* Team member dropdown — name only, shown when checkbox is checked */}
+              {useLinked && (
+                <Field label="Anggota Tim" required>
+                  <select
+                    className={selectCls}
+                    value={teamMemberId ?? ''}
+                    onChange={(e) => handleMemberSelect(e.target.value)}
+                    required
+                  >
+                    <option value="">Pilih anggota tim...</option>
+                    {unlinked.map((m) => (
+                      <option key={m.id} value={m.id}>{m.fullName}</option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+
+              {/* Username */}
               <Field
                 label="Username"
                 required
-                hint={!isManual ? 'Saran berdasarkan nama anggota tim, bisa diubah.' : undefined}
+                hint={useLinked && teamMemberId ? 'Saran berdasarkan nama, bisa diubah.' : undefined}
               >
                 <input
                   className={inputCls}
-                  value={createForm.username}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))}
+                  value={createUsername}
+                  onChange={(e) => setCreateUsername(e.target.value)}
                   required
                   autoComplete="off"
                   placeholder="e.g. john.doe"
                 />
               </Field>
 
-              {/* Role — derived (read-only) or manual dropdown */}
-              {!isManual ? (
+              {/* Jabatan — derived (read-only) or manual dropdown */}
+              {useLinked ? (
                 <Field label="Jabatan" hint="Otomatis dari level anggota tim.">
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
-                    {derivedRole || '—'}
+                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700 min-h-[38px]">
+                    {derivedRole || <span className="text-gray-400">Pilih anggota tim terlebih dahulu</span>}
                   </div>
                 </Field>
               ) : (
                 <Field label="Jabatan" required>
                   <select
                     className={selectCls}
-                    value={createForm.role}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
+                    value={createRole}
+                    onChange={(e) => setCreateRole(e.target.value)}
                     required
                   >
                     <option value="">Pilih jabatan...</option>
                     {MANUAL_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
+                      <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
                 </Field>
               )}
 
               {/* Admin toggle */}
-              <Field label="Hak Akses">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createForm.isAdmin}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, isAdmin: e.target.checked }))}
-                    className="w-4 h-4 rounded accent-[#009CDE]"
-                  />
-                  <span className="text-sm text-gray-700">Admin (dapat mengakses User Management)</span>
-                </label>
-              </Field>
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={createIsAdmin}
+                  onChange={(e) => setCreateIsAdmin(e.target.checked)}
+                  className="w-4 h-4 rounded accent-[#009CDE]"
+                />
+                <span className="text-sm text-gray-700">Admin (dapat mengakses User Management)</span>
+              </label>
 
               <p className="text-xs text-gray-400">
-                Password default:{' '}
-                <span className="font-mono">ITGRC@2026</span> — user wajib ganti saat login pertama.
+                Password default: <span className="font-mono">ITGRC@2026</span> — user wajib ganti saat login pertama.
               </p>
 
               {createError && (
@@ -458,16 +441,11 @@ export default function UsersClient({ currentUserId }: Props) {
               )}
 
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setCreateOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
+                <button type="button" onClick={() => setCreateOpen(false)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  disabled={creating}
+                <button type="submit" disabled={creating}
                   className="px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition-colors"
                   style={{ backgroundColor: '#009CDE' }}
                   onMouseEnter={(e) => { if (!creating) e.currentTarget.style.backgroundColor = '#007BB5' }}
@@ -495,7 +473,6 @@ export default function UsersClient({ currentUserId }: Props) {
               </button>
             </div>
             <form onSubmit={handleEdit} className="px-6 py-5 space-y-4">
-              {/* Role: read-only if linked to team member, otherwise dropdown */}
               {editTarget.teamMember ? (
                 <Field
                   label="Jabatan"
@@ -507,45 +484,27 @@ export default function UsersClient({ currentUserId }: Props) {
                 </Field>
               ) : (
                 <Field label="Jabatan" required>
-                  <select
-                    className={selectCls}
-                    value={editForm.role}
-                    onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
-                    required
-                  >
+                  <select className={selectCls} value={editForm.role}
+                    onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))} required>
                     <option value="">Pilih jabatan...</option>
-                    {MANUAL_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
+                    {MANUAL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </Field>
               )}
 
-              <Field label="Hak Akses">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isAdmin}
-                    onChange={(e) => setEditForm((f) => ({ ...f, isAdmin: e.target.checked }))}
-                    className="w-4 h-4 rounded accent-[#009CDE]"
-                  />
-                  <span className="text-sm text-gray-700">Admin</span>
-                </label>
-              </Field>
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" checked={editForm.isAdmin}
+                  onChange={(e) => setEditForm((f) => ({ ...f, isAdmin: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-[#009CDE]" />
+                <span className="text-sm text-gray-700">Admin</span>
+              </label>
 
-              <Field label="Status">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isActive}
-                    onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))}
-                    className="w-4 h-4 rounded accent-[#009CDE]"
-                  />
-                  <span className="text-sm text-gray-700">Aktif</span>
-                </label>
-              </Field>
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" checked={editForm.isActive}
+                  onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-[#009CDE]" />
+                <span className="text-sm text-gray-700">Aktif</span>
+              </label>
 
               {editError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
@@ -554,16 +513,11 @@ export default function UsersClient({ currentUserId }: Props) {
               )}
 
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setEditTarget(null)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
+                <button type="submit" disabled={saving}
                   className="px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition-colors"
                   style={{ backgroundColor: '#009CDE' }}
                   onMouseEnter={(e) => { if (!saving) e.currentTarget.style.backgroundColor = '#007BB5' }}
