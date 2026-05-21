@@ -1,0 +1,17 @@
+export const LEVEL_TO_ROLE: Record<string, string> = {
+  I:   'Intern',
+  A1:  'Associate',
+  SA1: 'Senior Associate 1',
+  SA2: 'Senior Associate 2',
+  SA3: 'Senior Associate 3',
+  AM1: 'Assistant Manager 1',
+  AM2: 'Assistant Manager 2',
+  AM3: 'Assistant Manager 3',
+  M1:  'Manager 1',
+  M2:  'Manager 2',
+  M3:  'Manager 3',
+  SM1: 'Senior Manager 1',
+  SM2: 'Senior Manager 2',
+  SM3: 'Senior Manager 3',
+  P:   'Partner',
+}

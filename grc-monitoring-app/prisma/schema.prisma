@@ -27,6 +27,7 @@ model TeamMember {
   initial  String @unique
   fullName String
   level    String
+  user     User?
 }
 
 model Opportunity {
@@ -93,14 +94,16 @@ model Termin {
 }
 
 model User {
-  id                 Int       @id @default(autoincrement())
-  username           String    @unique
+  id                 Int         @id @default(autoincrement())
+  username           String      @unique
   password           String
-  role               String    // jabatan: "Partner" | "Manager" | "Assistant Manager" | "Senior Associate 2" | "Senior Associate 1" | "Associate 2" | "Associate 1" | "Intern"
-  isAdmin            Boolean   @default(false)
-  isActive           Boolean   @default(true)
-  mustChangePassword Boolean   @default(false)
+  role               String
+  isAdmin            Boolean     @default(false)
+  isActive           Boolean     @default(true)
+  mustChangePassword Boolean     @default(false)
   lastLoginAt        DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  teamMemberId       Int?        @unique
+  teamMember         TeamMember? @relation(fields: [teamMemberId], references: [id])
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 }
