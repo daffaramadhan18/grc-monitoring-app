@@ -51,7 +51,7 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
     const [activeProject, activeOpp] = await Promise.all([
       prisma.project.findFirst({
         where: {
-          status: { in: ['Fieldwork', 'Reporting'] },
+          status: { in: ['Planning', 'Fieldwork', 'Reporting'] },
           OR: [{ micInitial: ini }, { teamMembers: { has: ini } }],
         },
         select: { id: true },

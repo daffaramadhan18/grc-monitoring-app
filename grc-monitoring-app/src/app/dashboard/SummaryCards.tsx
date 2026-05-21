@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion'
-import { FileText, Briefcase, TrendingUp, Wallet } from 'lucide-react'
+import { FileText, Briefcase, TrendingUp, Wallet, CheckCircle2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 interface OppPreview {
@@ -14,14 +14,16 @@ interface ProjectPreview {
 }
 
 interface Props {
-  totalOpps:      number
-  hargaTotal:     number
-  winRate:        number
-  ongoingProjects: number
-  confirmedFee:   number
+  totalOpps:        number
+  hargaTotal:       number
+  winRate:          number
+  ongoingProjects:  number
+  confirmedFee:     number
+  finishedProjects: number
   oppsList: OppPreview[]
   wonOppsList?: OppPreview[]
   projectsList: ProjectPreview[]
+  finishedProjectsList: ProjectPreview[]
 }
 
 function formatCurrencyShort(v: number): string {
@@ -103,8 +105,8 @@ function AnimatedCurrency({ target, reduced }: { target: number; reduced: boolea
 }
 
 export default function SummaryCards({
-  totalOpps, hargaTotal, winRate, ongoingProjects, confirmedFee,
-  oppsList, wonOppsList, projectsList,
+  totalOpps, hargaTotal, winRate, ongoingProjects, confirmedFee, finishedProjects,
+  oppsList, wonOppsList, projectsList, finishedProjectsList,
 }: Props) {
   const reduced = useReducedMotion() ?? false
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
@@ -132,7 +134,7 @@ export default function SummaryCards({
   const cardCls = 'bg-white rounded-xl border border-gray-100 shadow-sm p-5 cursor-default h-full'
 
   return (
-    <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch" variants={container} initial="hidden" animate="show">
+    <motion.div className="grid grid-cols-2 lg:grid-cols-5 gap-4 items-stretch" variants={container} initial="hidden" animate="show">
 
       {/* Card 1: Total Opportunities */}
       <div className="relative h-full" onMouseEnter={() => setHoveredCard(1)} onMouseLeave={() => setHoveredCard(null)}>
@@ -238,7 +240,7 @@ export default function SummaryCards({
               <p className="mt-1.5 text-2xl font-bold text-gray-900 tabular-nums">
                 <AnimatedInt target={ongoingProjects} reduced={reduced} />
               </p>
-              <p className="mt-0.5 text-xs text-gray-400">Fieldwork &amp; Reporting</p>
+              <p className="mt-0.5 text-xs text-gray-400">Planning, Fieldwork &amp; Reporting</p>
             </div>
             <motion.div {...iconHover} className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F0FDF4' }}>
               <Briefcase size={20} style={{ color: '#43B02A' }} />
@@ -258,7 +260,11 @@ export default function SummaryCards({
               <div className="space-y-2 max-h-[320px] overflow-y-auto">
                 {projectsList.map(p => (
                   <div key={p.id} className="flex items-center gap-2">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${p.status === 'Fieldwork' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${
+                      p.status === 'Planning'  ? 'bg-[#009CDE]/15 text-[#006fa0]' :
+                      p.status === 'Fieldwork' ? 'bg-amber-100 text-amber-700' :
+                      'bg-orange-100 text-orange-700'
+                    }`}>
                       {p.status}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -311,6 +317,49 @@ export default function SummaryCards({
                   </div>
                 ))}
                 {(wonOppsList ?? []).length === 0 && <p className="text-xs text-gray-400">No won opportunities</p>}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Card 5: Finished Projects */}
+      <div className="relative h-full" onMouseEnter={() => setHoveredCard(5)} onMouseLeave={() => setHoveredCard(null)}>
+        <motion.div variants={item} {...cardHover} className={cardCls}>
+          <div className="flex items-start justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Finished Projects</p>
+              <p className="mt-1.5 text-2xl font-bold text-gray-900 tabular-nums">
+                <AnimatedInt target={finishedProjects} reduced={reduced} />
+              </p>
+              <p className="mt-0.5 text-xs text-gray-400">Status: Finish</p>
+            </div>
+            <motion.div {...iconHover} className="p-2.5 rounded-lg shrink-0 ml-3" style={{ backgroundColor: '#F0FDFA' }}>
+              <CheckCircle2 size={20} style={{ color: '#14B8A6' }} />
+            </motion.div>
+          </div>
+        </motion.div>
+        <AnimatePresence>
+          {hoveredCard === 5 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="absolute top-full right-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
+            >
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Finished Projects</p>
+              <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                {finishedProjectsList.map(p => (
+                  <div key={p.id} className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{p.proposalName.slice(0, 26)}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{p.clientName ?? '—'}</p>
+                    </div>
+                    <p className="text-[10px] text-gray-400 whitespace-nowrap">{p.endDate ? formatDate(p.endDate) : '—'}</p>
+                  </div>
+                ))}
+                {finishedProjectsList.length === 0 && <p className="text-xs text-gray-400">No finished projects</p>}
               </div>
             </motion.div>
           )}

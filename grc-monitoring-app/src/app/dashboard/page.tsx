@@ -21,7 +21,7 @@ async function getWorkload() {
 
   const [projects, opps] = await Promise.all([
     prisma.project.findMany({
-      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+      where: { status: { in: ['Planning', 'Fieldwork', 'Reporting'] } },
       select: { micInitial: true, teamMembers: true },
     }),
     prisma.opportunity.findMany({
@@ -53,7 +53,7 @@ export default async function DashboardPage({
 
   const quarterYear = searchParams.month ? Number(searchParams.month.split('-')[0]) : new Date().getFullYear()
 
-  const [allFilteredOpps, ongoingProjects, workload, serviceTypes, teamMembers, quarterlyOpps] = await Promise.all([
+  const [allFilteredOpps, ongoingProjects, finishedProjects, workload, serviceTypes, teamMembers, quarterlyOpps] = await Promise.all([
     prisma.opportunity.findMany({
       where: oppDateFilter,
       select: {
@@ -66,13 +66,21 @@ export default async function DashboardPage({
       orderBy: { expectedDate: 'asc' },
     }),
     prisma.project.findMany({
-      where: { status: { in: ['Fieldwork', 'Reporting'] }, ...projDateFilter },
+      where: { status: { in: ['Planning', 'Fieldwork', 'Reporting'] }, ...projDateFilter },
       select: {
         id: true, proposalName: true, status: true, endDate: true, confirmedFee: true,
         clientName: true, clientInitial: true,
         termins: { select: { status: true } },
       },
       orderBy: { endDate: 'asc' },
+    }),
+    prisma.project.findMany({
+      where: { status: 'Finish', ...projDateFilter },
+      select: {
+        id: true, proposalName: true, status: true, endDate: true, confirmedFee: true,
+        clientName: true,
+      },
+      orderBy: { endDate: 'desc' },
     }),
     getWorkload(),
     prisma.serviceType.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
@@ -100,7 +108,8 @@ export default async function DashboardPage({
   const loses = allFilteredOpps.filter((o) => o.status === 'Lose').length
   const winRate = (wins + loses) > 0 ? wins / (wins + loses) * 100 : 0
 
-  const ongoingCount = ongoingProjects.length
+  const ongoingCount  = ongoingProjects.length
+  const finishedCount = finishedProjects.length
 
   // Card 4: sum of harga from ALL won opportunities (not month-scoped)
   const wonOpps = await prisma.opportunity.findMany({
@@ -128,9 +137,11 @@ export default async function DashboardPage({
         winRate={winRate}
         ongoingProjects={ongoingCount}
         confirmedFee={confirmedFee}
+        finishedProjects={finishedCount}
         oppsList={serialize(allFilteredOpps) as any}
         wonOppsList={serialize(wonOpps) as any}
         projectsList={serialize(ongoingProjects) as any}
+        finishedProjectsList={serialize(finishedProjects) as any}
       />
 
       <QuarterlySection opps={serialize(quarterlyOpps) as any} year={quarterYear} />

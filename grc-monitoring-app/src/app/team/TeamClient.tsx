@@ -11,7 +11,7 @@ import { capacityBadge, capacityLoadPct } from '@/lib/utils'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Member { id: number; fullName: string; initial: string; level: string }
-interface Alloc  { projects: number; proposals: number }
+interface Alloc  { projects: number; proposals: number; finished: number }
 
 interface ProjectRow  { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }
 interface ProposalRow { id: number; proposalName: string; status: string; clientInitial: string | null }
@@ -174,7 +174,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   }
 
   const allocRows = members.map((m) => {
-    const a     = allocation[m.initial] ?? { projects: 0, proposals: 0 }
+    const a     = allocation[m.initial] ?? { projects: 0, proposals: 0, finished: 0 }
     const total = a.projects + a.proposals
     const badge = capacityBadge(a.projects, a.proposals)
     return { member: m, ...a, total, badge }
@@ -183,7 +183,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
     return b.total - a.total
   })
 
-  const detailAlloc   = detailMember ? (allocation[detailMember.initial] ?? { projects: 0, proposals: 0 }) : null
+  const detailAlloc   = detailMember ? (allocation[detailMember.initial] ?? { projects: 0, proposals: 0, finished: 0 }) : null
   const detailData    = detailMember ? (details[detailMember.initial] ?? { projects: [], proposals: [] }) : null
   const detailBadge   = detailAlloc  ? capacityBadge(detailAlloc.projects, detailAlloc.proposals) : null
 
@@ -220,7 +220,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
               Belum ada data alokasi.
             </div>
           )}
-          {allocRows.map(({ member, projects, proposals, badge }, index) => {
+          {allocRows.map(({ member, projects, proposals, finished, badge }, index) => {
             const pct = capacityLoadPct(projects, proposals)
             return (
               <button
@@ -247,7 +247,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     </div>
                     <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 whitespace-nowrap">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}</p>
+                  <p className="text-[10px] text-gray-400 whitespace-nowrap">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''} · {finished} finished</p>
                 </div>
 
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
@@ -263,7 +263,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
           {allocRows.length === 0 && (
             <p className="py-8 text-center text-gray-400 text-sm">Belum ada data alokasi.</p>
           )}
-          {allocRows.map(({ member, projects, proposals, badge }, index) => {
+          {allocRows.map(({ member, projects, proposals, finished, badge }, index) => {
             const pct = capacityLoadPct(projects, proposals)
             const barFill = pct > 100 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#43B02A'
             return (
@@ -302,7 +302,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-2 whitespace-nowrap">
-                  {projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''}
+                  {projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''} · {finished} finished
                 </p>
               </button>
             )
@@ -482,7 +482,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      {detailAlloc.projects} project{detailAlloc.projects !== 1 ? 's' : ''} · {detailAlloc.proposals} proposal{detailAlloc.proposals !== 1 ? 's' : ''}
+                      {detailAlloc.projects} project{detailAlloc.projects !== 1 ? 's' : ''} · {detailAlloc.proposals} proposal{detailAlloc.proposals !== 1 ? 's' : ''} · {detailAlloc.finished} finished
                     </p>
                   </>
                 )

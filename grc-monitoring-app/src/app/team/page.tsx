@@ -4,10 +4,10 @@ import TeamClient from './TeamClient'
 export const dynamic = 'force-dynamic'
 
 export default async function TeamPage() {
-  const [members, activeProjects, activeOpps] = await Promise.all([
+  const [members, activeProjects, activeOpps, finishedProjects] = await Promise.all([
     prisma.teamMember.findMany({ orderBy: { fullName: 'asc' } }),
     prisma.project.findMany({
-      where: { status: { in: ['Fieldwork', 'Reporting'] } },
+      where: { status: { in: ['Planning', 'Fieldwork', 'Reporting'] } },
       select: {
         id: true, proposalName: true, status: true, endDate: true,
         clientName: true, clientInitial: true,
@@ -23,11 +23,15 @@ export default async function TeamPage() {
         tm4Initial: true, tm5Initial: true, tm6Initial: true,
       },
     }),
+    prisma.project.findMany({
+      where: { status: 'Finish' },
+      select: { micInitial: true, teamMembers: true },
+    }),
   ])
 
   const OPP_TM = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 
-  const alloc: Record<string, { projects: number; proposals: number }> = {}
+  const alloc: Record<string, { projects: number; proposals: number; finished: number }> = {}
   const details: Record<string, {
     projects: typeof activeProjects
     proposals: typeof activeOpps
@@ -36,7 +40,8 @@ export default async function TeamPage() {
   for (const m of members) {
     const memberProjects  = activeProjects.filter((p) => p.micInitial === m.initial || p.teamMembers.includes(m.initial))
     const memberProposals = activeOpps.filter((o) => OPP_TM.some((f) => o[f] === m.initial))
-    alloc[m.initial]   = { projects: memberProjects.length, proposals: memberProposals.length }
+    const memberFinished  = finishedProjects.filter((p) => p.micInitial === m.initial || p.teamMembers.includes(m.initial))
+    alloc[m.initial]   = { projects: memberProjects.length, proposals: memberProposals.length, finished: memberFinished.length }
     details[m.initial] = { projects: memberProjects, proposals: memberProposals }
   }
 

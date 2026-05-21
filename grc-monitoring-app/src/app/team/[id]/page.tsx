@@ -25,7 +25,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
     }),
     prisma.project.findMany({
       where: {
-        status: { in: ['Fieldwork', 'Reporting'] },
+        status: { in: ['Planning', 'Fieldwork', 'Reporting'] },
         OR: [
           { micInitial: member.initial },
           { teamMembers: { has: member.initial } },

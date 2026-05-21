@@ -34,7 +34,7 @@ export default function OngoingProjects({ projects }: Props) {
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-gray-700">Ongoing Projects</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Fieldwork &amp; Reporting</p>
+          <p className="text-xs text-gray-400 mt-0.5">Planning, Fieldwork &amp; Reporting</p>
         </div>
         <span className="text-xs text-gray-400">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
       </div>

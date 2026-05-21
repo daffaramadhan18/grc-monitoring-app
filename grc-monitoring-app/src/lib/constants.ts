@@ -24,7 +24,7 @@ export const TERMIN_STATUSES = [
   'Paid',
 ] as const
 
-export const ACTIVE_PROJECT_STATUSES = ['Fieldwork', 'Reporting'] as const
+export const ACTIVE_PROJECT_STATUSES = ['Planning', 'Fieldwork', 'Reporting'] as const
 
 export const ACTIVE_OPP_STATUSES = ['Waiting for Result', 'Backlog', 'In progress'] as const
 
