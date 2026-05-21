@@ -52,8 +52,9 @@ function capacityBadge(projects: number, proposals: number) {
 const TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
 const TM_LABELS = ['MIC','TM1','TM2','TM3','TM4','TM5','TM6']
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function roleOf(row: Record<string, any>, initial: string): string {
+type RoleRow = Pick<Proposal, (typeof TM_FIELDS)[number]>
+
+function roleOf(row: RoleRow, initial: string): string {
   for (let i = 0; i < TM_FIELDS.length; i++) {
     if (row[TM_FIELDS[i]] === initial) return TM_LABELS[i]
   }
