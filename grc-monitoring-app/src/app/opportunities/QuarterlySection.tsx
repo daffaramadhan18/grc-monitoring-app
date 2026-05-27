@@ -1,12 +1,15 @@
 'use client'
 
+import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+
 interface Opp {
   status: string
   harga: number | null
   expectedDate: string | null
-  micInitial: string | null
-  tm1Initial: string | null; tm2Initial: string | null; tm3Initial: string | null
-  tm4Initial: string | null; tm5Initial: string | null; tm6Initial: string | null
+  proposalName: string | null
+  clientInitial: string | null
+  clientName: string | null
 }
 
 interface Props {
@@ -36,18 +39,11 @@ function formatIDRShort(value: number): string {
   return `IDR ${parseFloat(n.toFixed(1))}M`
 }
 
-function teamInitials(opp: Opp): string[] {
-  return [
-    opp.micInitial,
-    opp.tm1Initial, opp.tm2Initial, opp.tm3Initial,
-    opp.tm4Initial, opp.tm5Initial, opp.tm6Initial,
-  ].filter(Boolean) as string[]
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function QuarterlySection({ opps, year }: Props) {
   const targetYear = year ?? new Date().getFullYear()
+  const [hovered, setHovered] = useState<{ qLabel: string; clientInitial: string } | null>(null)
 
   // Only active opportunities with an expectedDate in the target year
   const eligible = opps.filter((o) => {
@@ -62,8 +58,20 @@ export default function QuarterlySection({ opps, year }: Props) {
       return q.months.includes(m)
     })
     const total = inQ.reduce((s, o) => s + (o.harga ?? 0), 0)
-    const uniqueTeam = Array.from(new Set(inQ.flatMap(teamInitials)))
-    return { ...q, total, activeCount: inQ.length, team: uniqueTeam }
+
+    // Build map: clientInitial → list of proposal names
+    const clientMap = new Map<string, { name: string; proposals: string[] }>()
+    for (const o of inQ) {
+      const ini = o.clientInitial ?? '?'
+      if (!clientMap.has(ini)) {
+        clientMap.set(ini, { name: o.clientName ?? ini, proposals: [] })
+      }
+      if (o.proposalName) {
+        clientMap.get(ini)!.proposals.push(o.proposalName)
+      }
+    }
+
+    return { ...q, total, activeCount: inQ.length, clientMap }
   })
 
   const maxTotal = Math.max(...quarters.map((q) => q.total), 1)
@@ -123,17 +131,46 @@ export default function QuarterlySection({ opps, year }: Props) {
 
               <div>
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-                  Proposed Team Involved
+                  Clients Involved
                 </div>
-                {q.team.length > 0 ? (
+                {q.clientMap.size > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {q.team.map((ini) => (
-                      <span
+                    {Array.from(q.clientMap.entries()).map(([ini, { name, proposals }]) => (
+                      <div
                         key={ini}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700"
+                        className="relative"
+                        onMouseEnter={() => setHovered({ qLabel: q.label, clientInitial: ini })}
+                        onMouseLeave={() => setHovered(null)}
                       >
-                        {ini}
-                      </span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 cursor-default select-none">
+                          {ini}
+                        </span>
+
+                        <AnimatePresence>
+                          {hovered?.qLabel === q.label && hovered?.clientInitial === ini && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                              transition={{ duration: 0.15, ease: 'easeOut' }}
+                              className="absolute bottom-full left-0 mb-2 z-50 bg-white shadow-xl rounded-xl p-3 border border-gray-100"
+                              style={{ minWidth: '220px' }}
+                            >
+                              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                                {name}
+                              </p>
+                              <div className="space-y-1">
+                                {proposals.map((pName, i) => (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#009CDE] mt-1 shrink-0" />
+                                    <p className="text-xs text-gray-700 leading-snug">{pName}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     ))}
                   </div>
                 ) : (
