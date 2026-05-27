@@ -90,7 +90,7 @@ export default function QuarterlySection({ opps, year }: Props) {
         {quarters.map((q) => {
           const pct = q.total > 0 ? Math.round((q.total / maxTotal) * 100) : 0
           return (
-            <div key={q.label} className="rsm-mchart-q" style={{ flex: '0 0 160px' }}>
+            <div key={q.label} className="rsm-mchart-q" style={{ flex: '0 0 200px' }}>
               <div className="rsm-mchart-q-label">{q.label} · {q.range}</div>
               <div className="rsm-mchart-q-value">{q.total > 0 ? formatIDRShort(q.total) : '—'}</div>
               <div className="rsm-mchart-q-count">{q.activeCount} proposal{q.activeCount !== 1 ? 's' : ''}</div>
@@ -103,12 +103,12 @@ export default function QuarterlySection({ opps, year }: Props) {
                 </div>
                 {q.clientMap.size > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {Array.from(q.clientMap.keys()).map((ini) => (
+                    {Array.from(q.clientMap.entries()).map(([ini, { name }]) => (
                       <span
                         key={ini}
                         className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700"
                       >
-                        {ini}
+                        {name}
                       </span>
                     ))}
                   </div>
@@ -162,7 +162,7 @@ export default function QuarterlySection({ opps, year }: Props) {
                         onMouseLeave={() => setHovered(null)}
                       >
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 cursor-default select-none">
-                          {ini}
+                          {name}
                         </span>
 
                         <AnimatePresence>
@@ -176,7 +176,7 @@ export default function QuarterlySection({ opps, year }: Props) {
                               style={{ minWidth: '220px' }}
                             >
                               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                {name}
+                                {ini} · {name}
                               </p>
                               <div className="space-y-1">
                                 {proposals.map((pName, i) => (

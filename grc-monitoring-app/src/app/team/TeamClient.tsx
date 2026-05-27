@@ -261,9 +261,11 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     </div>
                     <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 text-[10px] text-gray-400">
-                    <span><span className="font-semibold text-gray-600">{a.projects}</span> proj. ongoing · <span className="font-semibold text-gray-600">{a.finished}</span> done</span>
-                    <span><span className="font-semibold text-gray-600">{a.proposals}</span> prop. ongoing · <span className="font-semibold text-gray-600">{a.finishedProposals}</span> done</span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-gray-400">
+                    <span><span className="font-semibold text-gray-700">{a.projects}</span> Project Ongoing</span>
+                    <span><span className="font-semibold text-gray-700">{a.finished}</span> Project Completed</span>
+                    <span><span className="font-semibold text-gray-700">{a.proposals}</span> Proposal Ongoing</span>
+                    <span><span className="font-semibold text-gray-700">{a.finishedProposals}</span> Proposal Completed</span>
                   </div>
                 </div>
 
@@ -319,9 +321,11 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     <span className="rsm-mworkload-pct">{pct}%</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-x-3 mt-2 text-[10px] text-gray-400">
-                  <span><span className="font-semibold text-gray-600">{a.projects}</span> proj. ongoing · <span className="font-semibold text-gray-600">{a.finished}</span> done</span>
-                  <span><span className="font-semibold text-gray-600">{a.proposals}</span> prop. ongoing · <span className="font-semibold text-gray-600">{a.finishedProposals}</span> done</span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-2 text-[10px] text-gray-400">
+                  <span><span className="font-semibold text-gray-700">{a.projects}</span> Project Ongoing</span>
+                  <span><span className="font-semibold text-gray-700">{a.finished}</span> Project Completed</span>
+                  <span><span className="font-semibold text-gray-700">{a.proposals}</span> Proposal Ongoing</span>
+                  <span><span className="font-semibold text-gray-700">{a.finishedProposals}</span> Proposal Completed</span>
                 </div>
               </button>
             )
@@ -507,9 +511,11 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                         {pct}%
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-3 text-[10px] text-gray-400">
-                      <span><span className="font-semibold text-gray-600">{detailAlloc.projects}</span> proj. ongoing · <span className="font-semibold text-gray-600">{detailAlloc.finished}</span> done</span>
-                      <span><span className="font-semibold text-gray-600">{detailAlloc.proposals}</span> prop. ongoing · <span className="font-semibold text-gray-600">{detailAlloc.finishedProposals}</span> done</span>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-gray-400">
+                      <span><span className="font-semibold text-gray-700">{detailAlloc.projects}</span> Project Ongoing</span>
+                      <span><span className="font-semibold text-gray-700">{detailAlloc.finished}</span> Project Completed</span>
+                      <span><span className="font-semibold text-gray-700">{detailAlloc.proposals}</span> Proposal Ongoing</span>
+                      <span><span className="font-semibold text-gray-700">{detailAlloc.finishedProposals}</span> Proposal Completed</span>
                     </div>
                   </>
                 )
