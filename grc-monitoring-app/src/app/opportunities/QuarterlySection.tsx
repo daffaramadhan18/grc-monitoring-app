@@ -90,12 +90,31 @@ export default function QuarterlySection({ opps, year }: Props) {
         {quarters.map((q) => {
           const pct = q.total > 0 ? Math.round((q.total / maxTotal) * 100) : 0
           return (
-            <div key={q.label} className="rsm-mchart-q">
+            <div key={q.label} className="rsm-mchart-q" style={{ flex: '0 0 160px' }}>
               <div className="rsm-mchart-q-label">{q.label} · {q.range}</div>
               <div className="rsm-mchart-q-value">{q.total > 0 ? formatIDRShort(q.total) : '—'}</div>
               <div className="rsm-mchart-q-count">{q.activeCount} proposal{q.activeCount !== 1 ? 's' : ''}</div>
               <div className="rsm-mchart-q-bar">
                 <div style={{ width: `${pct}%` }} />
+              </div>
+              <div className="mt-2.5">
+                <div className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                  Clients
+                </div>
+                {q.clientMap.size > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from(q.clientMap.keys()).map((ini) => (
+                      <span
+                        key={ini}
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700"
+                      >
+                        {ini}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-gray-300">—</span>
+                )}
               </div>
             </div>
           )
