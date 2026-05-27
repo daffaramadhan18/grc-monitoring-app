@@ -230,7 +230,7 @@ export default function ProjectDetailClient({ project, teamMembers }: Props) {
       if (!r1.ok) throw new Error(await r1.text())
       if (!r2.ok) throw new Error(await r2.text())
       showToast('success', form.status === 'Finish' ? 'Project moved to Finished' : 'Perubahan berhasil disimpan')
-      router.refresh()
+      setTimeout(() => router.push('/projects'), 1500)
     } catch (err: unknown) {
       showToast('error', err instanceof Error ? err.message : 'Gagal menyimpan')
     } finally {
