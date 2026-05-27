@@ -11,17 +11,18 @@ import { capacityBadge, capacityLoadPct } from '@/lib/utils'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Member { id: number; fullName: string; initial: string; level: string }
-interface Alloc  { projects: number; proposals: number; finished: number }
+interface Alloc  { projects: number; proposals: number; finished: number; finishedProposals: number }
 
-interface ProjectRow  { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }
-interface ProposalRow { id: number; proposalName: string; status: string; clientInitial: string | null }
-
-interface FinishedProjectRow { id: number; proposalName: string; clientName: string | null }
+interface ProjectRow          { id: number; proposalName: string; status: string; endDate: string | null; clientInitial: string | null; clientName: string | null }
+interface ProposalRow         { id: number; proposalName: string; status: string; clientInitial: string | null }
+interface FinishedProjectRow  { id: number; proposalName: string; clientName: string | null }
+interface FinishedProposalRow { id: number; proposalName: string; status: string; clientInitial: string | null }
 
 interface Details {
-  projects:  ProjectRow[]
-  proposals: ProposalRow[]
-  finishedProjects: FinishedProjectRow[]
+  projects:          ProjectRow[]
+  proposals:         ProposalRow[]
+  finishedProjects:  FinishedProjectRow[]
+  finishedProposals: FinishedProposalRow[]
 }
 
 interface Props {
@@ -119,10 +120,12 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   // Member detail side panel
   const [detailMember, setDetailMember] = useState<Member | null>(null)
   const [finishedOpen, setFinishedOpen] = useState(false)
+  const [finishedPropsOpen, setFinishedPropsOpen] = useState(false)
 
   function openDetail(m: Member) {
     setDetailMember(m)
     setFinishedOpen(false)
+    setFinishedPropsOpen(false)
   }
 
   function openNew() {
@@ -184,7 +187,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   }
 
   const allocRows = members.map((m) => {
-    const a     = allocation[m.initial] ?? { projects: 0, proposals: 0, finished: 0 }
+    const a     = allocation[m.initial] ?? { projects: 0, proposals: 0, finished: 0, finishedProposals: 0 }
     const total = a.projects + a.proposals
     const badge = capacityBadge(a.projects, a.proposals)
     return { member: m, ...a, total, badge }
@@ -193,8 +196,8 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
     return b.total - a.total
   })
 
-  const detailAlloc   = detailMember ? (allocation[detailMember.initial] ?? { projects: 0, proposals: 0, finished: 0 }) : null
-  const detailData    = detailMember ? (details[detailMember.initial] ?? { projects: [], proposals: [], finishedProjects: [] }) : null
+  const detailAlloc   = detailMember ? (allocation[detailMember.initial] ?? { projects: 0, proposals: 0, finished: 0, finishedProposals: 0 }) : null
+  const detailData    = detailMember ? (details[detailMember.initial] ?? { projects: [], proposals: [], finishedProjects: [], finishedProposals: [] }) : null
   const detailBadge   = detailAlloc  ? capacityBadge(detailAlloc.projects, detailAlloc.proposals) : null
 
   return (
@@ -232,6 +235,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
           )}
           {allocRows.map(({ member, projects, proposals, finished, badge }, index) => {
             const pct = capacityLoadPct(projects, proposals)
+            const a = allocation[member.initial] ?? { projects: 0, proposals: 0, finished: 0, finishedProposals: 0 }
             return (
               <button
                 key={member.id}
@@ -257,7 +261,10 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     </div>
                     <span className={`text-xs font-semibold w-10 text-right shrink-0 ${pct > 100 ? 'text-red-500' : 'text-gray-700'}`}>{pct}%</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 whitespace-nowrap">{projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''} · {finished} finished</p>
+                  <div className="grid grid-cols-2 gap-x-3 text-[10px] text-gray-400">
+                    <span><span className="font-semibold text-gray-600">{a.projects}</span> proj. ongoing · <span className="font-semibold text-gray-600">{a.finished}</span> done</span>
+                    <span><span className="font-semibold text-gray-600">{a.proposals}</span> prop. ongoing · <span className="font-semibold text-gray-600">{a.finishedProposals}</span> done</span>
+                  </div>
                 </div>
 
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${badge.cls}`}>
@@ -276,6 +283,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
           {allocRows.map(({ member, projects, proposals, finished, badge }, index) => {
             const pct = capacityLoadPct(projects, proposals)
             const barFill = pct > 100 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#43B02A'
+            const a = allocation[member.initial] ?? { projects: 0, proposals: 0, finished: 0, finishedProposals: 0 }
             return (
               <button
                 key={member.id}
@@ -311,9 +319,10 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                     <span className="rsm-mworkload-pct">{pct}%</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-2 whitespace-nowrap">
-                  {projects} project{projects !== 1 ? 's' : ''} · {proposals} proposal{proposals !== 1 ? 's' : ''} · {finished} finished
-                </p>
+                <div className="grid grid-cols-2 gap-x-3 mt-2 text-[10px] text-gray-400">
+                  <span><span className="font-semibold text-gray-600">{a.projects}</span> proj. ongoing · <span className="font-semibold text-gray-600">{a.finished}</span> done</span>
+                  <span><span className="font-semibold text-gray-600">{a.proposals}</span> prop. ongoing · <span className="font-semibold text-gray-600">{a.finishedProposals}</span> done</span>
+                </div>
               </button>
             )
           })}
@@ -498,9 +507,10 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                         {pct}%
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-400">
-                      {detailAlloc.projects} project{detailAlloc.projects !== 1 ? 's' : ''} · {detailAlloc.proposals} proposal{detailAlloc.proposals !== 1 ? 's' : ''} · {detailAlloc.finished} finished
-                    </p>
+                    <div className="grid grid-cols-2 gap-x-3 text-[10px] text-gray-400">
+                      <span><span className="font-semibold text-gray-600">{detailAlloc.projects}</span> proj. ongoing · <span className="font-semibold text-gray-600">{detailAlloc.finished}</span> done</span>
+                      <span><span className="font-semibold text-gray-600">{detailAlloc.proposals}</span> prop. ongoing · <span className="font-semibold text-gray-600">{detailAlloc.finishedProposals}</span> done</span>
+                    </div>
                   </>
                 )
               })()}
@@ -569,6 +579,40 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+
+              {/* Finished Proposals (collapsible) */}
+              <div>
+                <button
+                  className="flex items-center gap-2 w-full mb-2"
+                  onClick={() => setFinishedPropsOpen((v) => !v)}
+                >
+                  <Archive size={13} className="text-gray-400 shrink-0" />
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex-1 text-left">
+                    Finished Proposals ({detailData.finishedProposals.length})
+                  </span>
+                  <ChevronDown
+                    size={13}
+                    className={`text-gray-400 shrink-0 transition-transform duration-200 ${finishedPropsOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {finishedPropsOpen && (
+                  detailData.finishedProposals.length === 0 ? (
+                    <p className="text-xs text-gray-400">No finished proposals.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailData.finishedProposals.map((o) => (
+                        <div key={o.id} className="bg-gray-50 rounded-lg px-3 py-2.5 space-y-1">
+                          <div className="text-sm font-medium text-gray-900 leading-snug">{o.proposalName}</div>
+                          {o.clientInitial && <div className="text-xs text-gray-500">{o.clientInitial}</div>}
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600`}>
+                            {o.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
                 )}
               </div>
 

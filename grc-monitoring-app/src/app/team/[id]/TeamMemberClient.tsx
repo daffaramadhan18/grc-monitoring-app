@@ -28,7 +28,7 @@ interface Project {
   termins?: Termin[]
 }
 
-interface Props { member: Member; proposals: Proposal[]; projects: Project[]; finishedProjects: Project[] }
+interface Props { member: Member; proposals: Proposal[]; projects: Project[]; finishedProjects: Project[]; finishedProposals: Proposal[] }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ function ProjectTable({ projects, member, rowContainer, rowItem, onRowClick }: P
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function TeamMemberClient({ member, proposals, projects, finishedProjects }: Props) {
+export default function TeamMemberClient({ member, proposals, projects, finishedProjects, finishedProposals }: Props) {
   const router = useRouter()
   const reduced = useReducedMotion() ?? false
   const badge = capacityBadge(projects.length, proposals.length)
@@ -223,6 +223,55 @@ export default function TeamMemberClient({ member, proposals, projects, finished
             >
               {proposals.map((o) => (
                 <motion.tr key={o.id} variants={rowItem} className="rsm-row-click hover:bg-gray-50/60 transition-colors">
+                  <td className="px-4 py-3 font-medium text-gray-900">{o.proposalName}</td>
+                  <td className="px-4 py-3 text-gray-600">{o.clientName ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500">{o.serviceType?.name ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${OPP_STATUS_COLORS[o.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {o.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500">{formatDate(o.expectedDate)}</td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
+                      {roleOf(o, member.initial)}
+                    </span>
+                  </td>
+                </motion.tr>
+              ))}
+            </motion.tbody>
+          </table>
+        )}
+      </motion.div>
+
+      {/* Finished Proposals */}
+      <motion.div variants={sectionVariants} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-700">Finished Proposals</h3>
+          <span className="text-xs text-gray-400">{finishedProposals.length} proposal{finishedProposals.length !== 1 ? 's' : ''}</span>
+        </div>
+        {finishedProposals.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-gray-400">Tidak ada finished proposal</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Proposal Name</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Client</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Service Type</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Expected</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">Role</th>
+              </tr>
+            </thead>
+            <motion.tbody
+              className="divide-y divide-gray-50"
+              variants={rowContainer}
+              initial="hidden"
+              animate="show"
+            >
+              {finishedProposals.map((o) => (
+                <motion.tr key={o.id} variants={rowItem} className="hover:bg-gray-50/60 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{o.proposalName}</td>
                   <td className="px-4 py-3 text-gray-600">{o.clientName ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{o.serviceType?.name ?? '—'}</td>

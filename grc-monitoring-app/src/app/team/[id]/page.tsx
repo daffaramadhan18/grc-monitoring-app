@@ -4,6 +4,7 @@ import { serialize } from '@/lib/serialize'
 import TeamMemberClient from './TeamMemberClient'
 
 const OPP_TM_FIELDS = ['micInitial','tm1Initial','tm2Initial','tm3Initial','tm4Initial','tm5Initial','tm6Initial'] as const
+const FINISHED_OPP_STATUSES = ['Win', 'Lose', 'Withdraw', 'Cancelled', 'Transfer to others'] as const
 
 export default async function TeamMemberPage({ params }: { params: { id: string } }) {
   const id = Number(params.id)
@@ -18,7 +19,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
     { teamMembers: { has: member.initial } },
   ]
 
-  const [proposals, projects, finishedProjects] = await Promise.all([
+  const [proposals, projects, finishedProjects, finishedProposals] = await Promise.all([
     prisma.opportunity.findMany({
       where: {
         status: 'In progress',
@@ -43,6 +44,14 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
       include: { termins: true },
       orderBy: { startedDate: 'desc' },
     }),
+    prisma.opportunity.findMany({
+      where: {
+        status: { in: [...FINISHED_OPP_STATUSES] },
+        OR: oppOrFilter,
+      },
+      include: { serviceType: true },
+      orderBy: { expectedDate: 'desc' },
+    }),
   ])
 
   return (
@@ -51,6 +60,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
       proposals={proposals.map((o) => serialize(o)) as unknown as Parameters<typeof TeamMemberClient>[0]['proposals']}
       projects={projects.map((p) => serialize(p)) as unknown as Parameters<typeof TeamMemberClient>[0]['projects']}
       finishedProjects={finishedProjects.map((p) => serialize(p)) as unknown as Parameters<typeof TeamMemberClient>[0]['finishedProjects']}
+      finishedProposals={finishedProposals.map((o) => serialize(o)) as unknown as Parameters<typeof TeamMemberClient>[0]['finishedProposals']}
     />
   )
 }
