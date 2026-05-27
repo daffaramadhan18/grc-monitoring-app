@@ -95,8 +95,7 @@ export default async function DashboardPage({
       },
       select: {
         status: true, harga: true, expectedDate: true,
-        micInitial: true, tm1Initial: true, tm2Initial: true, tm3Initial: true,
-        tm4Initial: true, tm5Initial: true, tm6Initial: true,
+        proposalName: true, clientInitial: true, clientName: true,
       },
     }),
   ])
