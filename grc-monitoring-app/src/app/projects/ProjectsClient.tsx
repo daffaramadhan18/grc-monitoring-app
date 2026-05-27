@@ -164,16 +164,17 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 
 // Column order: checkbox, Engagement Name, Client, Owner, Status, MIC, Team, Period, Confirmed Fee, Termins
 const DEFAULT_WIDTHS = [
-  40,  // checkbox
-  200, // Engagement Name
-  140, // Client
-  110, // Owner
-  120, // Status
-  80,  // MIC
-  160, // Team
-  180, // Period
-  140, // Confirmed Fee
-  100, // Termins
+  40,  // 0: checkbox
+  45,  // 1: No
+  200, // 2: Engagement Name
+  140, // 3: Client
+  110, // 4: Owner
+  120, // 5: Status
+  80,  // 6: MIC
+  160, // 7: Team
+  180, // 8: Period
+  140, // 9: Confirmed Fee
+  100, // 10: Termins
 ]
 
 // ─── Sort ────────────────────────────────────────────────────────────────────
@@ -573,6 +574,10 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
               />
             )}
           </td>
+          {/* No */}
+          <td className="px-2 align-middle text-center text-xs text-gray-400 tabular-nums select-none">
+            {index + 1}
+          </td>
           {/* Engagement Name */}
           <td className={`px-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-900 ${tdEdit}`}
             onClick={(e) => editMode && e.stopPropagation()}>
@@ -820,48 +825,62 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
-                <th className={thSortCls} style={{ width: widths[1] }} onClick={() => handleSort('proposalName')}>
+                <th className={`${thBase} text-center`} style={{ width: widths[1] }}>No</th>
+                <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('proposalName')}>
                   Engagement Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={1} />
-                </th>
-                <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
-                  Client <SortIcon field="client" current={sortField} dir={sortDir} />
                   <ResizeHandle col={2} />
                 </th>
-                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[3] }}>
-                  Owner<ResizeHandle col={3} />
+                <th className={thSortCls} style={{ width: widths[3] }} onClick={() => handleSort('client')}>
+                  Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={3} />
                 </th>
-                <th className={thSortCls} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[4] }}>
+                  Owner<ResizeHandle col={4} />
+                </th>
+                <th className={thSortCls} style={{ width: widths[5] }} onClick={() => handleSort('status')}>
                   Status <SortIcon field="status" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={4} />
+                  <ResizeHandle col={5} />
                 </th>
-                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[5] }}>
-                  MIC<ResizeHandle col={5} />
+                <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[6] }}>
+                  MIC<ResizeHandle col={6} />
                 </th>
-                <th className={thBase} style={{ width: widths[6] }}>
-                  Team<ResizeHandle col={6} />
+                <th className={thBase} style={{ width: widths[7] }}>
+                  Team<ResizeHandle col={7} />
                 </th>
-                <th className={thSortCls} style={{ width: widths[7] }} onClick={() => handleSort('startedDate')}>
+                <th className={thSortCls} style={{ width: widths[8] }} onClick={() => handleSort('startedDate')}>
                   Period <SortIcon field="startedDate" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={7} />
-                </th>
-                <th className={`${thSortCls} text-right`} style={{ width: widths[8] }} onClick={() => handleSort('confirmedFee')}>
-                  Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
                   <ResizeHandle col={8} />
                 </th>
-                <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[9] }}>
-                  Termins<ResizeHandle col={9} />
+                <th className={`${thSortCls} text-right`} style={{ width: widths[9] }} onClick={() => handleSort('confirmedFee')}>
+                  Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={9} />
+                </th>
+                <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[10] }}>
+                  Termins<ResizeHandle col={10} />
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {activeProjects.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-400">Belum ada project.</td>
                 </tr>
               )}
               {renderRows(activeProjects)}
             </tbody>
+            {activeProjects.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <td colSpan={9} className="px-4 py-2.5 text-xs font-semibold text-gray-500 text-right">
+                    Total ({activeProjects.length} projects)
+                  </td>
+                  <td className="px-4 py-2.5 text-sm font-bold text-gray-900 text-right whitespace-nowrap">
+                    {formatRupiah(activeProjects.reduce((s, p) => s + (p.confirmedFee ?? 0), 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
@@ -908,43 +927,57 @@ export default function ProjectsClient({ projects: initial, teamMembers }: Props
                           className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                         />
                       </th>
-                      <th className={thSortCls} style={{ width: widths[1] }} onClick={() => handleSort('proposalName')}>
+                      <th className={`${thBase} text-center`} style={{ width: widths[1] }}>No</th>
+                      <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('proposalName')}>
                         Engagement Name <SortIcon field="proposalName" current={sortField} dir={sortDir} />
-                        <ResizeHandle col={1} />
-                      </th>
-                      <th className={thSortCls} style={{ width: widths[2] }} onClick={() => handleSort('client')}>
-                        Client <SortIcon field="client" current={sortField} dir={sortDir} />
                         <ResizeHandle col={2} />
                       </th>
-                      <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[3] }}>
-                        Owner<ResizeHandle col={3} />
+                      <th className={thSortCls} style={{ width: widths[3] }} onClick={() => handleSort('client')}>
+                        Client <SortIcon field="client" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={3} />
                       </th>
-                      <th className={thSortCls} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
+                      <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[4] }}>
+                        Owner<ResizeHandle col={4} />
+                      </th>
+                      <th className={thSortCls} style={{ width: widths[5] }} onClick={() => handleSort('status')}>
                         Status <SortIcon field="status" current={sortField} dir={sortDir} />
-                        <ResizeHandle col={4} />
+                        <ResizeHandle col={5} />
                       </th>
-                      <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[5] }}>
-                        MIC<ResizeHandle col={5} />
+                      <th className={`${thBase} hidden sm:table-cell`} style={{ width: widths[6] }}>
+                        MIC<ResizeHandle col={6} />
                       </th>
-                      <th className={thBase} style={{ width: widths[6] }}>
-                        Team<ResizeHandle col={6} />
+                      <th className={thBase} style={{ width: widths[7] }}>
+                        Team<ResizeHandle col={7} />
                       </th>
-                      <th className={thSortCls} style={{ width: widths[7] }} onClick={() => handleSort('startedDate')}>
+                      <th className={thSortCls} style={{ width: widths[8] }} onClick={() => handleSort('startedDate')}>
                         Period <SortIcon field="startedDate" current={sortField} dir={sortDir} />
-                        <ResizeHandle col={7} />
-                      </th>
-                      <th className={`${thSortCls} text-right`} style={{ width: widths[8] }} onClick={() => handleSort('confirmedFee')}>
-                        Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
                         <ResizeHandle col={8} />
                       </th>
-                      <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[9] }}>
-                        Termins<ResizeHandle col={9} />
+                      <th className={`${thSortCls} text-right`} style={{ width: widths[9] }} onClick={() => handleSort('confirmedFee')}>
+                        Confirmed Fee <SortIcon field="confirmedFee" current={sortField} dir={sortDir} />
+                        <ResizeHandle col={9} />
+                      </th>
+                      <th className={`${thBase} text-center hidden sm:table-cell`} style={{ width: widths[10] }}>
+                        Termins<ResizeHandle col={10} />
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {renderRows(finishedProjects)}
                   </tbody>
+                  {finishedProjects.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 bg-gray-50">
+                        <td colSpan={9} className="px-4 py-2.5 text-xs font-semibold text-gray-500 text-right">
+                          Total ({finishedProjects.length} projects)
+                        </td>
+                        <td className="px-4 py-2.5 text-sm font-bold text-gray-900 text-right whitespace-nowrap">
+                          {formatRupiah(finishedProjects.reduce((s, p) => s + (p.confirmedFee ?? 0), 0))}
+                        </td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             </div>
