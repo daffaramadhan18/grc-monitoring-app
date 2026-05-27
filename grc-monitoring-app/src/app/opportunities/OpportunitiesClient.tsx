@@ -131,17 +131,18 @@ function useResizableColumns(count: number, defaultWidths: number[]) {
 //               Expected Date | Probability | %RR | Harga | Team | delete
 const DEFAULT_WIDTHS = [
   40,  // 0: checkbox
-  90,  // 1: Client Initial  [FROZEN]
-  120, // 2: Sub-service     [FROZEN]
-  200, // 3: Proposal Name   [FROZEN]
-  130, // 4: Status
-  90,  // 5: Phase
-  110, // 6: Expected Date
-  80,  // 7: Probability
-  70,  // 8: %RR
-  130, // 9: Harga
-  180, // 10: Team
-  80,  // 11: actions
+  45,  // 1: No
+  90,  // 2: Client Initial  [FROZEN]
+  120, // 3: Sub-service     [FROZEN]
+  200, // 4: Proposal Name   [FROZEN]
+  130, // 5: Status
+  90,  // 6: Phase
+  110, // 7: Expected Date
+  80,  // 8: Probability
+  70,  // 9: %RR
+  130, // 10: Harga
+  180, // 11: Team
+  80,  // 12: actions
 ]
 
 const OPP_PHASES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed']
@@ -684,60 +685,64 @@ export default function OpportunitiesClient({
                     className="rounded border-gray-300 accent-[#009CDE] cursor-pointer"
                   />
                 </th>
+                {/* No */}
+                <th className={`${thBase} bg-gray-50 text-center`} style={{ width: widths[1] }}>
+                  No
+                </th>
                 {/* Client Initial */}
-                <th className={`${thBase} bg-gray-50`} style={{ width: widths[1] }}>
-                  Client Initial<ResizeHandle col={1} />
+                <th className={`${thBase} bg-gray-50`} style={{ width: widths[2] }}>
+                  Client Initial<ResizeHandle col={2} />
                 </th>
                 {/* Sub-service */}
-                <th className={`${thBase} bg-gray-50`} style={{ width: widths[2] }}>
-                  Sub-service<ResizeHandle col={2} />
+                <th className={`${thBase} bg-gray-50`} style={{ width: widths[3] }}>
+                  Sub-service<ResizeHandle col={3} />
                 </th>
                 {/* Proposal Name */}
                 <th className={`${thSort} bg-gray-50`}
-                  style={{ width: widths[3] }}
+                  style={{ width: widths[4] }}
                   onClick={() => handleSort('proposalName')}>
                   Proposal Name<SortIcon field="proposalName" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={3} />
-                </th>
-                {/* Status */}
-                <th className={thSort} style={{ width: widths[4] }} onClick={() => handleSort('status')}>
-                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
                   <ResizeHandle col={4} />
                 </th>
+                {/* Status */}
+                <th className={thSort} style={{ width: widths[5] }} onClick={() => handleSort('status')}>
+                  Status<SortIcon field="status" current={sortField} dir={sortDir} />
+                  <ResizeHandle col={5} />
+                </th>
                 {/* Phase */}
-                <th className={thBase} style={{ width: widths[5] }}>
-                  Phase<ResizeHandle col={5} />
+                <th className={thBase} style={{ width: widths[6] }}>
+                  Phase<ResizeHandle col={6} />
                 </th>
                 {/* Expected Date */}
-                <th className={thSort} style={{ width: widths[6] }} onClick={() => handleSort('expectedDate')}>
+                <th className={thSort} style={{ width: widths[7] }} onClick={() => handleSort('expectedDate')}>
                   Expected Date<SortIcon field="expectedDate" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={6} />
+                  <ResizeHandle col={7} />
                 </th>
                 {/* Probability */}
-                <th className={thBase} style={{ width: widths[7] }}>
-                  Prob<ResizeHandle col={7} />
+                <th className={thBase} style={{ width: widths[8] }}>
+                  Prob<ResizeHandle col={8} />
                 </th>
                 {/* %RR */}
-                <th className={thBase} style={{ width: widths[8] }}>
-                  %RR<ResizeHandle col={8} />
+                <th className={thBase} style={{ width: widths[9] }}>
+                  %RR<ResizeHandle col={9} />
                 </th>
                 {/* Harga */}
-                <th className={thSort} style={{ width: widths[9] }} onClick={() => handleSort('harga')}>
+                <th className={thSort} style={{ width: widths[10] }} onClick={() => handleSort('harga')}>
                   Harga<SortIcon field="harga" current={sortField} dir={sortDir} />
-                  <ResizeHandle col={9} />
+                  <ResizeHandle col={10} />
                 </th>
                 {/* Team */}
-                <th className={thBase} style={{ width: widths[10] }}>
-                  Team<ResizeHandle col={10} />
+                <th className={thBase} style={{ width: widths[11] }}>
+                  Team<ResizeHandle col={11} />
                 </th>
                 {/* Delete */}
-                <th className={thBase} style={{ width: widths[11] }} />
+                <th className={thBase} style={{ width: widths[12] }} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sortedOpps.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={13} className="px-4 py-10 text-center text-gray-400">
                     Belum ada opportunity. Klik &ldquo;Add Opportunity&rdquo; untuk mulai.
                   </td>
                 </tr>
@@ -782,6 +787,10 @@ export default function OpportunitiesClient({
                           className={`rounded border-gray-300 accent-[#009CDE] cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                         />
                       )}
+                    </td>
+                    {/* No */}
+                    <td className="px-2 align-middle text-center text-xs text-gray-400 tabular-nums select-none">
+                      {index + 1}
                     </td>
                     {/* Client Initial */}
                     <td className={`px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 font-mono text-xs ${tdEdit}`}
@@ -932,6 +941,19 @@ export default function OpportunitiesClient({
                 )
               })}
             </tbody>
+            {sortedOpps.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <td colSpan={10} className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-right">
+                    Total ({sortedOpps.length} opportunities)
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-gray-900 text-right whitespace-nowrap">
+                    {formatRupiah(sortedOpps.reduce((s, o) => s + (o.harga ?? 0), 0))}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
