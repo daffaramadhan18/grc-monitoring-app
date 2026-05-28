@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 interface Opp {
@@ -43,7 +43,8 @@ function formatIDRShort(value: number): string {
 
 export default function QuarterlySection({ opps, year }: Props) {
   const targetYear = year ?? new Date().getFullYear()
-  const [hovered, setHovered] = useState<{ qLabel: string; clientInitial: string } | null>(null)
+  const [hovered, setHovered]   = useState<{ qLabel: string; clientInitial: string } | null>(null)
+  const [tapped,  setTapped]    = useState<{ qLabel: string; clientInitial: string } | null>(null)
 
   // Only active opportunities with an expectedDate in the target year
   const eligible = opps.filter((o) => {
@@ -106,7 +107,12 @@ export default function QuarterlySection({ opps, year }: Props) {
                     {Array.from(q.clientMap.entries()).map(([ini, { name }]) => (
                       <span
                         key={ini}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700"
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 active:bg-slate-200 cursor-pointer select-none"
+                        onClick={() => setTapped(
+                          tapped?.qLabel === q.label && tapped?.clientInitial === ini
+                            ? null
+                            : { qLabel: q.label, clientInitial: ini }
+                        )}
                       >
                         {name}
                       </span>
@@ -200,6 +206,55 @@ export default function QuarterlySection({ opps, year }: Props) {
           )
         })}
       </div>
+
+      {/* Mobile tap-to-show proposals overlay */}
+      <AnimatePresence>
+        {tapped && (() => {
+          const data = quarters.find(q => q.label === tapped.qLabel)?.clientMap.get(tapped.clientInitial)
+          if (!data) return null
+          return (
+            <motion.div
+              key="mobile-tap-overlay"
+              className="md:hidden fixed inset-0 z-40 flex items-end"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setTapped(null)}
+            >
+              <motion.div
+                className="w-full bg-white rounded-t-2xl shadow-2xl border-t border-gray-100 p-5"
+                initial={{ y: 60 }}
+                animate={{ y: 0 }}
+                exit={{ y: 60 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              >
+                <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  {tapped.qLabel} · {data.name}
+                </p>
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                  {data.proposals.length > 0 ? data.proposals.map((pName, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#009CDE] mt-1.5 shrink-0" />
+                      <p className="text-sm text-gray-700 leading-snug">{pName}</p>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-400">No proposals listed.</p>
+                  )}
+                </div>
+                <button
+                  className="mt-4 w-full py-2 text-sm text-gray-500 border border-gray-200 rounded-lg active:bg-gray-50"
+                  onClick={() => setTapped(null)}
+                >
+                  Close
+                </button>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
     </div>
   )
 }

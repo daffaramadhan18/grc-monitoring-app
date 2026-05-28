@@ -533,7 +533,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
             </div>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 pb-[calc(env(safe-area-inset-bottom,0px)+80px)] md:pb-4">
 
               {/* Active Projects */}
               <div>

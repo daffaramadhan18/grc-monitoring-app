@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion'
 import { FileText, Briefcase, TrendingUp, Wallet, CheckCircle2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -110,6 +110,17 @@ export default function SummaryCards({
 }: Props) {
   const reduced = useReducedMotion() ?? false
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+  const [isTouch, setIsTouch] = useState(false)
+
+  useEffect(() => {
+    setIsTouch(window.matchMedia('(pointer: coarse)').matches)
+  }, [])
+
+  const hoverProps = useCallback((n: number) => ({
+    onMouseEnter: isTouch ? undefined : () => setHoveredCard(n),
+    onMouseLeave: isTouch ? undefined : () => setHoveredCard(null),
+    onClick: () => setHoveredCard((prev: number | null) => (prev === n ? null : n)),
+  }), [isTouch])
 
   const container: Variants = {
     hidden: {},
@@ -136,8 +147,13 @@ export default function SummaryCards({
   return (
     <motion.div className="grid grid-cols-2 lg:grid-cols-5 gap-4 items-stretch" variants={container} initial="hidden" animate="show">
 
+      {/* Backdrop to close tooltip on mobile tap-outside */}
+      {hoveredCard !== null && isTouch && (
+        <div className="fixed inset-0 z-40" onClick={() => setHoveredCard(null)} />
+      )}
+
       {/* Card 1: Total Opportunities */}
-      <div className="relative h-full" onMouseEnter={() => setHoveredCard(1)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" {...hoverProps(1)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -161,7 +177,7 @@ export default function SummaryCards({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -4 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
+              className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 w-[min(280px,calc(100vw-32px))] lg:min-w-[280px] lg:w-auto border border-gray-100"
             >
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Top Opportunities</p>
               <div className="max-h-[320px] overflow-y-auto">
@@ -182,7 +198,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 2: Win Rate */}
-      <div className="relative h-full" onMouseEnter={() => setHoveredCard(2)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" {...hoverProps(2)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -204,7 +220,7 @@ export default function SummaryCards({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -4 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
+              className="absolute top-full right-0 lg:left-0 lg:right-auto mt-2 z-50 bg-white shadow-xl rounded-xl p-4 w-[min(280px,calc(100vw-32px))] lg:min-w-[280px] lg:w-auto border border-gray-100"
             >
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -232,7 +248,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 3: Ongoing Projects */}
-      <div className="relative h-full" onMouseEnter={() => setHoveredCard(3)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" {...hoverProps(3)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -254,7 +270,7 @@ export default function SummaryCards({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -4 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
+              className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 w-[min(280px,calc(100vw-32px))] lg:min-w-[280px] lg:w-auto border border-gray-100"
             >
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ongoing Projects</p>
               <div className="space-y-2 max-h-[320px] overflow-y-auto">
@@ -282,7 +298,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 4: Confirmed Fee */}
-      <div className="relative h-full" onMouseEnter={() => setHoveredCard(4)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" {...hoverProps(4)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -303,7 +319,7 @@ export default function SummaryCards({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -4 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute top-full left-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
+              className="absolute top-full right-0 lg:left-0 lg:right-auto mt-2 z-50 bg-white shadow-xl rounded-xl p-4 w-[min(280px,calc(100vw-32px))] lg:min-w-[280px] lg:w-auto border border-gray-100"
             >
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Won Opportunities</p>
               <div className="space-y-2 max-h-[320px] overflow-y-auto">
@@ -324,7 +340,7 @@ export default function SummaryCards({
       </div>
 
       {/* Card 5: Finished Projects */}
-      <div className="relative h-full" onMouseEnter={() => setHoveredCard(5)} onMouseLeave={() => setHoveredCard(null)}>
+      <div className="relative h-full" {...hoverProps(5)}>
         <motion.div variants={item} {...cardHover} className={cardCls}>
           <div className="flex items-start justify-between">
             <div className="min-w-0">
@@ -346,7 +362,7 @@ export default function SummaryCards({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -4 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute top-full right-0 mt-2 z-50 bg-white shadow-xl rounded-xl p-4 min-w-[280px] border border-gray-100"
+              className="absolute top-full left-0 lg:right-0 lg:left-auto mt-2 z-50 bg-white shadow-xl rounded-xl p-4 w-[min(280px,calc(100vw-32px))] lg:min-w-[280px] lg:w-auto border border-gray-100"
             >
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Finished Projects</p>
               <div className="space-y-2 max-h-[320px] overflow-y-auto">
