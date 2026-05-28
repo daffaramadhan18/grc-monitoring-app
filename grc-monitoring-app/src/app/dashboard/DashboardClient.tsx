@@ -125,7 +125,7 @@ function DashboardInner() {
   // ── Service types (derived from opps — no separate API route exists) ───────
   const serviceTypeMap = new Map<number, { id: number; name: string }>()
   allOpps.forEach(o => { if (o.serviceType) serviceTypeMap.set(o.serviceType.id, o.serviceType) })
-  const serviceTypes = [...serviceTypeMap.values()].sort((a, b) => a.name.localeCompare(b.name))
+  const serviceTypes = Array.from(serviceTypeMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
   // ── Workload (derived from projects + opps + members) ─────────────────────
   const workload = members
