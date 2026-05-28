@@ -3,7 +3,7 @@ import "./globals.css"
 import Sidebar from "@/components/layout/Sidebar"
 import BottomNav from "@/components/layout/BottomNav"
 import MobileTopbar from "@/components/layout/MobileTopbar"
-import SwipePageWrapper from "@/components/layout/SwipePageWrapper"
+import SwipeableLayout from "@/components/layout/SwipeableLayout"
 import SWRProvider from "@/components/SWRProvider"
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex h-screen overflow-x-hidden">
             <Sidebar />
             <main className="rsm-main w-full min-w-0 md:flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-4 pt-[56px] md:pt-0 md:p-6">
-              <SwipePageWrapper>
+              <SwipeableLayout>
                 {children}
                 {/* Mobile safe-area spacer: bottom nav (64px) + device inset */}
                 <div
@@ -47,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   style={{ height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
                   aria-hidden
                 />
-              </SwipePageWrapper>
+              </SwipeableLayout>
             </main>
           </div>
           <BottomNav />
