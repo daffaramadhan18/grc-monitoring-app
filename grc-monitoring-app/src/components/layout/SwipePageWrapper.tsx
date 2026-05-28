@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
 const TABS = ['/dashboard', '/opportunities', '/projects', '/team']
@@ -26,6 +26,20 @@ export default function SwipePageWrapper({ children }: { children: React.ReactNo
   const pathname = usePathname()
   const start    = useRef<{ x: number; y: number; target: EventTarget | null } | null>(null)
   const [pullY,  setPullY]  = useState(0)
+
+  // Disable pinch-zoom on iOS (iOS 10+ ignores user-scalable=no in viewport meta)
+  useEffect(() => {
+    const preventPinch = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault() }
+    const preventGesture = (e: Event) => e.preventDefault()
+    document.addEventListener('touchmove',     preventPinch,   { passive: false })
+    document.addEventListener('gesturestart',  preventGesture, { passive: false })
+    document.addEventListener('gesturechange', preventGesture, { passive: false })
+    return () => {
+      document.removeEventListener('touchmove',     preventPinch)
+      document.removeEventListener('gesturestart',  preventGesture)
+      document.removeEventListener('gesturechange', preventGesture)
+    }
+  }, [])
 
   function onTouchStart(e: React.TouchEvent) {
     start.current = {
