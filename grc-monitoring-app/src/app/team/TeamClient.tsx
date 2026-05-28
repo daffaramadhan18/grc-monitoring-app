@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Plus, Pencil, Trash2, X, Settings2, Briefcase, FileText, Archive, ChevronDown } from 'lucide-react'
@@ -121,6 +121,17 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
   const [detailMember, setDetailMember] = useState<Member | null>(null)
   const [finishedOpen, setFinishedOpen] = useState(false)
   const [finishedPropsOpen, setFinishedPropsOpen] = useState(false)
+
+  // Measure the fixed header's bottom edge so the panel starts below it
+  const [headerBottom, setHeaderBottom] = useState(0)
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('header')
+    if (!header) return
+    const update = () => setHeaderBottom(header.getBoundingClientRect().bottom)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   function openDetail(m: Member) {
     setDetailMember(m)
@@ -470,7 +481,7 @@ export default function TeamClient({ members: initial, allocation, details }: Pr
       {/* ── Member detail side panel ──────────────────────────────────────── */}
       <AnimatePresence>
       {detailMember && detailAlloc && detailData && detailBadge && (
-        <div key="detail-panel" className="fixed inset-0 z-50 flex justify-end">
+        <div key="detail-panel" className="fixed inset-0 z-50 flex justify-end" style={{ top: headerBottom }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setDetailMember(null)} />
           <motion.div
             className="relative bg-white w-full max-w-sm h-full shadow-2xl flex flex-col overflow-hidden"
